@@ -37,8 +37,8 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                 {cartItems.map(item => {
                   const isKg = item.unit === 'kg';
                   const isPrinting = item.category === 'Printing';
-                  const step = isKg ? 0.1 : 1;
-                  const min = isKg ? 0.1 : 1;
+                  const step = isKg ? 0.01 : 1;
+                  const min = isKg ? 0.01 : 1;
                   
                   return (
                     <div key={item.id} className="flex items-center py-4 space-x-4">
