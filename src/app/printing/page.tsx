@@ -59,11 +59,11 @@ export default function PrintingPage() {
       return;
     }
 
-    if (isNaN(quantityValue) || quantityValue <= 0) {
+    if (isNaN(quantityValue) || quantityValue < 1) {
       toast({
         variant: 'destructive',
         title: 'Invalid Quantity',
-        description: 'Please enter a valid quantity.',
+        description: 'Quantity must be at least 1.',
       });
       return;
     }
@@ -133,7 +133,8 @@ export default function PrintingPage() {
                   <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="quantity" 
-                    type="number" 
+                    type="number"
+                    min="1"
                     placeholder="e.g. 100" 
                     value={quantity} 
                     onChange={(e) => setQuantity(e.target.value)}
@@ -208,16 +209,17 @@ export default function PrintingPage() {
                                             variant="outline"
                                             size="icon"
                                             className="h-8 w-8"
-                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                            onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
                                         >
                                             <Minus className="h-4 w-4" />
                                         </Button>
                                         <Input
                                             type="number"
                                             value={item.quantity}
+                                            min="1"
                                             onChange={(e) => {
                                                 const val = parseInt(e.target.value, 10);
-                                                updateQuantity(item.id, isNaN(val) || val < 0 ? 0 : val)
+                                                updateQuantity(item.id, isNaN(val) || val < 1 ? 1 : val)
                                             }}
                                             className="h-8 w-16 text-center"
                                         />
