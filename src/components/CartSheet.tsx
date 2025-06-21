@@ -28,7 +28,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
         <SheetHeader className="px-6">
-          <SheetTitle>Shopping Cart ({cartCount})</SheetTitle>
+          <SheetTitle>Shopping Cart ({cartCount} {cartCount === 1 ? 'item' : 'items'})</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto">
           {cartItems.length > 0 ? (
@@ -64,7 +64,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             size="icon"
                             className="h-7 w-7"
                             onClick={() => {
-                              const newQuantity = Math.max(0, parseFloat((item.quantity - step).toPrecision(10)));
+                              const newQuantity = Math.max(min, parseFloat((item.quantity - step).toPrecision(10)));
                               updateQuantity(item.id, newQuantity);
                             }}
                           >
@@ -77,7 +77,16 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             value={item.quantity}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
-                              updateQuantity(item.id, isNaN(val) || val < 0 ? 0 : val)
+                              // Allow typing, but don't update state with NaN
+                              if (!isNaN(val)) {
+                                updateQuantity(item.id, val);
+                              }
+                            }}
+                            onBlur={(e) => {
+                               const val = parseFloat(e.target.value);
+                               if(isNaN(val) || val < min) {
+                                   updateQuantity(item.id, min);
+                               }
                             }}
                             className="h-7 w-16 text-center mx-2"
                           />

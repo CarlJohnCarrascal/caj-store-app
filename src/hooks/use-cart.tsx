@@ -52,20 +52,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-    } else {
-      setCartItems(prevItems =>
-        prevItems.map(item => (item.id === productId ? { ...item, quantity } : item))
-      );
-    }
+    setCartItems(prevItems =>
+      prevItems.map(item => (item.id === productId ? { ...item, quantity } : item))
+    );
   };
   
   const clearCart = () => {
     setCartItems([]);
   };
 
-  const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
+  const cartCount = cartItems.length;
   const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
 
   return (
