@@ -19,11 +19,14 @@ export default function Header() {
             <div className="flex items-center space-x-8">
               <Link href="/" className="flex items-center space-x-2">
                 <Warehouse className="h-7 w-7 text-primary" />
-                <span className="font-bold text-xl text-foreground">CommerceFlow</span>
+                <span className="font-bold text-xl text-foreground">Caj-Store</span>
               </Link>
               <nav className="hidden md:flex space-x-6">
                 <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                   Store
+                </Link>
+                <Link href="/printing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                  Printing
                 </Link>
                 <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                   Admin

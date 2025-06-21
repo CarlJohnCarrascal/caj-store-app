@@ -5,8 +5,8 @@ import Header from '@/components/Header';
 import { CartProvider } from '@/hooks/use-cart';
 
 export const metadata: Metadata = {
-  title: 'CommerceFlow',
-  description: 'An online application for small business stores with ordering and an admin page.',
+  title: 'Caj-Store',
+  description: 'An online application for small business stores, offering products and printing services.',
 };
 
 export default function RootLayout({
