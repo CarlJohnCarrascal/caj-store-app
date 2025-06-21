@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
-import { Hash, Ruler, ScanLine } from 'lucide-react';
+import { Hash, Ruler, ScanLine, Trash2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const printingServices = [
   "Xerox",
@@ -25,13 +27,15 @@ const printingServices = [
 ];
 
 export default function PrintingPage() {
-  const { addToCart } = useCart();
+  const { cartItems, addToCart, removeFromCart } = useCart();
   const { toast } = useToast();
 
   const [service, setService] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [size, setSize] = useState('');
   const [pricePerItem, setPricePerItem] = useState('');
+
+  const printingCartItems = cartItems.filter(item => item.category === 'Printing');
 
   const handleAddToCart = () => {
     if (!service || !quantity || !pricePerItem) {
@@ -65,7 +69,7 @@ export default function PrintingPage() {
     }
 
     const customProduct: Product = {
-      id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${size || 'na'}-${priceValue}`,
+      id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${size || 'na'}-${Date.now()}`,
       name: `Printing: ${service}`,
       price: priceValue,
       description: size ? `Size: ${size}` : '',
@@ -93,8 +97,8 @@ export default function PrintingPage() {
   };
 
   return (
-    <div className="flex justify-center">
-      <Card className="w-full max-w-2xl">
+    <div className="space-y-8">
+      <Card className="w-full max-w-2xl mx-auto">
         <CardHeader className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <ScanLine className="h-6 w-6 text-primary" />
@@ -172,6 +176,68 @@ export default function PrintingPage() {
           </div>
         </CardContent>
       </Card>
+      
+      {printingCartItems.length > 0 && (
+        <Card className="w-full max-w-4xl mx-auto">
+            <CardHeader>
+                <CardTitle>Added Printing Jobs</CardTitle>
+                <CardDescription>
+                    These items have been added to your cart. You can manage them here or in the cart.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Service</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead className="text-center">Quantity</TableHead>
+                            <TableHead className="text-right">Price/Item</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {printingCartItems.map(item => (
+                            <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.name.replace('Printing: ', '')}</TableCell>
+                                <TableCell>{item.dimensions === 'N/A' ? '-' : item.dimensions}</TableCell>
+                                <TableCell className="text-center">{item.quantity}</TableCell>
+                                <TableCell className="text-right">₱{item.price.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will remove the item from your cart.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => removeFromCart(item.id)}
+                                                    className="bg-destructive hover:bg-destructive/90"
+                                                >
+                                                    Remove
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
