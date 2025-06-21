@@ -1,0 +1,130 @@
+'use server';
+
+import { Product } from './types';
+
+let products: Product[] = [
+  {
+    id: '1',
+    name: 'Aether-Wing Chair',
+    category: 'Furniture',
+    price: 399.99,
+    stock: 15,
+    material: 'Ash Wood, Bouclé',
+    dimensions: 'W: 30", D: 32", H: 35"',
+    description: 'Ergonomically designed for comfort, this chair features a unique wingback design, providing a cozy and stylish seating experience.',
+    image: 'https://placehold.co/600x600.png',
+  },
+  {
+    id: '2',
+    name: 'Lunar Glow Lamp',
+    category: 'Lighting',
+    price: 129.50,
+    stock: 30,
+    material: 'Ceramic, Frosted Glass',
+    dimensions: 'Dia: 10", H: 18"',
+    description: 'Casting a soft, ambient light, the Lunar Glow Lamp adds a touch of modern elegance to any room with its sculptural ceramic base.',
+    image: 'https://placehold.co/600x600.png',
+  },
+  {
+    id: '3',
+    name: 'Terra Weave Rug',
+    category: 'Textiles',
+    price: 249.00,
+    stock: 25,
+    material: 'Jute, Wool',
+    dimensions: '5\' x 8\'',
+    description: 'Handwoven with natural jute and wool fibers, this rug brings warmth and texture to your space, grounding it with earthy tones.',
+    image: 'https://placehold.co/600x600.png',
+  },
+  {
+    id: '4',
+    name: 'Orbit Coffee Table',
+    category: 'Furniture',
+    price: 599.00,
+    stock: 10,
+    material: 'Solid Walnut, Glass',
+    dimensions: 'Dia: 36", H: 16"',
+    description: 'A statement piece with a sleek, circular design. The Orbit table combines a solid walnut frame with a tempered glass top.',
+    image: 'https://placehold.co/600x600.png',
+  },
+   {
+    id: '5',
+    name: 'Chrono Desk Clock',
+    category: 'Decor',
+    price: 75.00,
+    stock: 50,
+    material: 'Brushed Steel, Oak',
+    dimensions: 'W: 5", D: 2", H: 5"',
+    description: 'A minimalist desk clock that combines a brushed steel case with a solid oak face. Silent quartz movement ensures no ticking.',
+    image: 'https://placehold.co/600x600.png',
+  },
+  {
+    id: '6',
+    name: 'Nimbus Throw Pillow',
+    category: 'Textiles',
+    price: 45.99,
+    stock: 40,
+    material: 'Velvet, Down Fill',
+    dimensions: '18" x 18"',
+    description: 'Plush and luxurious, the Nimbus pillow is made from high-quality velvet and filled with soft down for ultimate comfort.',
+    image: 'https://placehold.co/600x600.png',
+  },
+  {
+    id: '7',
+    name: 'Strata Bookshelf',
+    category: 'Furniture',
+    price: 899.00,
+    stock: 8,
+    material: 'Powder-coated Steel, Oak Veneer',
+    dimensions: 'W: 40", D: 12", H: 72"',
+    description: 'A modern, modular bookshelf with a sturdy steel frame and oak veneer shelves, perfect for displaying your favorite reads and decor.',
+    image: 'https://placehold.co/600x600.png',
+  },
+  {
+    id: '8',
+    name: 'Solstice Scented Candle',
+    category: 'Decor',
+    price: 32.00,
+    stock: 100,
+    material: 'Soy Wax, Essential Oils',
+    dimensions: '3" x 4"',
+    description: 'A hand-poured soy wax candle with notes of sandalwood, amber, and citrus. Provides up to 50 hours of clean burn time.',
+    image: 'https://placehold.co/600x600.png',
+  },
+];
+
+export async function getProducts(): Promise<Product[]> {
+  // In a real app, this would fetch from a database
+  return Promise.resolve(products);
+}
+
+export async function getProductById(id: string): Promise<Product | undefined> {
+  return Promise.resolve(products.find(p => p.id === id));
+}
+
+export async function addProduct(product: Omit<Product, 'id'>): Promise<Product> {
+  const newProduct: Product = {
+    ...product,
+    id: (products.length + 1).toString(),
+  };
+  products.push(newProduct);
+  return Promise.resolve(newProduct);
+}
+
+export async function updateProduct(updatedProduct: Product): Promise<Product | null> {
+  const index = products.findIndex(p => p.id === updatedProduct.id);
+  if (index !== -1) {
+    products[index] = updatedProduct;
+    return Promise.resolve(updatedProduct);
+  }
+  return Promise.resolve(null);
+}
+
+export async function deleteProduct(id: string): Promise<boolean> {
+  const index = products.findIndex(p => p.id === id);
+  if (index !== -1) {
+    products.splice(index, 1);
+    return Promise.resolve(true);
+  }
+  return Promise.resolve(false);
+}
