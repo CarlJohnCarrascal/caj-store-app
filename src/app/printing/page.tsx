@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
-import { Hash, Ruler, ScanLine, Trash2 } from 'lucide-react';
+import { Hash, Ruler, ScanLine, Trash2, Plus, Minus } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -27,7 +27,7 @@ const printingServices = [
 ];
 
 export default function PrintingPage() {
-  const { cartItems, addToCart, removeFromCart } = useCart();
+  const { cartItems, addToCart, removeFromCart, updateQuantity } = useCart();
   const { toast } = useToast();
 
   const [service, setService] = useState('');
@@ -202,7 +202,35 @@ export default function PrintingPage() {
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name.replace('Printing: ', '')}</TableCell>
                                 <TableCell>{item.dimensions === 'N/A' ? '-' : item.dimensions}</TableCell>
-                                <TableCell className="text-center">{item.quantity}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                        >
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                        <Input
+                                            type="number"
+                                            value={item.quantity}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value, 10);
+                                                updateQuantity(item.id, isNaN(val) || val < 0 ? 0 : val)
+                                            }}
+                                            className="h-8 w-16 text-center"
+                                        />
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </TableCell>
                                 <TableCell className="text-right">₱{item.price.toFixed(2)}</TableCell>
                                 <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
                                 <TableCell className="text-right">
