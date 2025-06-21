@@ -1,11 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Warehouse } from 'lucide-react';
+import { ShoppingBag, Warehouse, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
 import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Header() {
   const { cartCount } = useCart();
@@ -21,13 +27,21 @@ export default function Header() {
                 <Warehouse className="h-7 w-7 text-primary" />
                 <span className="font-bold text-xl text-foreground">Caj-Store</span>
               </Link>
-              <nav className="hidden md:flex space-x-6">
-                <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                  Store
-                </Link>
-                <Link href="/printing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                  Printing
-                </Link>
+              <nav className="hidden md:flex items-center space-x-6">
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                    Point of Sale
+                    <ChevronDown className="relative top-[1px] ml-1 h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem asChild>
+                      <Link href="/">Store</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/printing">Printing</Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                   Admin
                 </Link>
