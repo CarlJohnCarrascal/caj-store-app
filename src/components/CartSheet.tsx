@@ -34,56 +34,73 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
           {cartItems.length > 0 ? (
             <ScrollArea className="h-full pr-6">
               <div className="divide-y divide-border">
-                {cartItems.map(item => (
-                  <div key={item.id} className="flex items-center py-4 space-x-4">
-                    <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                        data-ai-hint="product photo"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                      <div className="flex items-center mt-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 0)}
-                          className="h-7 w-12 text-center mx-2"
+                {cartItems.map(item => {
+                  const isKg = item.unit === 'kg';
+                  const step = isKg ? 0.1 : 1;
+                  const min = isKg ? 0.1 : 1;
+                  
+                  return (
+                    <div key={item.id} className="flex items-center py-4 space-x-4">
+                      <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border">
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          data-ai-hint="product photo"
                         />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
                       </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>
+                        <div className="flex items-center mt-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => {
+                              const newQuantity = Math.max(0, parseFloat((item.quantity - step).toPrecision(10)));
+                              updateQuantity(item.id, newQuantity);
+                            }}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <Input
+                            type="number"
+                            step={step}
+                            min={min}
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateQuantity(item.id, isNaN(val) || val < 0 ? 0 : val)
+                            }}
+                            className="h-7 w-16 text-center mx-2"
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => {
+                              const newQuantity = parseFloat((item.quantity + step).toPrecision(10));
+                              updateQuantity(item.id, newQuantity);
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           ) : (

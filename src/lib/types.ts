@@ -10,6 +10,7 @@ export interface Product {
   dimensions: string;
   description: string;
   image: string;
+  unit: 'each' | 'kg';
 }
 
 export interface CartItem extends Product {

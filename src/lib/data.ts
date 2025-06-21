@@ -15,6 +15,7 @@ let products: Product[] = [
     dimensions: 'W: 30", D: 32", H: 35"',
     description: 'Ergonomically designed for comfort, this chair features a unique wingback design, providing a cozy and stylish seating experience.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
   {
     id: '2',
@@ -28,6 +29,7 @@ let products: Product[] = [
     dimensions: 'Dia: 10", H: 18"',
     description: 'Casting a soft, ambient light, the Lunar Glow Lamp adds a touch of modern elegance to any room with its sculptural ceramic base.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
   {
     id: '3',
@@ -41,6 +43,7 @@ let products: Product[] = [
     dimensions: '5\' x 8\'',
     description: 'Handwoven with natural jute and wool fibers, this rug brings warmth and texture to your space, grounding it with earthy tones.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
   {
     id: '4',
@@ -54,6 +57,7 @@ let products: Product[] = [
     dimensions: 'Dia: 36", H: 16"',
     description: 'A statement piece with a sleek, circular design. The Orbit table combines a solid walnut frame with a tempered glass top.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
    {
     id: '5',
@@ -67,6 +71,7 @@ let products: Product[] = [
     dimensions: 'W: 5", D: 2", H: 5"',
     description: 'A minimalist desk clock that combines a brushed steel case with a solid oak face. Silent quartz movement ensures no ticking.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
   {
     id: '6',
@@ -80,6 +85,7 @@ let products: Product[] = [
     dimensions: '18" x 18"',
     description: 'Plush and luxurious, the Nimbus pillow is made from high-quality velvet and filled with soft down for ultimate comfort.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
   {
     id: '7',
@@ -93,6 +99,7 @@ let products: Product[] = [
     dimensions: 'W: 40", D: 12", H: 72"',
     description: 'A modern, modular bookshelf with a sturdy steel frame and oak veneer shelves, perfect for displaying your favorite reads and decor.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
   },
   {
     id: '8',
@@ -106,6 +113,21 @@ let products: Product[] = [
     dimensions: '3" x 4"',
     description: 'A hand-poured soy wax candle with notes of sandalwood, amber, and citrus. Provides up to 50 hours of clean burn time.',
     image: 'https://placehold.co/600x600.png',
+    unit: 'each',
+  },
+  {
+    id: '9',
+    name: 'Organic Coffee Beans',
+    group: 'Pantry',
+    show: true,
+    category: 'Food & Drink',
+    price: 25.00,
+    stock: 100,
+    material: 'N/A',
+    dimensions: 'N/A',
+    description: 'Rich, full-bodied organic coffee beans sourced from the highlands of Colombia. Perfect for a morning brew. Sold by the kilogram.',
+    image: 'https://placehold.co/600x600.png',
+    unit: 'kg',
   },
 ];
 

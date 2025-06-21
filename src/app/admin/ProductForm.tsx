@@ -16,6 +16,7 @@ import { Bot } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -23,11 +24,12 @@ const formSchema = z.object({
   show: z.boolean().default(true),
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Price must be a positive number'),
-  stock: z.coerce.number().int().min(0, 'Stock cannot be negative'),
+  stock: z.coerce.number().min(0, 'Stock cannot be negative'),
   material: z.string().min(1, 'Material is required'),
   dimensions: z.string().min(1, 'Dimensions are required'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   image: z.string().url('Image must be a valid URL'),
+  unit: z.enum(['each', 'kg']).default('each'),
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -45,7 +47,7 @@ export default function ProductForm({ product }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: product
-      ? { ...product, price: Number(product.price), stock: Number(product.stock) }
+      ? { ...product, price: Number(product.price), stock: Number(product.stock), unit: product.unit || 'each' }
       : {
           name: '',
           group: '',
@@ -57,6 +59,7 @@ export default function ProductForm({ product }: ProductFormProps) {
           dimensions: '',
           description: '',
           image: '',
+          unit: 'each',
         },
   });
 
@@ -172,26 +175,58 @@ export default function ProductForm({ product }: ProductFormProps) {
                 )} />
               </div>
               <div className="space-y-8">
-                <FormField
-                  control={form.control}
-                  name="show"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Show in Store</FormLabel>
-                        <FormDescription>
-                          Make this product visible to customers.
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="show"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm h-full">
+                          <div className="space-y-0.5">
+                            <FormLabel>Show in Store</FormLabel>
+                            <FormDescription>
+                              Visible to customers.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="unit"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm h-full">
+                           <div className="space-y-0.5">
+                              <FormLabel>Unit</FormLabel>
+                              <FormDescription>
+                                Sold by each or kg.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                className="flex"
+                              >
+                                <FormItem className="flex items-center space-x-2">
+                                  <FormControl><RadioGroupItem value="each" /></FormControl>
+                                  <FormLabel className="font-normal">Each</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2">
+                                  <FormControl><RadioGroupItem value="kg" /></FormControl>
+                                  <FormLabel className="font-normal">Kg</FormLabel>
+                                </FormItem>
+                              </RadioGroup>
+                            </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="material" render={({ field }) => (
                       <FormItem>

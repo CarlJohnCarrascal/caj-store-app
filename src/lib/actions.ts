@@ -16,6 +16,7 @@ const productSchema = z.object({
   dimensions: z.string().min(1, 'Dimensions are required'),
   description: z.string().min(1, 'Description is required'),
   image: z.string().url('Must be a valid URL'),
+  unit: z.enum(['each', 'kg']),
 });
 
 export async function addProductAction(data: FormData) {

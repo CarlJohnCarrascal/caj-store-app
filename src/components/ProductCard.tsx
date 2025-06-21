@@ -35,6 +35,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <p className="text-lg font-bold text-primary">
           ${product.price.toFixed(2)}
+          {product.unit === 'kg' && <span className="text-sm font-normal text-muted-foreground"> / kg</span>}
         </p>
         <Button size="sm" onClick={() => addToCart(product)}>
           <Plus className="mr-2 h-4 w-4" /> Add to Cart

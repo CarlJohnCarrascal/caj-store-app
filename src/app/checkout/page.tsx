@@ -167,7 +167,7 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>
                   </div>
                 </div>
                 <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
