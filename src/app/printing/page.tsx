@@ -31,19 +31,19 @@ export default function PrintingPage() {
   const [service, setService] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [size, setSize] = useState('');
-  const [price, setPrice] = useState('');
+  const [pricePerItem, setPricePerItem] = useState('');
 
   const handleAddToCart = () => {
-    if (!service || !quantity || !price) {
+    if (!service || !quantity || !pricePerItem) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
-        description: 'Please select a service, and enter a quantity and price.',
+        description: 'Please select a service, and enter a quantity and price per item.',
       });
       return;
     }
 
-    const priceValue = parseFloat(price);
+    const priceValue = parseFloat(pricePerItem);
     const quantityValue = parseInt(quantity, 10);
 
     if (isNaN(priceValue) || priceValue <= 0) {
@@ -65,10 +65,10 @@ export default function PrintingPage() {
     }
 
     const customProduct: Product = {
-      id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`,
+      id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${size || 'na'}-${priceValue}`,
       name: `Printing: ${service}`,
       price: priceValue,
-      description: `Quantity: ${quantityValue}${size ? `, Size: ${size}` : ''}`,
+      description: size ? `Size: ${size}` : '',
       group: 'Services',
       show: false,
       category: 'Printing',
@@ -79,16 +79,16 @@ export default function PrintingPage() {
       unit: 'each',
     };
 
-    addToCart(customProduct);
+    addToCart(customProduct, quantityValue);
 
     setService('');
     setQuantity('1');
     setSize('');
-    setPrice('');
+    setPricePerItem('');
 
     toast({
         title: 'Service Added to Cart',
-        description: `${service} has been added to your cart.`,
+        description: `${quantityValue} x ${service} has been added to your cart.`,
     });
   };
 
@@ -151,15 +151,15 @@ export default function PrintingPage() {
                 </div>
               </div>
                <div className="space-y-2">
-                <Label htmlFor="price">Total Price</Label>
+                <Label htmlFor="price">Price per Item</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span>
                   <Input 
                     id="price" 
                     type="number" 
-                    placeholder="e.g. 50.00" 
-                    value={price} 
-                    onChange={(e) => setPrice(e.target.value)} 
+                    placeholder="e.g. 5.00" 
+                    value={pricePerItem} 
+                    onChange={(e) => setPricePerItem(e.target.value)} 
                     className="pl-7"
                   />
                 </div>

@@ -55,7 +55,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                       <div className="flex-1">
                         <h3 className="font-semibold">{item.name}</h3>
                         <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>
-                        {isPrinting && (
+                        {isPrinting && item.description && (
                           <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                         )}
                         <div className="flex items-center mt-2">

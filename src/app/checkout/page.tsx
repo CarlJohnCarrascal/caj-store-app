@@ -170,7 +170,7 @@ export default function CheckoutPage() {
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>
-                    {isPrinting && (
+                    {isPrinting && item.description && (
                       <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                     )}
                   </div>
