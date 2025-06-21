@@ -7,6 +7,8 @@ import { Product, CartItem } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  group: z.string().min(1, 'Group is required'),
+  show: z.coerce.boolean(),
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
   stock: z.coerce.number().min(0, 'Stock must be positive'),

@@ -6,6 +6,8 @@ let products: Product[] = [
   {
     id: '1',
     name: 'Aether-Wing Chair',
+    group: 'Seating',
+    show: true,
     category: 'Furniture',
     price: 399.99,
     stock: 15,
@@ -17,6 +19,8 @@ let products: Product[] = [
   {
     id: '2',
     name: 'Lunar Glow Lamp',
+    group: 'Lamps',
+    show: true,
     category: 'Lighting',
     price: 129.50,
     stock: 30,
@@ -28,6 +32,8 @@ let products: Product[] = [
   {
     id: '3',
     name: 'Terra Weave Rug',
+    group: 'Rugs',
+    show: true,
     category: 'Textiles',
     price: 249.00,
     stock: 25,
@@ -39,6 +45,8 @@ let products: Product[] = [
   {
     id: '4',
     name: 'Orbit Coffee Table',
+    group: 'Tables',
+    show: true,
     category: 'Furniture',
     price: 599.00,
     stock: 10,
@@ -50,6 +58,8 @@ let products: Product[] = [
    {
     id: '5',
     name: 'Chrono Desk Clock',
+    group: 'Clocks',
+    show: true,
     category: 'Decor',
     price: 75.00,
     stock: 50,
@@ -61,6 +71,8 @@ let products: Product[] = [
   {
     id: '6',
     name: 'Nimbus Throw Pillow',
+    group: 'Pillows',
+    show: true,
     category: 'Textiles',
     price: 45.99,
     stock: 40,
@@ -72,6 +84,8 @@ let products: Product[] = [
   {
     id: '7',
     name: 'Strata Bookshelf',
+    group: 'Storage',
+    show: true,
     category: 'Furniture',
     price: 899.00,
     stock: 8,
@@ -83,6 +97,8 @@ let products: Product[] = [
   {
     id: '8',
     name: 'Solstice Scented Candle',
+    group: 'Candles',
+    show: true,
     category: 'Decor',
     price: 32.00,
     stock: 100,

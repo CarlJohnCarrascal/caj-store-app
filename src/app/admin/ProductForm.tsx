@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +15,12 @@ import { addProductAction, updateProductAction } from '@/lib/actions';
 import { Bot } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
+import { Switch } from '@/components/ui/switch';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  group: z.string().min(1, 'Group is required'),
+  show: z.boolean().default(true),
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Price must be a positive number'),
   stock: z.coerce.number().int().min(0, 'Stock cannot be negative'),
@@ -45,6 +48,8 @@ export default function ProductForm({ product }: ProductFormProps) {
       ? { ...product, price: Number(product.price), stock: Number(product.stock) }
       : {
           name: '',
+          group: '',
+          show: true,
           category: '',
           price: 0,
           stock: 0,
@@ -80,18 +85,18 @@ export default function ProductForm({ product }: ProductFormProps) {
   };
   
   const handleGenerateDescription = async () => {
-      const { name, category, material, dimensions } = form.getValues();
-      if (!name || !category || !material || !dimensions) {
+      const { name, group, category, material, dimensions } = form.getValues();
+      if (!name || !group || !category || !material || !dimensions) {
           toast({
               variant: 'destructive',
               title: 'Missing Details',
-              description: 'Please fill in Name, Category, Material, and Dimensions to generate a description.',
+              description: 'Please fill in Name, Group, Category, Material, and Dimensions to generate a description.',
           });
           return;
       }
       setIsGenerating(true);
       try {
-          const result = await generateProductDescription({ name, category, material, dimensions });
+          const result = await generateProductDescription({ name, group, category, material, dimensions });
           if(result.description) {
             form.setValue('description', result.description, { shouldValidate: true });
             toast({ title: 'Description Generated!', description: 'The AI-powered description has been added.' });
@@ -126,13 +131,22 @@ export default function ProductForm({ product }: ProductFormProps) {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="category" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <FormControl><Input placeholder="e.g. Furniture" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="group" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Group</FormLabel>
+                      <FormControl><Input placeholder="e.g. Seating" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="category" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl><Input placeholder="e.g. Furniture" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="price" render={({ field }) => (
                     <FormItem>
@@ -158,6 +172,26 @@ export default function ProductForm({ product }: ProductFormProps) {
                 )} />
               </div>
               <div className="space-y-8">
+                <FormField
+                  control={form.control}
+                  name="show"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Show in Store</FormLabel>
+                        <FormDescription>
+                          Make this product visible to customers.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="material" render={({ field }) => (
                       <FormItem>

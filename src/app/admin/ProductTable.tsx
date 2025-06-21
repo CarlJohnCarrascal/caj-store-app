@@ -27,6 +27,7 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { deleteProductAction } from '@/lib/actions';
 import { useTransition } from 'react';
+import { Badge } from '@/components/ui/badge';
 
 interface ProductTableProps {
   products: Product[];
@@ -53,9 +54,11 @@ export default function ProductTable({ products }: ProductTableProps) {
         <TableRow>
           <TableHead className="w-[80px]">Image</TableHead>
           <TableHead>Name</TableHead>
+          <TableHead>Group</TableHead>
           <TableHead>Category</TableHead>
           <TableHead>Price</TableHead>
           <TableHead>Stock</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -68,9 +71,15 @@ export default function ProductTable({ products }: ProductTableProps) {
               </div>
             </TableCell>
             <TableCell className="font-medium">{product.name}</TableCell>
+            <TableCell>{product.group}</TableCell>
             <TableCell>{product.category}</TableCell>
             <TableCell>${product.price.toFixed(2)}</TableCell>
             <TableCell>{product.stock}</TableCell>
+            <TableCell>
+              <Badge variant={product.show ? 'default' : 'secondary'}>
+                {product.show ? 'Visible' : 'Hidden'}
+              </Badge>
+            </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" size="icon" asChild>

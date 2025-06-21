@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const GenerateProductDescriptionInputSchema = z.object({
   name: z.string().describe('The name of the product.'),
+  group: z.string().describe('The group for the product.'),
   category: z.string().describe('The category of the product.'),
   material: z.string().describe('The material of the product.'),
   dimensions: z.string().describe('The dimensions of the product.'),
@@ -41,6 +42,7 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert copywriter specializing in e-commerce product descriptions. Given the following product details, generate a compelling and informative product description.
 
 Product Name: {{name}}
+Group: {{group}}
 Category: {{category}}
 Material: {{material}}
 Dimensions: {{dimensions}}

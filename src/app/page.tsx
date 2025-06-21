@@ -15,8 +15,9 @@ export default function Home() {
   useEffect(() => {
     const fetchProducts = async () => {
       const prods = await getProducts();
-      setProducts(prods);
-      setFilteredProducts(prods);
+      const visibleProducts = prods.filter(p => p.show);
+      setProducts(visibleProducts);
+      setFilteredProducts(visibleProducts);
     };
     fetchProducts();
   }, []);
@@ -24,6 +25,7 @@ export default function Home() {
   useEffect(() => {
     const results = products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.group.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.category.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredProducts(results);
