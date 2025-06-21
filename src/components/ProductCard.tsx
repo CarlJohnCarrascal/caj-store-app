@@ -29,10 +29,10 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        <CardTitle className="text-lg font-semibold leading-snug mb-1">{product.name}</CardTitle>
+        <CardTitle className="text-base font-semibold leading-snug mb-1">{product.name}</CardTitle>
         <p className="text-sm text-muted-foreground">{product.category}</p>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+      <CardFooter className="p-4 pt-0 flex flex-wrap justify-between items-center gap-2">
         <p className="text-lg font-bold text-primary">
           ₱{product.price.toFixed(2)}
           {product.unit === 'kg' && <span className="text-sm font-normal text-muted-foreground"> / kg</span>}
