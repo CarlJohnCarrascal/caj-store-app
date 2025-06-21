@@ -73,7 +73,7 @@ export default function ProductTable({ products }: ProductTableProps) {
             <TableCell className="font-medium">{product.name}</TableCell>
             <TableCell>{product.group}</TableCell>
             <TableCell>{product.category}</TableCell>
-            <TableCell>${product.price.toFixed(2)}</TableCell>
+            <TableCell>₱{product.price.toFixed(2)}</TableCell>
             <TableCell>{product.stock}</TableCell>
             <TableCell>
               <Badge variant={product.show ? 'default' : 'secondary'}>

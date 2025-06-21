@@ -34,7 +34,7 @@ export default function ProductListItem({ product }: ProductListItemProps) {
         </div>
         <div className="flex flex-col items-center justify-center gap-4 flex-shrink-0 w-full sm:w-auto mt-4 sm:mt-0">
           <p className="text-xl font-bold text-primary">
-            ${product.price.toFixed(2)}
+            ₱{product.price.toFixed(2)}
             {product.unit === 'kg' && <span className="text-sm font-normal text-muted-foreground"> / kg</span>}
           </p>
           <Button size="sm" onClick={() => addToCart(product)} className="w-full sm:w-auto">

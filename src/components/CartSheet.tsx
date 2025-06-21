@@ -54,7 +54,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold">{item.name}</h3>
-                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>
+                        <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>
                         {isPrinting && (
                           <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                         )}
@@ -122,7 +122,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
           <SheetFooter className="bg-background border-t p-6 sm:flex-col sm:space-x-0 space-y-4">
             <div className="flex justify-between text-lg font-semibold">
               <span>Subtotal</span>
-              <span>${cartTotal.toFixed(2)}</span>
+              <span>₱{cartTotal.toFixed(2)}</span>
             </div>
             <SheetClose asChild>
               <Button asChild className="w-full">

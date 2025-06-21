@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
-import { DollarSign, Hash, Ruler, ScanLine } from 'lucide-react';
+import { Hash, Ruler, ScanLine } from 'lucide-react';
 
 const printingServices = [
   "Xerox",
@@ -153,14 +153,14 @@ export default function PrintingPage() {
                <div className="space-y-2">
                 <Label htmlFor="price">Total Price</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span>
                   <Input 
                     id="price" 
                     type="number" 
                     placeholder="e.g. 50.00" 
                     value={price} 
                     onChange={(e) => setPrice(e.target.value)} 
-                    className="pl-9"
+                    className="pl-7"
                   />
                 </div>
               </div>
