@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Warehouse, ChevronDown, Menu } from 'lucide-react';
+import { ShoppingBag, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -15,6 +15,8 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import {
@@ -44,13 +46,10 @@ export default function Header() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm">
-                  <div className="flex items-center space-x-2 pb-6 border-b mb-2">
-                    <Link href="/" className="flex items-center space-x-2" onClick={() => setIsMenuOpen(false)}>
-                      <Warehouse className="h-7 w-7 text-primary" />
-                      <span className="font-bold text-xl text-foreground">Caj-Store</span>
-                    </Link>
-                  </div>
-                  <nav className="flex flex-col space-y-1">
+                  <SheetHeader>
+                    <SheetTitle className="text-left">Menu</SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col space-y-1 mt-4">
                     <Accordion type="single" collapsible className="w-full">
                        <AccordionItem value="pos" className="border-b-0">
                           <AccordionTrigger className="py-3 text-base font-medium hover:no-underline">Point of Sale</AccordionTrigger>
