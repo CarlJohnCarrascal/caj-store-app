@@ -67,7 +67,7 @@ export default function ProductTable({ products }: ProductTableProps) {
           <TableRow key={product.id}>
             <TableCell>
               <div className="relative h-12 w-12 rounded-md overflow-hidden">
-                <Image src={product.image} alt={product.name} fill sizes="48px" className="object-cover" data-ai-hint="product photo"/>
+                <Image src={product.image || 'https://placehold.co/48x48.png'} alt={product.name} fill sizes="48px" className="object-cover" data-ai-hint="product photo"/>
               </div>
             </TableCell>
             <TableCell className="font-medium">{product.name}</TableCell>

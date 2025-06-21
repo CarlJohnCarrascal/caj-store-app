@@ -12,10 +12,10 @@ const productSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
   stock: z.coerce.number().min(0, 'Stock must be positive'),
-  material: z.string().min(1, 'Material is required'),
-  dimensions: z.string().min(1, 'Dimensions are required'),
+  material: z.string(),
+  dimensions: z.string(),
   description: z.string().min(1, 'Description is required'),
-  image: z.string().url('Must be a valid URL'),
+  image: z.string().url('Must be a valid URL').or(z.literal('')),
   unit: z.enum(['each', 'kg']),
 });
 

@@ -6,10 +6,10 @@ export interface Product {
   category: string;
   price: number;
   stock: number;
-  material: string;
-  dimensions: string;
+  material?: string;
+  dimensions?: string;
   description: string;
-  image: string;
+  image?: string;
   unit: 'each' | 'kg';
 }
 

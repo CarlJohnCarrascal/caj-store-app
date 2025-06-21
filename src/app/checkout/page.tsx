@@ -165,7 +165,7 @@ export default function CheckoutPage() {
               <div key={item.id} className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="relative h-16 w-16 rounded-md overflow-hidden border">
-                    <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : 'product photo'} />
+                    <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : 'product photo'} />
                   </div>
                   <div>
                     <p className="font-medium">{item.name}</p>

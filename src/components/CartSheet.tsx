@@ -44,7 +44,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     <div key={item.id} className="flex items-center py-4 space-x-4">
                       <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border">
                         <Image
-                          src={item.image}
+                          src={item.image || 'https://placehold.co/80x80.png'}
                           alt={item.name}
                           fill
                           sizes="80px"

@@ -21,7 +21,7 @@ export default function ProductCard({ product, showImage }: ProductCardProps) {
         <CardHeader className="p-0">
           <div className="aspect-square relative overflow-hidden">
              <Image
-              src={product.image}
+              src={product.image || 'https://placehold.co/400x400.png'}
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

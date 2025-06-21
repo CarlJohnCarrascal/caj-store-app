@@ -25,10 +25,10 @@ const formSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Price must be a positive number'),
   stock: z.coerce.number().min(0, 'Stock cannot be negative'),
-  material: z.string().min(1, 'Material is required'),
-  dimensions: z.string().min(1, 'Dimensions are required'),
+  material: z.string().optional(),
+  dimensions: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  image: z.string().url('Image must be a valid URL'),
+  image: z.string().url('Image must be a valid URL').or(z.literal('')).optional(),
   unit: z.enum(['each', 'kg']).default('each'),
 });
 
@@ -68,7 +68,9 @@ export default function ProductForm({ product }: ProductFormProps) {
       try {
         const formData = new FormData();
         Object.entries(data).forEach(([key, value]) => {
-          formData.append(key, String(value));
+          if (value !== undefined) {
+            formData.append(key, String(value));
+          }
         });
 
         if (product) {
@@ -89,17 +91,17 @@ export default function ProductForm({ product }: ProductFormProps) {
   
   const handleGenerateDescription = async () => {
       const { name, group, category, material, dimensions } = form.getValues();
-      if (!name || !group || !category || !material || !dimensions) {
+      if (!name || !group || !category) {
           toast({
               variant: 'destructive',
               title: 'Missing Details',
-              description: 'Please fill in Name, Group, Category, Material, and Dimensions to generate a description.',
+              description: 'Please fill in Name, Group, and Category to generate a description.',
           });
           return;
       }
       setIsGenerating(true);
       try {
-          const result = await generateProductDescription({ name, group, category, material, dimensions });
+          const result = await generateProductDescription({ name, group, category, material: material || '', dimensions: dimensions || '' });
           if(result.description) {
             form.setValue('description', result.description, { shouldValidate: true });
             toast({ title: 'Description Generated!', description: 'The AI-powered description has been added.' });
@@ -168,7 +170,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                 </div>
                  <FormField control={form.control} name="image" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image URL</FormLabel>
+                    <FormLabel>Image URL (Optional)</FormLabel>
                     <FormControl><Input placeholder="https://..." {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -230,14 +232,14 @@ export default function ProductForm({ product }: ProductFormProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="material" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Material</FormLabel>
+                        <FormLabel>Material (Optional)</FormLabel>
                         <FormControl><Input placeholder="e.g. Oak Wood" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                   )} />
                   <FormField control={form.control} name="dimensions" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Dimensions</FormLabel>
+                        <FormLabel>Dimensions (Optional)</FormLabel>
                         <FormControl><Input placeholder='e.g. W: 80", D: 35", H: 30"' {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>

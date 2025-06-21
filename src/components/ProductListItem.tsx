@@ -21,7 +21,7 @@ export default function ProductListItem({ product, showImage }: ProductListItemP
         {showImage && (
           <div className="relative h-32 w-full sm:h-32 sm:w-32 flex-shrink-0 overflow-hidden rounded-md border">
             <Image
-              src={product.image}
+              src={product.image || 'https://placehold.co/128x128.png'}
               alt={product.name}
               fill
               sizes="(max-width: 640px) 100vw, 128px"
