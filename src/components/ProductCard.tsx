@@ -9,25 +9,28 @@ import { Plus } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
+  showImage: boolean;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, showImage }: ProductCardProps) {
   const { addToCart } = useCart();
 
   return (
     <Card className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-      <CardHeader className="p-0">
-        <div className="aspect-square relative overflow-hidden">
-           <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            data-ai-hint="product photo"
-          />
-        </div>
-      </CardHeader>
+      {showImage && (
+        <CardHeader className="p-0">
+          <div className="aspect-square relative overflow-hidden">
+             <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              data-ai-hint="product photo"
+            />
+          </div>
+        </CardHeader>
+      )}
       <CardContent className="p-4 flex-grow">
         <CardTitle className="text-base font-semibold leading-snug mb-1">{product.name}</CardTitle>
         <p className="text-sm text-muted-foreground">{product.category}</p>

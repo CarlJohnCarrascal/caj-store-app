@@ -9,12 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, LayoutGrid, List } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showImages, setShowImages] = useState(false);
   const [filters, setFilters] = useState({ category: 'all', group: 'all' });
 
   useEffect(() => {
@@ -100,15 +103,25 @@ export default function Home() {
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
-            <LayoutGrid className="h-5 w-5" />
-            <span className="sr-only">Grid View</span>
-          </Button>
-          <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-            <List className="h-5 w-5" />
-            <span className="sr-only">List View</span>
-          </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="show-images"
+              checked={showImages}
+              onCheckedChange={setShowImages}
+            />
+            <Label htmlFor="show-images" className="text-sm whitespace-nowrap">Show Images</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+              <LayoutGrid className="h-5 w-5" />
+              <span className="sr-only">Grid View</span>
+            </Button>
+            <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+              <List className="h-5 w-5" />
+              <span className="sr-only">List View</span>
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -116,13 +129,13 @@ export default function Home() {
         viewMode === 'grid' ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
             {filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} showImage={showImages} />
             ))}
           </div>
         ) : (
           <div className="space-y-4">
             {filteredProducts.map(product => (
-              <ProductListItem key={product.id} product={product} />
+              <ProductListItem key={product.id} product={product} showImage={showImages} />
             ))}
           </div>
         )

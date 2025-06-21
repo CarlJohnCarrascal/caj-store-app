@@ -9,24 +9,27 @@ import { Plus } from 'lucide-react';
 
 interface ProductListItemProps {
   product: Product;
+  showImage: boolean;
 }
 
-export default function ProductListItem({ product }: ProductListItemProps) {
+export default function ProductListItem({ product, showImage }: ProductListItemProps) {
   const { addToCart } = useCart();
 
   return (
     <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/50">
       <div className="flex flex-col sm:flex-row items-center gap-6 p-4">
-        <div className="relative h-32 w-full sm:h-32 sm:w-32 flex-shrink-0 overflow-hidden rounded-md border">
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 100vw, 128px"
-            className="object-cover"
-            data-ai-hint="product photo"
-          />
-        </div>
+        {showImage && (
+          <div className="relative h-32 w-full sm:h-32 sm:w-32 flex-shrink-0 overflow-hidden rounded-md border">
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 100vw, 128px"
+              className="object-cover"
+              data-ai-hint="product photo"
+            />
+          </div>
+        )}
         <div className="flex-grow text-center sm:text-left">
           <h3 className="text-xl font-bold">{product.name}</h3>
           <p className="text-sm text-muted-foreground">{product.category} / {product.group}</p>
