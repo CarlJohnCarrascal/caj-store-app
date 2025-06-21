@@ -35,43 +35,6 @@ export default function Header() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-8">
-              <Link href="/" className="flex items-center space-x-2">
-                <Warehouse className="h-7 w-7 text-primary" />
-                <span className="font-bold text-xl text-foreground">Caj-Store</span>
-              </Link>
-              {/* Desktop Nav */}
-              <nav className="hidden md:flex items-center space-x-6">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus:outline-none">
-                    Point of Sale
-                    <ChevronDown className="relative top-[1px] ml-1 h-4 w-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem asChild>
-                      <Link href="/">Store</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/printing">Printing</Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                  Admin
-                </Link>
-              </nav>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setIsCartOpen(true)} className="relative">
-                <ShoppingBag className="h-6 w-6" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {cartCount}
-                  </span>
-                )}
-                <span className="sr-only">Open cart</span>
-              </Button>
-
               {/* Mobile Menu */}
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
@@ -105,6 +68,39 @@ export default function Header() {
                   </nav>
                 </SheetContent>
               </Sheet>
+
+              {/* Desktop Nav */}
+              <nav className="hidden md:flex items-center space-x-6">
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                    Point of Sale
+                    <ChevronDown className="relative top-[1px] ml-1 h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem asChild>
+                      <Link href="/">Store</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/printing">Printing</Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                  Admin
+                </Link>
+              </nav>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setIsCartOpen(true)} className="relative">
+                <ShoppingBag className="h-6 w-6" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {cartCount}
+                  </span>
+                )}
+                <span className="sr-only">Open cart</span>
+              </Button>
             </div>
           </div>
         </div>
