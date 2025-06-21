@@ -159,20 +159,25 @@ export default function CheckoutPage() {
         <h2 className="text-2xl font-semibold">Order Summary</h2>
         <Card>
           <CardContent className="p-4 space-y-4">
-            {cartItems.map(item => (
+            {cartItems.map(item => {
+              const isPrinting = item.category === 'Printing';
+              return (
               <div key={item.id} className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="relative h-16 w-16 rounded-md overflow-hidden border">
-                    <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint="product photo" />
+                    <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : 'product photo'} />
                   </div>
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>
+                    {isPrinting && (
+                      <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                    )}
                   </div>
                 </div>
                 <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
               </div>
-            ))}
+            )})}
             <Separator />
             <div className="flex justify-between font-semibold text-lg">
               <p>Total</p>

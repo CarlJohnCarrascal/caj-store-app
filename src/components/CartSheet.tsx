@@ -36,6 +36,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
               <div className="divide-y divide-border">
                 {cartItems.map(item => {
                   const isKg = item.unit === 'kg';
+                  const isPrinting = item.category === 'Printing';
                   const step = isKg ? 0.1 : 1;
                   const min = isKg ? 0.1 : 1;
                   
@@ -48,12 +49,15 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                           fill
                           sizes="80px"
                           className="object-cover"
-                          data-ai-hint="product photo"
+                          data-ai-hint={isPrinting ? 'printing service' : 'product photo'}
                         />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold">{item.name}</h3>
                         <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>
+                        {isPrinting && (
+                          <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                        )}
                         <div className="flex items-center mt-2">
                           <Button
                             variant="outline"
