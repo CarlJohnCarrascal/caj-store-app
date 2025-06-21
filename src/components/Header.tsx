@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Warehouse, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Warehouse, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -12,10 +12,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function Header() {
   const { cartCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <>
@@ -27,6 +39,7 @@ export default function Header() {
                 <Warehouse className="h-7 w-7 text-primary" />
                 <span className="font-bold text-xl text-foreground">Caj-Store</span>
               </Link>
+              {/* Desktop Nav */}
               <nav className="hidden md:flex items-center space-x-6">
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus:outline-none">
@@ -47,7 +60,8 @@ export default function Header() {
                 </Link>
               </nav>
             </div>
-            <div className="flex items-center">
+            
+            <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => setIsCartOpen(true)} className="relative">
                 <ShoppingBag className="h-6 w-6" />
                 {cartCount > 0 && (
@@ -57,6 +71,40 @@ export default function Header() {
                 )}
                 <span className="sr-only">Open cart</span>
               </Button>
+
+              {/* Mobile Menu */}
+              <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <SheetTrigger asChild>
+                   <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm">
+                  <div className="flex items-center space-x-2 pb-6 border-b mb-2">
+                    <Link href="/" className="flex items-center space-x-2" onClick={() => setIsMenuOpen(false)}>
+                      <Warehouse className="h-7 w-7 text-primary" />
+                      <span className="font-bold text-xl text-foreground">Caj-Store</span>
+                    </Link>
+                  </div>
+                  <nav className="flex flex-col space-y-1">
+                    <Accordion type="single" collapsible className="w-full">
+                       <AccordionItem value="pos" className="border-b-0">
+                          <AccordionTrigger className="py-3 text-base font-medium hover:no-underline">Point of Sale</AccordionTrigger>
+                          <AccordionContent>
+                             <div className="flex flex-col space-y-4 pl-6 pt-2">
+                                <Link href="/" className="text-muted-foreground hover:text-primary" onClick={() => setIsMenuOpen(false)}>Store</Link>
+                                <Link href="/printing" className="text-muted-foreground hover:text-primary" onClick={() => setIsMenuOpen(false)}>Printing</Link>
+                             </div>
+                          </AccordionContent>
+                       </AccordionItem>
+                    </Accordion>
+                    <Link href="/admin" className="px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                      Admin
+                    </Link>
+                  </nav>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
