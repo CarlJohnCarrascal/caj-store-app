@@ -23,7 +23,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased h-full">
         <CartProvider>
-          <div className="min-h-screen flex flex-col">
+          <div className="min-h-screen flex flex-col min-w-[450px]">
             <Header />
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}
