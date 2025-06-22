@@ -18,12 +18,6 @@ export type ExtractTransactionDetailsInput = z.infer<typeof ExtractTransactionDe
 const ExtractTransactionDetailsOutputSchema = z.object({
   datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction, if available. Format as an ISO 8601 string (e.g., '2023-10-31T15:45:00.000Z')."),
   transactionType: z.enum(['sent', 'received']).optional().describe("The type of transaction from the message author's perspective. 'sent' if they sent money, 'received' if they received money."),
-  amount: z.coerce.number().optional().describe("The numerical amount of the transaction."),
-  accountName: z.string().optional().describe("The full name of the other party in the transaction."),
-  accountNumber: z.string().optional().describe("The account number (like a phone number for e-wallets) of the other party."),
-  balance: z.coerce.number().optional().describe("The remaining balance after the transaction, if mentioned."),
-  reference: z.string().optional().describe("The reference number or tracking code for the transaction."),
-  paymentMethod: z.enum(['Gcash', 'Maya', 'Other']).optional().describe("The payment platform used, like GCash or Maya."),
   error: z.string().optional(),
 });
 export type ExtractTransactionDetailsOutput = z.infer<typeof ExtractTransactionDetailsOutputSchema>;
@@ -46,15 +40,9 @@ const prompt = ai.definePrompt({
     name: 'extractTransactionDetailsPrompt',
     input: { schema: ExtractTransactionDetailsInputSchema },
     output: { schema: ExtractTransactionDetailsOutputSchema },
-    prompt: `You are an expert system that performs Named Entity Recognition (NER). Extract the following entities from this transaction message and return as a JSON object with ONLY these keys: datetime, transactionType, amount, accountName, accountNumber, balance, reference, paymentMethod.
+    prompt: `You are an expert system that performs Named Entity Recognition (NER). Extract the following entities from this transaction message and return as a JSON object with ONLY these keys: datetime, transactionType.
 - datetime: An ISO 8601 string.
 - transactionType: Must be either "sent" or "received" from the message author's perspective.
-- amount: Must be a number.
-- accountName: The full name of the other person/entity in the transaction.
-- accountNumber: The account number (like a phone number) of the other person/entity.
-- balance: The remaining balance after the transaction.
-- reference: The reference or tracking number.
-- paymentMethod: Must be 'Gcash', 'Maya', or 'Other'.
 
 If a value is not present, omit the key from the JSON object.
 
