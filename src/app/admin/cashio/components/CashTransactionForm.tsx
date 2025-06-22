@@ -106,17 +106,15 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   const onAddToOrder = (data: CashTransactionFormValues) => {
     const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
 
-    // For Cash Out, the customer pays for the amount they receive plus the fee.
-    // For Cash In, the customer gets a credit for the amount they give, minus the fee.
-    const finalPrice = data.transactionType === 'Cash Out'
+    const finalPrice = data.transactionType === 'Cash In'
         ? data.amount + data.fee
-        : data.fee - data.amount;
+        : data.amount - data.fee;
 
     const transactionAsProduct: Product = {
         id: `cashio-${data.reference}-${Date.now()}`,
         name: `${data.transactionType}: ${data.accountName}`,
         price: finalPrice,
-        description: `Ref: ${data.reference} | Acct: ${data.accountName} (${data.accountNumber}) | Fee: ₱${data.fee.toFixed(2)}`,
+        description: `Ref: ${data.reference} | Acct: ${data.accountName} (${data.accountNumber}) | Fee: ₱${data.fee.toFixed(2)} | Amt: ₱${data.amount.toFixed(2)}`,
         group: 'Financial',
         category: 'CashIO',
         show: false,
