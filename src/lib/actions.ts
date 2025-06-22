@@ -200,6 +200,7 @@ const cashTransactionSchema = z.object({
   fee: z.coerce.number().min(0, 'Fee cannot be negative.'),
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
+  datetime: z.string().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData) {

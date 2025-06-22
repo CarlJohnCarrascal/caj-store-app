@@ -390,7 +390,7 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
   return Promise.resolve(transactionsWithAccountNames.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
 }
 
-export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'>): Promise<CashTransaction> {
+export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
   const accountIndex = accounts.findIndex(acc => acc.id === transactionData.accountUsedId);
   if (accountIndex === -1) {
     throw new Error("Account not found");
@@ -404,18 +404,20 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   }
   accounts[accountIndex].balance = newBalance;
 
+  const transactionDate = transactionData.datetime ? new Date(transactionData.datetime) : new Date();
+
   const newTransaction: CashTransaction = {
     ...transactionData,
     id: `txn-${Date.now()}`,
     newBalance,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: transactionDate,
+    updatedAt: transactionDate,
   };
 
   if (transactionData.transactionType === 'Cash In') {
-    newTransaction.dateRecieved = new Date();
+    newTransaction.dateRecieved = transactionDate;
   } else {
-    newTransaction.dateClaimedOrSent = new Date();
+    newTransaction.dateClaimedOrSent = transactionDate;
   }
 
   cashTransactions.unshift(newTransaction);

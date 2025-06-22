@@ -33,13 +33,13 @@ const formSchema = z.object({
   accountUsedId: z.string().min(1, 'Please select an account.'),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
   status: z.enum(['Pending', 'Delivered', 'Available', 'Claimed', 'Cancelled']),
-  customerName: z.string().min(1, 'Customer name is required.'),
   accountName: z.string().min(1, "Sender/Receiver's account name is required."),
   accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
   fee: z.coerce.number().min(0, 'Fee cannot be negative.').default(0),
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional(),
+  datetime: z.string().optional(),
 });
 
 type CashTransactionFormValues = z.infer<typeof formSchema>;
@@ -62,13 +62,13 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
       accountUsedId: '',
       paymentMethod: 'Gcash',
       status: 'Pending',
-      customerName: '',
       accountName: '',
       accountNumber: '',
       amount: 0,
       fee: 0,
       reference: '',
       message: '',
+      datetime: '',
     },
   });
 
@@ -90,6 +90,8 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             formData.append(key, String(value));
           }
         });
+        // Set customerName from accountName
+        formData.append('customerName', data.accountName);
 
         await addCashTransactionAction(formData);
         toast({ title: 'Success', description: 'Transaction added successfully.' });
@@ -121,10 +123,13 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             form.setValue('transactionType', result.transactionType, { shouldValidate: true });
             populatedFields.push('transactionType');
         }
-        if (result.customerName) {
-            form.setValue('customerName', result.customerName, { shouldValidate: true });
-            populatedFields.push('customerName');
+        
+        const nameToUse = result.accountName || result.customerName;
+        if(nameToUse) {
+            form.setValue('accountName', nameToUse, { shouldValidate: true });
+            populatedFields.push('accountName');
         }
+
         if (result.amount) {
             form.setValue('amount', result.amount, { shouldValidate: true });
             populatedFields.push('amount');
@@ -137,13 +142,15 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             form.setValue('reference', result.reference, { shouldValidate: true });
             populatedFields.push('reference');
         }
-        if (result.accountName) {
-            form.setValue('accountName', result.accountName, { shouldValidate: true });
-            populatedFields.push('accountName');
-        }
         if (result.accountNumber) {
             form.setValue('accountNumber', result.accountNumber, { shouldValidate: true });
             populatedFields.push('accountNumber');
+        }
+        if (result.datetime) {
+            // Format to YYYY-MM-DDTHH:mm which is required by datetime-local input
+            const localDateTime = new Date(result.datetime).toISOString().slice(0, 16);
+            form.setValue('datetime', localDateTime, { shouldValidate: true });
+            populatedFields.push('datetime');
         }
 
         if(populatedFields.length > 0) {
@@ -326,13 +333,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                     <CardTitle className="text-lg">Sender/Receiver Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-6">
-                    <FormField control={form.control} name="customerName" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Customer Name</FormLabel>
-                             <FormControl><Input placeholder="e.g. John Doe" {...field} className={cn(highlightedFields.includes('customerName') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
                      <div className="grid md:grid-cols-2 gap-6">
                         <FormField control={form.control} name="accountName" render={({ field }) => (
                             <FormItem>
@@ -357,6 +357,15 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                     <CardTitle className="text-lg">Transaction Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-6">
+                    <FormField control={form.control} name="datetime" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Transaction Date & Time</FormLabel>
+                            <FormControl>
+                                <Input type="datetime-local" {...field} className={cn(highlightedFields.includes('datetime') && 'ring-2 ring-primary ring-offset-2 transition-all')} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                     )} />
                      <div className="grid md:grid-cols-2 gap-6">
                         <FormField control={form.control} name="amount" render={({ field }) => (
                           <FormItem>
