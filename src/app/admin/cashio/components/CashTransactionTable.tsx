@@ -277,12 +277,11 @@ export default function CashTransactionTable({ transactions: initialTransactions
                       </p>
                       <div>
                         <Badge
-                          variant={t.status === 'Cancelled' ? 'destructive' : 'default'}
+                          variant={'default'}
                           className={cn(
-                            { 'border-transparent': t.status !== 'Cancelled' },
                             {
                               'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
-                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Pending' || t.status === 'Available',
+                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Available',
                             }
                           )}
                         >
@@ -356,12 +355,11 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     <TableCell className='text-right font-mono'>₱{t.amount.toFixed(2)}</TableCell>
                     <TableCell>
                         <Badge
-                          variant={t.status === 'Cancelled' ? 'destructive' : 'default'}
+                          variant={'default'}
                           className={cn(
-                            { 'border-transparent': t.status !== 'Cancelled' },
                             {
                               'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
-                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Pending' || t.status === 'Available',
+                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Available',
                             }
                           )}
                         >

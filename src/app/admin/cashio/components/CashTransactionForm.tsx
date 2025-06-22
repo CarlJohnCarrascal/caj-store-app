@@ -74,9 +74,8 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   });
 
   const transactionType = form.watch('transactionType');
-  const status = form.watch('status');
 
-  const onSubmit = (data: CashTransactionFormValues) => {
+  const submitTransaction = (data: CashTransactionFormValues) => {
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -97,6 +96,16 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
       }
     });
   };
+
+  const onSave = (data: CashTransactionFormValues) => {
+    submitTransaction({ ...data, status: 'Available' });
+  };
+  
+  const onAddToOrder = (data: CashTransactionFormValues) => {
+    const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+    submitTransaction({ ...data, status: finalStatus });
+  };
+
 
   const handleExtractDetails = async () => {
     const message = form.getValues('message');
@@ -131,9 +140,13 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
 
         if (data) {
             if (data.transactionType) {
-                // 'sent' from the message author's (customer's) perspective means they sent you money (Cash In).
                 const formTransactionType = data.transactionType === 'sent' ? 'Cash In' : 'Cash Out';
                 form.setValue('transactionType', formTransactionType, { shouldValidate: true });
+                if (formTransactionType === 'Cash In') {
+                  form.setValue('status', 'Delivered');
+                } else {
+                  form.setValue('status', 'Available');
+                }
                 populatedFields.push('transactionType');
             }
             
@@ -194,7 +207,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form className="space-y-6">
               <FormField control={form.control} name="message" render={({ field }) => (
                   <FormItem>
                       <div className="flex justify-between items-center">
@@ -219,7 +232,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                       <RadioGroup
                         onValueChange={(value) => {
                           field.onChange(value);
-                          // Reset status when type changes
                           if (value === 'Cash In') {
                             form.setValue('status', 'Delivered');
                           } else {
@@ -266,7 +278,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                 )}
               />
               
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="accountUsedId"
@@ -303,35 +315,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                             <SelectItem value="Gcash">Gcash</SelectItem>
                             <SelectItem value="Maya">Maya</SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {transactionType === 'Cash In' ? (
-                              <>
-                                <SelectItem value="Delivered">Delivered</SelectItem>
-                              </>
-                            ) : (
-                              <>
-                                <SelectItem value="Available">Available</SelectItem>
-                                <SelectItem value="Claimed">Claimed</SelectItem>
-                              </>
-                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -406,8 +389,13 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Processing...' : status === 'Available' ? 'Save' : 'Add to Order'}
+                {transactionType === 'Cash Out' && (
+                  <Button variant="secondary" type="button" onClick={form.handleSubmit(onSave)} disabled={isPending}>
+                    {isPending ? 'Saving...' : 'Save'}
+                  </Button>
+                )}
+                <Button type="button" onClick={form.handleSubmit(onAddToOrder)} disabled={isPending}>
+                  {isPending ? 'Adding...' : 'Add to Order'}
                 </Button>
               </div>
             </form>
