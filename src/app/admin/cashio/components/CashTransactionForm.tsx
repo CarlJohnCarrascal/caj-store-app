@@ -129,27 +129,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             populatedFields.push('transactionType');
         }
         
-        if (result.accountName) {
-            form.setValue('accountName', result.accountName, { shouldValidate: true });
-            populatedFields.push('accountName');
-        }
-
-        if (result.amount) {
-            form.setValue('amount', result.amount, { shouldValidate: true });
-            populatedFields.push('amount');
-        }
-        if (result.paymentMethod) {
-            form.setValue('paymentMethod', result.paymentMethod, { shouldValidate: true });
-            populatedFields.push('paymentMethod');
-        }
-        if (result.reference) {
-            form.setValue('reference', result.reference, { shouldValidate: true });
-            populatedFields.push('reference');
-        }
-        if (result.accountNumber) {
-            form.setValue('accountNumber', result.accountNumber, { shouldValidate: true });
-            populatedFields.push('accountNumber');
-        }
         if (result.datetime) {
             // Format to YYYY-MM-DDTHH:mm which is required by datetime-local input
             const localDateTime = new Date(result.datetime).toISOString().slice(0, 16);
