@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard } from 'lucide-react';
+import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -13,17 +13,23 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 export default function Header() {
   const { cartCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const navLinks = [
-    { href: '/admin/store', label: 'Store', icon: <Store /> },
-    { href: '/admin/printing', label: 'Printing', icon: <Printer /> },
-    { href: '/admin/products', label: 'Manage Products', icon: <Package /> },
-  ];
 
   return (
     <>
@@ -49,17 +55,42 @@ export default function Header() {
                      </SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col space-y-1 mt-4">
-                    {navLinks.map(link => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
+                    <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="pos" className="border-b-0">
+                            <AccordionTrigger className="flex items-center gap-4 px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                <div className="flex items-center gap-4">
+                                  <Store className="h-6 w-6" />
+                                  Point of Sale
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pl-10 space-y-1">
+                                <Link
+                                    href="/admin/store"
+                                    className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    <Store className="h-5 w-5 text-muted-foreground" />
+                                    <span>Store</span>
+                                </Link>
+                                <Link
+                                    href="/admin/printing"
+                                    className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    <Printer className="h-5 w-5 text-muted-foreground" />
+                                    <span>Printing</span>
+                                </Link>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                    <Link
+                        href="/admin/products"
                         className="flex items-center gap-4 px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors"
                         onClick={() => setIsMenuOpen(false)}
-                      >
-                        {link.icon}
-                        {link.label}
-                      </Link>
-                    ))}
+                    >
+                        <Package className="h-6 w-6" />
+                        Manage Products
+                    </Link>
                   </nav>
                 </SheetContent>
               </Sheet>
@@ -71,15 +102,32 @@ export default function Header() {
                     Dashboard
                 </Link>
                 <div className="h-6 w-px bg-border" />
-                 {navLinks.map(link => (
-                   <Link
-                    key={link.href}
-                    href={link.href}
-                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                 ))}
+                 
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
+                    Point of Sale
+                    <ChevronDown className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem asChild>
+                       <Link href="/admin/store" className="flex items-center gap-2 cursor-pointer">
+                         <Store className="h-4 w-4" /> Store
+                       </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                       <Link href="/admin/printing" className="flex items-center gap-2 cursor-pointer">
+                         <Printer className="h-4 w-4" /> Printing
+                       </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Link
+                  href="/admin/products"
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Manage Products
+                </Link>
               </nav>
             </div>
             
