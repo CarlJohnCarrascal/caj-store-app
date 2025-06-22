@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer } from './data';
-import { Product, CartItem, Customer } from './types';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount } from './data';
+import { Product, CartItem, Customer, Account } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -14,8 +14,8 @@ const productSchema = z.object({
   stock: z.coerce.number().min(0, 'Stock must be positive'),
   material: z.string().optional(),
   dimensions: z.string().optional(),
-  description: z.string().min(1, 'Description is required'),
-  image: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  image: z.string().url('Image must be a valid URL').or(z.literal('')).optional(),
   unit: z.enum(['each', 'kg']),
 });
 
@@ -97,4 +97,23 @@ export async function addCustomerAction(data: FormData) {
 
   await addCustomer(validatedFields.data as Omit<Customer, 'id'>);
   revalidatePath('/admin/customers');
+}
+
+const accountSchema = z.object({
+  accountName: z.string().min(1, 'Account name is required'),
+  bankName: z.string().min(1, 'Bank name is required'),
+  accountNumber: z.string().min(1, 'Account number is required'),
+  balance: z.coerce.number().default(0),
+});
+
+export async function addAccountAction(data: FormData) {
+  const validatedFields = accountSchema.safeParse(Object.fromEntries(data.entries()));
+
+  if (!validatedFields.success) {
+    throw new Error('Invalid account data.');
+  }
+
+  await addAccount(validatedFields.data as Omit<Account, 'id'>);
+  revalidatePath('/admin/accounts');
+  revalidatePath('/admin/cashio');
 }

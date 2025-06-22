@@ -184,7 +184,7 @@ let cashTransactions: CashTransaction[] = [
         customerName: 'Hardware Supply Co.',
         status: 'Claimed',
         createdAt: new Date('2023-10-27T14:25:00Z'),
-        updatedAt: new Date('2023-10-27T14:30:00Z'),
+        updatedAt: new date('2023-10-27T14:30:00Z'),
     },
     {
         id: 'txn-3',
@@ -237,6 +237,40 @@ let cashTransactions: CashTransaction[] = [
         createdAt: new Date('2023-10-29T09:00:00Z'),
         updatedAt: new Date('2023-10-29T09:05:00Z'),
     },
+    {
+        id: 'txn-6',
+        paymentMethod: 'Gcash',
+        accountUsedId: 'acc-2',
+        transactionType: 'Cash In',
+        message: 'Payment for rush print',
+        accountName: 'Mark Reyes',
+        accountNumber: '09121231234',
+        reference: 'REFPRINT',
+        amount: 350.00,
+        fee: 0,
+        newBalance: 27600,
+        customerName: 'Mark Reyes',
+        status: 'Delivered',
+        createdAt: new Date('2023-11-01T11:00:00Z'),
+        updatedAt: new Date('2023-11-01T11:00:00Z'),
+    },
+     {
+        id: 'txn-7',
+        paymentMethod: 'Other',
+        accountUsedId: 'acc-1',
+        transactionType: 'Cash Out',
+        message: 'Internet Bill',
+        accountName: 'PLDT',
+        accountNumber: '028888171',
+        reference: 'BILLNOV',
+        amount: 1699.00,
+        fee: 0,
+        newBalance: 138301,
+        customerName: 'PLDT',
+        status: 'Claimed',
+        createdAt: new Date('2023-11-02T15:00:00Z'),
+        updatedAt: new Date('2023-11-02T15:00:00Z'),
+    },
 ];
 
 export async function getProducts(): Promise<Product[]> {
@@ -251,7 +285,7 @@ export async function getProductById(id: string): Promise<Product | undefined> {
 export async function addProduct(product: Omit<Product, 'id'>): Promise<Product> {
   const newProduct: Product = {
     ...product,
-    id: (products.length + 1).toString(),
+    id: `prod-${Date.now()}`,
   };
   products.push(newProduct);
   return Promise.resolve(newProduct);
@@ -277,6 +311,15 @@ export async function deleteProduct(id: string): Promise<boolean> {
 
 export async function getAccounts(): Promise<Account[]> {
   return Promise.resolve(accounts);
+}
+
+export async function addAccount(account: Omit<Account, 'id'>): Promise<Account> {
+  const newAccount: Account = {
+    id: `acc-${Date.now()}`,
+    ...account,
+  };
+  accounts.push(newAccount);
+  return Promise.resolve(newAccount);
 }
 
 export async function getCustomers(): Promise<Customer[]> {

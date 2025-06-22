@@ -1,24 +1,23 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Landmark } from 'lucide-react';
+import { getAccounts } from '@/lib/data';
+import AccountList from './components/AccountList';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { PlusCircle } from 'lucide-react';
 
-export default function AccountsPage() {
+export default async function AccountsPage() {
+  const accounts = await getAccounts();
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Manage Accounts</h1>
+        <Button asChild>
+          <Link href="/admin/accounts/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Account
+          </Link>
+        </Button>
       </div>
-      <Card>
-        <CardHeader>
-          <Landmark className="h-8 w-8 text-muted-foreground" />
-          <CardTitle>Coming Soon</CardTitle>
-          <CardDescription>
-            This page for managing your business accounts is currently under construction.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>You will soon be able to add, edit, and view your financial accounts here.</p>
-        </CardContent>
-      </Card>
+      <AccountList accounts={accounts} />
     </div>
   );
 }
