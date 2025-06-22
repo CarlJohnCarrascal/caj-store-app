@@ -23,7 +23,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 import { Switch } from '@/components/ui/switch';
-import { FormDescription } from '@/components/ui/form';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart, cartCustomer, setCartCustomer } = useCart();
@@ -203,9 +202,9 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
                         <Label>Apply Customer Balance</Label>
-                        <FormDescription>
+                        <p className="text-sm text-muted-foreground">
                             Current balance: <span className={cn("font-medium", selectedCustomer.balance > 0 ? "text-green-600" : selectedCustomer.balance < 0 ? "text-destructive" : "")}>₱{selectedCustomer.balance.toFixed(2)}</span>
-                        </FormDescription>
+                        </p>
                     </div>
                     <Switch
                         checked={applyBalance}
