@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowDown, ArrowUp, RefreshCw, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
@@ -52,6 +53,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -112,16 +114,44 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
     setIsGenerating(true);
     try {
         const result = await extractTransactionDetails({ message });
+        const populatedFields: string[] = [];
 
-        if (result.transactionType) form.setValue('transactionType', result.transactionType, { shouldValidate: true });
-        if (result.customerName) form.setValue('customerName', result.customerName, { shouldValidate: true });
-        if (result.amount) form.setValue('amount', result.amount, { shouldValidate: true });
-        if (result.paymentMethod) form.setValue('paymentMethod', result.paymentMethod, { shouldValidate: true });
-        if (result.reference) form.setValue('reference', result.reference, { shouldValidate: true });
-        if (result.accountName) form.setValue('accountName', result.accountName, { shouldValidate: true });
-        if (result.accountNumber) form.setValue('accountNumber', result.accountNumber, { shouldValidate: true });
+        if (result.transactionType) {
+            form.setValue('transactionType', result.transactionType, { shouldValidate: true });
+            populatedFields.push('transactionType');
+        }
+        if (result.customerName) {
+            form.setValue('customerName', result.customerName, { shouldValidate: true });
+            populatedFields.push('customerName');
+        }
+        if (result.amount) {
+            form.setValue('amount', result.amount, { shouldValidate: true });
+            populatedFields.push('amount');
+        }
+        if (result.paymentMethod) {
+            form.setValue('paymentMethod', result.paymentMethod, { shouldValidate: true });
+            populatedFields.push('paymentMethod');
+        }
+        if (result.reference) {
+            form.setValue('reference', result.reference, { shouldValidate: true });
+            populatedFields.push('reference');
+        }
+        if (result.accountName) {
+            form.setValue('accountName', result.accountName, { shouldValidate: true });
+            populatedFields.push('accountName');
+        }
+        if (result.accountNumber) {
+            form.setValue('accountNumber', result.accountNumber, { shouldValidate: true });
+            populatedFields.push('accountNumber');
+        }
 
-        toast({ title: 'Details Extracted!', description: 'The form has been populated with details from the message.' });
+        if(populatedFields.length > 0) {
+            setHighlightedFields(populatedFields);
+            setTimeout(() => setHighlightedFields([]), 3000);
+            toast({ title: 'Details Extracted!', description: 'The form has been populated with details from the message.' });
+        } else {
+            toast({ title: 'No Details Found', description: 'The AI could not find any details to extract. Please fill the form manually.' });
+        }
     } catch (error) {
         toast({
             variant: 'destructive',
@@ -183,7 +213,10 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                         </FormControl>
                         <Label
                           htmlFor="cash-in"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className={cn(
+                            "flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all",
+                            highlightedFields.includes('transactionType') && 'ring-2 ring-primary ring-offset-2'
+                          )}
                         >
                           <ArrowUp className="mb-3 h-6 w-6 text-green-500" />
                           Cash In
@@ -195,7 +228,10 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                         </FormControl>
                         <Label
                           htmlFor="cash-out"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          className={cn(
+                            "flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all",
+                            highlightedFields.includes('transactionType') && 'ring-2 ring-primary ring-offset-2'
+                          )}
                         >
                           <ArrowDown className="mb-3 h-6 w-6 text-red-500" />
                           Cash Out
@@ -237,7 +273,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                       <FormLabel>Payment Method</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                           <SelectTrigger className={cn(highlightedFields.includes('paymentMethod') && 'ring-2 ring-primary ring-offset-2 transition-all')}>
                             <SelectValue placeholder="Select a method" />
                           </SelectTrigger>
                         </FormControl>
@@ -292,7 +328,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                     <FormField control={form.control} name="customerName" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Customer Name</FormLabel>
-                            <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
+                             <FormControl><Input placeholder="e.g. John Doe" {...field} className={cn(highlightedFields.includes('customerName') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
@@ -300,14 +336,14 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                         <FormField control={form.control} name="accountName" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Account Name on E-Wallet/Bank</FormLabel>
-                                <FormControl><Input placeholder="e.g. John D." {...field} /></FormControl>
+                                 <FormControl><Input placeholder="e.g. John D." {...field} className={cn(highlightedFields.includes('accountName') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="accountNumber" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Account Number</FormLabel>
-                                <FormControl><Input placeholder="e.g. 09123456789" {...field} /></FormControl>
+                                <FormControl><Input placeholder="e.g. 09123456789" {...field} className={cn(highlightedFields.includes('accountNumber') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -324,7 +360,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                         <FormField control={form.control} name="amount" render={({ field }) => (
                           <FormItem>
                               <FormLabel>Amount</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} /></FormControl>
+                              <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} className={cn(highlightedFields.includes('amount') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                               <FormMessage />
                           </FormItem>
                         )} />
@@ -340,7 +376,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                       <FormItem>
                         <FormLabel>Reference Number</FormLabel>
                         <div className="flex gap-2">
-                           <FormControl><Input placeholder="e.g. REF12345" {...field} /></FormControl>
+                           <FormControl><Input placeholder="e.g. REF12345" {...field} className={cn(highlightedFields.includes('reference') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                            <Button type="button" variant="outline" size="icon" onClick={generateReference}>
                                 <RefreshCw className="h-4 w-4" />
                            </Button>
