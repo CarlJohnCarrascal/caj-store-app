@@ -5,7 +5,7 @@ import { Customer } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plus } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -86,9 +86,6 @@ export default function CustomerList({ customers }: CustomerListProps) {
               <SelectItem value="balance-desc">Balance (High-Low)</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" disabled>
-            <Plus className="h-5 w-5" />
-          </Button>
         </div>
       </div>
       <CardContent className="p-0">

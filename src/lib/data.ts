@@ -283,6 +283,16 @@ export async function getCustomers(): Promise<Customer[]> {
   return Promise.resolve(customers);
 }
 
+export async function addCustomer(customer: Omit<Customer, 'id' | 'balance'>): Promise<Customer> {
+  const newCustomer: Customer = {
+    ...customer,
+    id: `cust-${Date.now()}`,
+    balance: 0,
+  };
+  customers.push(newCustomer);
+  return Promise.resolve(newCustomer);
+}
+
 export async function getCashTransactions(): Promise<CashTransaction[]> {
   return Promise.resolve(cashTransactions);
 }

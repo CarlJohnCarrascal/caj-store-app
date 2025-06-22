@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct } from './data';
-import { Product, CartItem } from './types';
+import { addProduct, deleteProduct, updateProduct, addCustomer } from './data';
+import { Product, CartItem, Customer } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -12,10 +12,10 @@ const productSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
   stock: z.coerce.number().min(0, 'Stock must be positive'),
-  material: z.string(),
-  dimensions: z.string(),
+  material: z.string().optional(),
+  dimensions: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
-  image: z.string().url('Must be a valid URL').or(z.literal('')),
+  image: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
   unit: z.enum(['each', 'kg']),
 });
 
@@ -76,4 +76,24 @@ export async function createOrderAction(order: z.infer<typeof orderSchema>) {
 
     // Simulate some async work
     await new Promise(res => setTimeout(res, 1000));
+}
+
+const customerSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(1, 'Phone number is required'),
+  address: z.string().min(1, 'Address is required'),
+  location: z.string().min(1, 'Location is required'),
+});
+
+
+export async function addCustomerAction(data: FormData) {
+  const validatedFields = customerSchema.safeParse(Object.fromEntries(data.entries()));
+
+  if (!validatedFields.success) {
+    throw new Error('Invalid customer data.');
+  }
+
+  await addCustomer(validatedFields.data);
+  revalidatePath('/admin/customers');
 }
