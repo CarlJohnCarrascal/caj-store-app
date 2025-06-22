@@ -1,21 +1,24 @@
+import { getCollections } from '@/lib/data';
+import CollectionList from './components/CollectionList';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { PlusCircle } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-export default function CollectionsPage() {
+export default async function CollectionsPage() {
+  const collections = await getCollections();
+  
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Manage Collections</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-          <CardDescription>
-            This page is under construction. You will soon be able to manage your collections here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>This feature will allow you to track and manage payment collections from customers.</p>
-        </CardContent>
-      </Card>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Manage Collections</h1>
+        <Button asChild>
+          <Link href="/admin/collections/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Collection
+          </Link>
+        </Button>
+      </div>
+      <CollectionList collections={collections} />
     </div>
   );
 }

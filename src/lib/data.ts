@@ -1,7 +1,7 @@
 
 'use server';
 
-import { Product, Account, Customer, CashTransaction } from './types';
+import { Product, Account, Customer, CashTransaction, Collection } from './types';
 
 let products: Product[] = [
   {
@@ -273,6 +273,14 @@ let cashTransactions: CashTransaction[] = [
     },
 ];
 
+let collections: Collection[] = [
+    { id: 'coll-1', name: 'Unpaid Invoice #123', value: 1500.50, customerId: 'cust-1', note: 'Due by end of month. Follow up on the 25th.' },
+    { id: 'coll-2', name: 'Printing Service Fee', value: 250.00, customerId: 'cust-2', note: '' },
+    { id: 'coll-3', name: 'Product Order #456', value: 899.99, customerId: 'cust-4' },
+    { id: 'coll-4', name: 'Negative Balance', value: 510.00, customerId: 'cust-6', note: 'From previous order, needs to be settled.' },
+];
+
+
 export async function getProducts(): Promise<Product[]> {
   // In a real app, this would fetch from a database
   return Promise.resolve(products);
@@ -346,4 +354,47 @@ export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Custo
 
 export async function getCashTransactions(): Promise<CashTransaction[]> {
   return Promise.resolve(cashTransactions);
+}
+
+export async function getCollections(): Promise<Collection[]> {
+  // In a real app, you might do a database join. Here, we'll map the customer name.
+  const collectionsWithCustomerNames = collections.map(collection => {
+      const customer = customers.find(c => c.id === collection.customerId);
+      return {
+          ...collection,
+          customerName: customer ? customer.name : 'Unknown Customer'
+      };
+  });
+  return Promise.resolve(collectionsWithCustomerNames);
+}
+
+export async function getCollectionById(id: string): Promise<Collection | undefined> {
+  return Promise.resolve(collections.find(c => c.id === id));
+}
+
+export async function addCollection(collection: Omit<Collection, 'id' | 'customerName'>): Promise<Collection> {
+    const newCollection: Collection = {
+        ...collection,
+        id: `coll-${Date.now()}`,
+    };
+    collections.unshift(newCollection);
+    return Promise.resolve(newCollection);
+}
+
+export async function updateCollection(updatedCollection: Omit<Collection, 'customerName'>): Promise<Collection | null> {
+    const index = collections.findIndex(c => c.id === updatedCollection.id);
+    if (index !== -1) {
+        collections[index] = { ...collections[index], ...updatedCollection };
+        return Promise.resolve(collections[index]);
+    }
+    return Promise.resolve(null);
+}
+
+export async function deleteCollection(id: string): Promise<boolean> {
+    const index = collections.findIndex(c => c.id === id);
+    if (index !== -1) {
+        collections.splice(index, 1);
+        return Promise.resolve(true);
+    }
+    return Promise.resolve(false);
 }

@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount } from './data';
-import { Product, CartItem, Customer, Account } from './types';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection } from './data';
+import { Product, CartItem, Customer, Account, Collection } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -122,4 +122,40 @@ export async function deleteAccountAction(id: string) {
     await deleteAccount(id);
     revalidatePath('/admin/accounts');
     revalidatePath('/admin/cashio');
+}
+
+
+const collectionSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    value: z.coerce.number().positive('Value must be a positive number'),
+    customerId: z.string().min(1, 'Customer is required'),
+    note: z.string().optional(),
+});
+
+export async function addCollectionAction(data: FormData) {
+    const validatedFields = collectionSchema.safeParse(Object.fromEntries(data.entries()));
+
+    if (!validatedFields.success) {
+        throw new Error('Invalid collection data.');
+    }
+
+    await addCollection(validatedFields.data);
+    revalidatePath('/admin/collections');
+}
+
+export async function updateCollectionAction(id: string, data: FormData) {
+    const validatedFields = collectionSchema.safeParse(Object.fromEntries(data.entries()));
+
+    if (!validatedFields.success) {
+        throw new Error('Invalid collection data.');
+    }
+
+    await updateCollection({ id, ...validatedFields.data });
+    revalidatePath('/admin/collections');
+    revalidatePath(`/admin/collections/edit/${id}`);
+}
+
+export async function deleteCollectionAction(id: string) {
+    await deleteCollection(id);
+    revalidatePath('/admin/collections');
 }

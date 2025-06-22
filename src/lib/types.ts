@@ -1,3 +1,4 @@
+'use server';
 
 export interface Product {
   id: string;
@@ -54,4 +55,13 @@ export interface CashTransaction {
   status: 'Pending' | 'Delivered' | 'Available' | 'Claimed' | 'Cancelled';
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  value: number;
+  customerId: string;
+  customerName?: string; // For display
+  note?: string;
 }
