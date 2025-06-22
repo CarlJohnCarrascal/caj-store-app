@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account } from '@/lib/types';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -40,6 +41,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
   const [page, setPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [sort, setSort] = React.useState<{key: keyof CashTransaction | 'createdAt', order: 'asc' | 'desc'}>({ key: 'createdAt', order: 'desc' });
+  const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
 
   // Filtering state
   const [date, setDate] = React.useState<DateRange | undefined>();
@@ -70,6 +72,17 @@ export default function CashTransactionTable({ transactions: initialTransactions
         return transactionDate >= from && transactionDate <= new Date(to.getTime() + 86400000); // include the whole 'to' day
       });
   }, [search, transactions, date, type, method, accountUsed, status]);
+
+  const summary = React.useMemo(() => {
+    const totalIn = filteredTransactions
+      .filter((t) => t.transactionType === 'Cash In')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalOut = filteredTransactions
+      .filter((t) => t.transactionType === 'Cash Out')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalTransactions = filteredTransactions.length;
+    return { totalIn, totalOut, totalTransactions };
+  }, [filteredTransactions]);
 
   const sortedTransactions = React.useMemo(() => {
     const sorted = [...filteredTransactions];
@@ -114,6 +127,22 @@ export default function CashTransactionTable({ transactions: initialTransactions
 
   return (
     <div className="space-y-4">
+       <div className="flex flex-wrap justify-between items-center gap-4 p-4 bg-card rounded-lg border">
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-red-600">
+                <ArrowDown className="h-5 w-5" />
+                <span className="font-semibold text-lg">₱{summary.totalOut.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex items-center gap-2 text-green-600">
+                <ArrowUp className="h-5 w-5" />
+                <span className="font-semibold text-lg">₱{summary.totalIn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+        </div>
+        <div className="text-sm text-muted-foreground">
+            Total Transactions: <span className="font-semibold text-foreground">{summary.totalTransactions}</span>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-auto md:max-w-xs">
           <Input
@@ -135,14 +164,14 @@ export default function CashTransactionTable({ transactions: initialTransactions
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 pt-0">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 pt-0 items-center">
                <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
                     variant={"outline"}
                     className={cn(
-                      "justify-start text-left font-normal w-full",
+                      "justify-start text-left font-normal w-full col-span-2 md:col-span-1",
                       !date && "text-muted-foreground"
                     )}
                   >
@@ -209,6 +238,15 @@ export default function CashTransactionTable({ transactions: initialTransactions
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
+               <div className="flex items-center gap-2 justify-self-end col-span-full lg:col-span-1">
+                  <span className="text-sm text-muted-foreground">View:</span>
+                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                    <LayoutGrid className="h-5 w-5" />
+                  </Button>
+                  <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
+                    <List className="h-5 w-5" />
+                  </Button>
+                </div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -216,6 +254,53 @@ export default function CashTransactionTable({ transactions: initialTransactions
 
 
       <Card>
+        {viewMode === 'grid' ? (
+           <div>
+            {paginatedTransactions.length > 0 ? (
+              paginatedTransactions.map(t => (
+                <div key={t.id} className="border-b last:border-b-0">
+                  <div className="grid grid-cols-2 gap-4 items-start p-4">
+                    <div className="space-y-1.5">
+                      <p className="font-mono text-base font-medium">{t.reference}</p>
+                      <p className="text-sm text-muted-foreground">From: {t.customerName} ({t.accountNumber})</p>
+                      <div>
+                        <Badge
+                          variant={
+                            t.status === 'Completed' ? 'default' :
+                            t.status === 'Cancelled' ? 'destructive' :
+                            'secondary'
+                          }
+                          className={cn(
+                            t.status === 'Pending' && 'bg-cyan-500 text-cyan-50 hover:bg-cyan-600 border-transparent'
+                          )}
+                        >
+                          {t.status === 'Pending' ? 'Not yet claimed' : t.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end text-right">
+                      <p className="text-sm text-muted-foreground mb-1.5">{format(t.createdAt, 'M/d/yyyy, pp')}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xl font-bold">
+                          ₱{t.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        {t.transactionType === 'Cash In' ? (
+                          <ArrowUp className="h-6 w-6 text-green-600" />
+                        ) : (
+                          <ArrowDown className="h-6 w-6 text-red-600" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="h-24 text-center flex items-center justify-center">
+                <p>No transactions found.</p>
+              </div>
+            )}
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -271,6 +356,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
             )}
           </TableBody>
         </Table>
+        )}
       </Card>
       
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
