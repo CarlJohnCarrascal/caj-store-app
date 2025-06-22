@@ -20,11 +20,12 @@ import { Account } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addCashTransactionAction } from '@/lib/actions';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowDown, ArrowUp, RefreshCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, RefreshCw, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { generateTransactionMessage } from '@/ai/flows/generate-transaction-message';
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
@@ -50,6 +51,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -96,6 +98,43 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
       }
     });
   };
+
+  const handleGenerateMessage = async () => {
+    const { transactionType, customerName, amount, paymentMethod, reference } = form.getValues();
+    if (!transactionType || !customerName || !amount) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Details',
+            description: 'Please fill in Type, Customer Name, and Amount to generate a message.',
+        });
+        return;
+    }
+    setIsGenerating(true);
+    try {
+        const result = await generateTransactionMessage({
+            transactionType,
+            customerName,
+            amount,
+            paymentMethod,
+            reference: reference || '',
+        });
+        if(result.message) {
+          form.setValue('message', result.message, { shouldValidate: true });
+          toast({ title: 'Message Generated!', description: 'The AI-powered message has been populated.' });
+        } else {
+          throw new Error("AI did not return a message.");
+        }
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Generation Failed',
+            description: 'Could not generate a message. Please try again.',
+        });
+    } finally {
+        setIsGenerating(false);
+    }
+  };
+
 
   return (
     <Card>
@@ -299,7 +338,13 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                     )} />
                     <FormField control={form.control} name="message" render={({ field }) => (
                       <FormItem>
-                          <FormLabel>Message/Note (Optional)</FormLabel>
+                          <div className="flex justify-between items-center">
+                            <FormLabel>Message/Note (Optional)</FormLabel>
+                            <Button type="button" variant="outline" size="sm" onClick={handleGenerateMessage} disabled={isGenerating}>
+                              <Bot className="mr-2 h-4 w-4" />
+                              {isGenerating ? 'Generating...' : 'Populate with AI'}
+                            </Button>
+                          </div>
                           <FormControl><Textarea placeholder="e.g. Payment for order #XYZ" {...field} /></FormControl>
                           <FormMessage />
                       </FormItem>
