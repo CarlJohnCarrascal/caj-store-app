@@ -18,12 +18,13 @@ export type ExtractTransactionDetailsInput = z.infer<typeof ExtractTransactionDe
 const ExtractTransactionDetailsOutputSchema = z.object({
   datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction in ISO 8601 format (e.g., '2023-10-31T15:45:00.000Z')."),
   transactionType: z.enum(['sent', 'received']).optional().describe("The type of transaction from the message author's perspective."),
-  amount: z.coerce.number().optional().describe('The transaction amount.'),
-  accountName: z.string().optional().describe("The sender/receiver's account name."),
-  accountNumber: z.string().optional().describe("The sender/receiver's account number."),
-  balance: z.coerce.number().optional().describe("The new balance mentioned in the message."),
-  reference: z.string().optional().describe('The transaction reference number.'),
+  amount: z.number().optional().describe("The transaction amount."),
+  accountName: z.string().optional().describe("The name of the other party in the transaction."),
+  accountNumber: z.string().optional().describe("The account number or phone number of the other party."),
+  balance: z.number().optional().describe("The new balance after the transaction."),
+  reference: z.string().optional().describe("The transaction reference number."),
 });
+
 
 // This type is what the component will receive. It includes a possible error property.
 export type ExtractTransactionDetailsOutput = z.infer<typeof ExtractTransactionDetailsOutputSchema> & {
@@ -36,6 +37,7 @@ export async function extractTransactionDetails(
   try {
     const result = await extractTransactionDetailsFlow(input);
     // Ensure that even if the flow returns nothing, we send a valid object.
+    console.log("Extracted Details:", result);
     return result || { error: "AI did not return a valid output." };
   } catch (e: any) {
     console.error("Error running Genkit flow:", e);
@@ -47,57 +49,49 @@ const prompt = ai.definePrompt({
     name: 'extractTransactionDetailsPrompt',
     input: { schema: ExtractTransactionDetailsInputSchema },
     output: { schema: ExtractTransactionDetailsOutputSchema },
-    prompt: `You are an expert at extracting structured data from GCash transaction messages.
-Analyze the user-provided SMS and extract the following entities: datetime, transactionType, amount, accountName, accountNumber, balance, and reference.
-The transactionType should be 'sent' if the message indicates money was sent, and 'received' if money was received.
-The datetime should be a valid ISO 8601 string.
-The amount and balance should be numbers, without any currency symbols or commas.
-If a field is not present in the message, omit it from the JSON output.
+    prompt: `You are an expert data extraction assistant. Your task is to accurately extract specific pieces of information from SMS notifications about financial transactions.
 
-Here are some examples:
+**Instructions:**
+1.  Read the provided SMS carefully.
+2.  Extract the following fields: \`datetime\`, \`transactionType\`, \`reference\`, \`accountName\`, \`accountNumber\`, \`balance\`, \`amount\`.
+3.  **Output the result as a JSON object.**
+4.  If a field is not found in the SMS, omit it from the JSON.
+5.  Prioritize the earliest date/time mentioned for \`datetime\` and return it in ISO 8601 format.
+6.  For \`amount\` and \`balance\`, extract the numeric value only.
+7.  For \`accountName\`, identify the name of the sender/receiver of the transaction.
+8.  For \`accountNumber\`, identify the phone number associated with the \`accountName\`. If the source is a company without an explicit phone number in the SMS, use "N/A".
+9. For \`transactionType\`, determine if the message indicates that money was 'sent' or 'received'.
 
----
-SMS: """16 June 2025, 06:06 PM Express Send Notification You have received PHP 200.00 of GCash from MA****N C. +639665377261 w/ MSG: . Your new balance is PHP 9466.67. Ref. No. 0029743073420."""
-JSON:
+**Field Definitions & Extraction Hints:**
+*   **datetime**: The full date and time of the SMS or transaction. (e.g., "22 June 2025, 05:59 PM"). Return in ISO 8601 format.
+*   **transactionType**: The type of transaction, must be either "sent" or "received".
+*   **reference**: The transaction reference number. (Look for "Ref. No." or "Ref no.")
+*   **accountName**: The name of the party the transaction is with. (Look for "from X" or "to X")
+*   **accountNumber**: The phone number of the \`accountName\`. (Look for "+63...")
+*   **balance**: The new balance after the transaction. (Look for "Your new balance is PHP X"). Return a number.
+*   **amount**: The specific amount of the transaction. (Look for "received PHP X" or "received P X"). Return a number.
+
+**Examples:**
+
+**SMS Input 1:**
+22 June 2025, 05:59 PM Express Send Notification You have received PHP 1000.00 of GCash from ME******E G. +639985868784 w/ MSG: . Your new balance is PHP 14992.63. Ref. No. 2029933342823.
+
+**JSON Output 1:**
+\`\`\`json
 {
-  "datetime": "2025-06-16T18:06:00.000Z",
+  "datetime": "2025-06-22T17:59:00.000Z",
   "transactionType": "received",
-  "amount": 200.00,
-  "accountName": "MA****N C.",
-  "accountNumber": "+639665377261",
-  "balance": 9466.67,
-  "reference": "0029743073420"
+  "reference": "2029933342823",
+  "accountName": "ME******E G.",
+  "accountNumber": "+639985868784",
+  "balance": 14992.63,
+  "amount": 1000.00
 }
----
-SMS: """19 June 2025, 09:20 AM Express Send Notification You have sent PHP 1000.00 to EM***N S. +639074053933 on 06-19-2025 09:20 AM with MSG: . Your new balance is PHP 3723.62. Ref. No. 8029822076869."""
-JSON:
-{
-  "datetime": "2025-06-19T09:20:00.000Z",
-  "transactionType": "sent",
-  "amount": 1000.00,
-  "accountName": "EM***N S.",
-  "accountNumber": "+639074053933",
-  "balance": 3723.62,
-  "reference": "8029822076869"
-}
----
-SMS: """21 June 2025, 04:47 PM Over-the-Counter Cash In Limit Reminder You have reached your monthly limit for free over-the-counter cash ins.
-Cashing in at over-the-counter outlets is free until you reach P8,000.00 each month. After reaching this limit, a service fee of 2% will be deducted each time you cash in. Please see the details of your transaction below:
-You have received P2,474.01 of GCash from Philippine Seven Corporation with MSG - PSC Cashin. A 2% service fee amounting to P50.49 has been deducted from your wallet. Your new balance is P10,047.63 Sat Jun 21 16:47:48 GMT+08:00 2025. Ref no. 8029898986712."""
-JSON:
-{
-  "datetime": "2025-06-21T16:47:48.000Z",
-  "transactionType": "received",
-  "amount": 2474.01,
-  "accountName": "Philippine Seven Corporation",
-  "balance": 10047.63,
-  "reference": "8029898986712"
-}
----
+\`\`\`
 
 Now, extract the entities from the following message.
 
-SMS: """{{message}}"""`
+SMS: """{{message}}"""`,
 });
 
 const extractTransactionDetailsFlow = ai.defineFlow(

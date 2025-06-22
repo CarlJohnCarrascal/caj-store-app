@@ -25,7 +25,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowDown, ArrowUp, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
+import { extractTransactionDetails, extractEntitiesWithGemini } from '@/ai/flows/extract-transaction-details';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -109,6 +109,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
     setIsGenerating(true);
     try {
         const result = await extractTransactionDetails({ message });
+        //const result = await extractEntitiesWithGemini(message);
         console.log('Extracted Details:', result);
 
         if (result.error) {
