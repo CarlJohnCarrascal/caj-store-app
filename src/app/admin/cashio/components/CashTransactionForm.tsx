@@ -108,7 +108,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
 
     const finalPrice = data.transactionType === 'Cash In'
         ? data.amount + data.fee
-        : data.amount - data.fee;
+        : data.fee - data.amount;
 
     const transactionAsProduct: Product = {
         id: `cashio-${data.reference}-${Date.now()}`,

@@ -81,7 +81,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
 
         const finalPrice = transaction.transactionType === 'Cash In'
             ? transaction.amount + transaction.fee
-            : transaction.amount - transaction.fee;
+            : transaction.fee - transaction.amount;
 
         const transactionAsProduct: Product = {
             id: `cashio-${transaction.reference}-${Date.now()}`,
@@ -331,7 +331,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
                        <p className="text-sm text-muted-foreground">
-                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '} 
+                          {t.transactionType === 'Cash Out' ? 'To: ' : 'From: '} 
                           {t.customerName}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
