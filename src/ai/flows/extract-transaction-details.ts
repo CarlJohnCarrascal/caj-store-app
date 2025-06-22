@@ -17,11 +17,10 @@ export type ExtractTransactionDetailsInput = z.infer<typeof ExtractTransactionDe
 
 const ExtractTransactionDetailsOutputSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']).optional().describe("The type of transaction. 'Cash In' for receiving money, 'Cash Out' for sending money."),
-  customerName: z.string().optional().describe("The name of the customer or person involved in the transaction."),
   amount: z.coerce.number().optional().describe("The numerical amount of the transaction."),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']).optional().describe("The payment platform used, like GCash or Maya."),
   reference: z.string().optional().describe("The reference number or tracking code for the transaction."),
-  accountName: z.string().optional().describe("The account name of the sender or receiver."),
+  accountName: z.string().optional().describe("The full name of the sender or receiver."),
   accountNumber: z.string().optional().describe("The account number (like a phone number for e-wallets) of the sender or receiver."),
   datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction, if available. Format as an ISO 8601 string (e.g., '2023-10-31T15:45:00.000Z')."),
 });
@@ -45,12 +44,12 @@ const prompt = ai.definePrompt({
   - If the message says "You have received", or implies the customer received money, this is a **'Cash Out'** for the business.
 
 - **Named Entities to Extract**:
-  - **customerName / accountName**: Identify the person's name or business name involved in the transaction. Use this for both \`customerName\` and \`accountName\`.
-  - **amount**: Identify and extract the monetary value.
-  - **paymentMethod**: Identify the payment service used (e.g., GCash, Maya).
-  - **reference**: Extract any transaction ID, reference number, or tracking code.
+  - **accountName**: Identify the full name of the person or business involved in the transaction.
   - **accountNumber**: Extract the associated account number, often a phone number for e-wallets.
+  - **amount**: Identify and extract the monetary value.
+  - **reference**: Extract any transaction ID, reference number, or tracking code.
   - **datetime**: Find the full date and time of the transaction. Convert it to a standard ISO 8601 format (e.g., '2023-10-31T15:45:00.000Z').
+  - **paymentMethod**: Identify the payment service used (e.g., GCash, Maya).
 
 If a piece of information is not present in the message, omit its corresponding field from the output.
 

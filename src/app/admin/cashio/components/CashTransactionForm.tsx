@@ -124,9 +124,8 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             populatedFields.push('transactionType');
         }
         
-        const nameToUse = result.accountName || result.customerName;
-        if(nameToUse) {
-            form.setValue('accountName', nameToUse, { shouldValidate: true });
+        if (result.accountName) {
+            form.setValue('accountName', result.accountName, { shouldValidate: true });
             populatedFields.push('accountName');
         }
 
