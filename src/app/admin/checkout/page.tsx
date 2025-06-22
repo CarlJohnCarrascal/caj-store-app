@@ -1,200 +1,264 @@
 'use client';
 
-import { useCart } from '@/hooks/use-cart';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { createOrderAction } from '@/lib/actions';
-import { Separator } from '@/components/ui/separator';
+import { useState, useEffect, useMemo, useTransition } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { Plus, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
 
-const checkoutSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  email: z.string().email({ message: 'Please enter a valid email.' }),
-  address: z.string().min(5, { message: 'Address must be at least 5 characters.' }),
-  city: z.string().min(2, { message: 'City must be at least 2 characters.' }),
-  zip: z.string().min(5, { message: 'ZIP code must be at least 5 characters.' }),
-});
+import { useCart } from '@/hooks/use-cart';
+import { useToast } from '@/hooks/use-toast';
+import { getCustomers } from '@/lib/data';
+import { createOrderAction } from '@/lib/actions';
+import { Customer } from '@/lib/types';
+import { cn } from '@/lib/utils';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Combobox } from '@/components/ui/combobox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 
 export default function CheckoutPage() {
-  const { cartItems, cartTotal, clearCart, cartCustomer } = useCart();
+  const { cartItems, cartTotal, clearCart, cartCustomer, setCartCustomer } = useCart();
   const { toast } = useToast();
   const router = useRouter();
 
-  const form = useForm<z.infer<typeof checkoutSchema>>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      address: '',
-      city: '',
-      zip: '',
-    },
-  });
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>();
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [discount, setDiscount] = useState('');
+  const [amountTendered, setAmountTendered] = useState('');
+  const [isSubmitting, startTransition] = useTransition();
 
   useEffect(() => {
-    if (cartCustomer) {
-      form.setValue('name', cartCustomer.name);
+    async function fetchCustomers() {
+      try {
+        const fetchedCustomers = await getCustomers();
+        setCustomers(fetchedCustomers);
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch customers.' });
+      }
     }
-  }, [cartCustomer, form]);
+    fetchCustomers();
+  }, [toast]);
 
-  async function onSubmit(values: z.infer<typeof checkoutSchema>) {
-    try {
-      await createOrderAction({
-        customer: values,
-        items: cartItems,
-        total: cartTotal,
-      });
-      toast({
-        title: 'Order Placed!',
-        description: 'Thank you for your purchase.',
-      });
-      clearCart();
-      router.push('/admin/order-confirmation');
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Order Failed',
-        description: 'There was a problem placing your order. Please try again.',
-      });
+  useEffect(() => {
+    if (cartCustomer && customers.length > 0) {
+      const customerInList = customers.find(c => c.name === cartCustomer.name);
+      if (customerInList) {
+        setSelectedCustomerId(customerInList.id);
+      }
     }
+  }, [cartCustomer, customers]);
+
+  const customerOptions = useMemo(() => {
+    return customers.map(c => ({ value: c.id, label: c.name }));
+  }, [customers]);
+
+  const handleCustomerSelect = (customerId: string) => {
+    const selected = customers.find(c => c.id === customerId);
+    setSelectedCustomerId(customerId);
+    if (selected) {
+      setCartCustomer({ name: selected.name });
+    }
+  };
+  
+  const handleAddNewCustomerSuccess = async () => {
+    setIsCustomerDialogOpen(false);
+    const updatedCustomers = await getCustomers();
+    setCustomers(updatedCustomers);
+    toast({ title: "Customer added", description: "You can now select the new customer." });
+  };
+
+  const discountValue = parseFloat(discount) || 0;
+  const finalTotal = Math.max(0, cartTotal - discountValue);
+  const amountTenderedValue = parseFloat(amountTendered) || 0;
+  const changeDue = amountTenderedValue > finalTotal ? amountTenderedValue - finalTotal : 0;
+
+  async function handlePlaceOrder() {
+    if (!selectedCustomerId) {
+      toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
+      return;
+    }
+    
+    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+    if (!selectedCustomer) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Selected customer not found.' });
+        return;
+    }
+
+    startTransition(async () => {
+      try {
+        await createOrderAction({
+          customerId: selectedCustomerId,
+          customerName: selectedCustomer.name,
+          items: cartItems,
+          subtotal: cartTotal,
+          discount: discountValue,
+          total: finalTotal,
+        });
+        toast({
+          title: 'Order Placed!',
+          description: 'Thank you for your purchase.',
+        });
+        clearCart();
+        router.push('/admin/order-confirmation');
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Order Failed',
+          description: 'There was a problem placing your order. Please try again.',
+        });
+      }
+    });
   }
 
-  if (cartItems.length === 0) {
+  if (cartItems.length === 0 && !isSubmitting) {
     return (
         <div className="text-center">
             <h1 className="text-2xl font-semibold">Your order is empty</h1>
-            <p className="text-muted-foreground mt-2">Add some products to your order to proceed to checkout.</p>
+            <p className="text-muted-foreground mt-2">Add some products to your order to proceed.</p>
             <Button asChild className="mt-4"><Link href="/admin/store">Go to Store</Link></Button>
         </div>
     )
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-12">
-      <div>
+    <div className="grid lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Shipping Information</CardTitle>
+            <CardTitle>Customer</CardTitle>
+            <CardDescription>Select a customer for this order or add a new one.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123 Main St" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Anytown" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="zip"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ZIP Code</FormLabel>
-                        <FormControl>
-                          <Input placeholder="12345" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+             <div className="flex gap-2 items-start">
+                <div className="flex-grow">
+                    <Combobox
+                      options={customerOptions}
+                      value={selectedCustomerId}
+                      onChange={handleCustomerSelect}
+                      placeholder="Select a customer"
+                      searchPlaceholder="Search customers..."
+                      emptyPlaceholder="No customer found."
+                    />
                 </div>
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Placing Order...' : `Place Order (₱${cartTotal.toFixed(2)})`}
+                <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0" onClick={() => setIsCustomerDialogOpen(true)}>
+                    <UserPlus className="h-4 w-4" />
+                    <span className="sr-only">Add New Customer</span>
                 </Button>
-              </form>
-            </Form>
+            </div>
           </CardContent>
         </Card>
-      </div>
-      <div className="space-y-6">
-        <h2 className="text-2xl font-semibold">Order Summary</h2>
+
         <Card>
-          <CardContent className="p-4 space-y-4">
-            {cartItems.map(item => {
-              const isPrinting = item.category === 'Printing';
-              const isCashIO = item.category === 'CashIO';
-              return (
-              <div key={item.id} className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="relative h-16 w-16 rounded-md overflow-hidden border">
-                    <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : 'product photo'} />
-                  </div>
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    {!isCashIO && <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>}
-                    {(isPrinting || isCashIO) && item.description && (
-                      <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                    )}
-                  </div>
-                </div>
-                <p className="font-medium">₱{(item.price * item.quantity).toFixed(2)}</p>
-              </div>
-            )})}
-            <Separator />
-            <div className="flex justify-between font-semibold text-lg">
-              <p>Total</p>
-              <p>₱{cartTotal.toFixed(2)}</p>
+          <CardHeader>
+            <CardTitle>Payment Details</CardTitle>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="discount">Discount (₱)</Label>
+              <Input
+                id="discount"
+                type="number"
+                placeholder="0.00"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+              />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="amountTendered">Amount Tendered (₱)</Label>
+              <Input
+                id="amountTendered"
+                type="number"
+                placeholder="0.00"
+                value={amountTendered}
+                onChange={(e) => setAmountTendered(e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <div className="lg:col-span-1">
+        <Card className="sticky top-20">
+          <CardHeader>
+            <CardTitle>Order Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <ScrollArea className="h-[300px] pr-4">
+                {cartItems.map(item => {
+                const isPrinting = item.category === 'Printing';
+                const isCashIO = item.category === 'CashIO';
+                return (
+                <div key={item.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                    <div className="relative h-16 w-16 rounded-md overflow-hidden border">
+                        <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : 'product photo'} />
+                    </div>
+                    <div>
+                        <p className="font-medium">{item.name}</p>
+                        {!isCashIO && <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>}
+                        {(isPrinting || isCashIO) && item.description && (
+                        <p className="text-xs text-muted-foreground mt-1 max-w-[180px] break-words">{item.description}</p>
+                        )}
+                    </div>
+                    </div>
+                    <p className="font-medium">₱{(item.price * item.quantity).toFixed(2)}</p>
+                </div>
+                )})}
+            </ScrollArea>
+            <Separator />
+            <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>₱{cartTotal.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span className="text-muted-foreground">Discount</span>
+                    <span className={cn(discountValue > 0 && "text-green-600")}>- ₱{discountValue.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between font-semibold text-base">
+                    <span className="text-foreground">Total</span>
+                    <span>₱{finalTotal.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount Tendered</span>
+                    <span>₱{amountTenderedValue.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span className="text-muted-foreground">Change Due</span>
+                    <span>₱{changeDue.toFixed(2)}</span>
+                </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full" onClick={handlePlaceOrder} disabled={isSubmitting || !selectedCustomerId}>
+              {isSubmitting ? 'Placing Order...' : 'Place Order'}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+
+       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add New Customer</DialogTitle>
+                <DialogDescription>
+                    Add a new customer to your records. They will be available to select after creation.
+                </DialogDescription>
+            </DialogHeader>
+            <CustomerForm
+                onSuccess={handleAddNewCustomerSuccess}
+                onCancel={() => setIsCustomerDialogOpen(false)}
+            />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

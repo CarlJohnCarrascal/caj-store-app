@@ -60,7 +60,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         </div>
                         {!isCashIO && <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>}
                         {(isPrinting || isCashIO) && item.description && (
-                          <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1 max-w-[200px] break-words">{item.description}</p>
                         )}
                         {!isCashIO && (
                           <div className="flex items-center mt-2">
@@ -141,7 +141,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
             <SheetClose asChild>
               <Button asChild className="w-full">
                 <Link href="/admin/checkout">
-                  Proceed to Checkout <ArrowRight className="ml-2 h-4 w-4" />
+                  Proceed to Payment <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </SheetClose>

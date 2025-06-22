@@ -80,14 +80,11 @@ export async function deleteProductAction(id: string) {
 }
 
 const orderSchema = z.object({
-  customer: z.object({
-    name: z.string(),
-    email: z.string().email(),
-    address: z.string(),
-    city: z.string(),
-    zip: z.string(),
-  }),
+  customerId: z.string().min(1, 'Customer is required'),
+  customerName: z.string().min(1),
   items: z.array(z.any()),
+  subtotal: z.number(),
+  discount: z.number().min(0),
   total: z.number(),
 });
 
@@ -107,7 +104,7 @@ export async function createOrderAction(order: z.infer<typeof orderSchema>) {
     await logActivity({
         type: 'Order',
         action: 'Created',
-        details: `New order placed by ${validatedOrder.data.customer.name} for ₱${validatedOrder.data.total.toFixed(2)}.`,
+        details: `New order placed for ${validatedOrder.data.customerName} for ₱${validatedOrder.data.total.toFixed(2)}.`,
         targetId: orderId,
     });
 
