@@ -407,6 +407,20 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   return Promise.resolve(newTransaction);
 }
 
+export async function updateCashTransactionStatus(id: string): Promise<CashTransaction | null> {
+    const index = cashTransactions.findIndex(t => t.id === id);
+    if (index !== -1) {
+        const transaction = cashTransactions[index];
+        if (transaction.status === 'Available') {
+            const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+            transaction.status = newStatus;
+            transaction.updatedAt = new Date();
+            return Promise.resolve(transaction);
+        }
+    }
+    return Promise.resolve(null);
+}
+
 export async function getCollections(): Promise<Collection[]> {
   // In a real app, you might do a database join. Here, we'll map the customer name.
   const collectionsWithCustomerNames = collections.map(collection => {

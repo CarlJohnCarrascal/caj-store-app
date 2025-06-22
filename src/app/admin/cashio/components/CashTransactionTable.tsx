@@ -38,6 +38,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { updateCashTransactionStatusAction } from '@/lib/actions';
 
 interface CashTransactionTableProps {
   transactions: CashTransaction[];
@@ -53,6 +55,8 @@ export default function CashTransactionTable({ transactions: initialTransactions
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<CashTransaction | null>(null);
+  const [isUpdating, startUpdateTransition] = React.useTransition();
+  const { toast } = useToast();
 
 
   // Filtering state
@@ -65,6 +69,22 @@ export default function CashTransactionTable({ transactions: initialTransactions
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const handleUpdateStatus = (transactionId: string) => {
+    startUpdateTransition(async () => {
+      try {
+        await updateCashTransactionStatusAction(transactionId);
+        toast({ title: 'Success', description: 'Transaction status has been updated.' });
+        setSelectedTransaction(null);
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: error.message || 'Could not update the transaction.',
+        });
+      }
+    });
+  };
 
   const filteredTransactions = React.useMemo(() => {
     return transactions
@@ -283,7 +303,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
                        <p className="text-sm text-muted-foreground">
-                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '} 
+                          {t.transactionType === 'Cash Out' ? 'From: ' : 'To: '} 
                           {t.customerName}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
@@ -515,6 +535,14 @@ export default function CashTransactionTable({ transactions: initialTransactions
 
             </div>
             <DialogFooter>
+              {selectedTransaction.status === 'Available' && (
+                  <Button
+                    onClick={() => handleUpdateStatus(selectedTransaction.id)}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? 'Updating...' : 'Add to Order'}
+                  </Button>
+                )}
               <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>

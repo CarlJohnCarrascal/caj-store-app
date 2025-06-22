@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -224,6 +224,24 @@ export async function addCashTransactionAction(data: FormData) {
   revalidatePath('/admin/cashio');
   revalidatePath('/admin/transactions');
   revalidatePath('/admin/accounts'); // because balance changes
+}
+
+export async function updateCashTransactionStatusAction(id: string) {
+  const updatedTransaction = await updateCashTransactionStatus(id);
+  
+  if (updatedTransaction) {
+    await logActivity({
+      type: 'CashIO',
+      action: 'Updated',
+      details: `Transaction for "${updatedTransaction.customerName}" was marked as ${updatedTransaction.status}.`,
+      targetId: id,
+    });
+  } else {
+    throw new Error('Transaction is not available to be updated or not found.');
+  }
+  
+  revalidatePath('/admin/cashio');
+  revalidatePath('/admin/transactions');
 }
 
 
