@@ -23,7 +23,7 @@ import { addCashTransactionAction } from '@/lib/actions';
 import { useState, useTransition } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowDown, ArrowUp, RefreshCw, Bot } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
 import { cn } from '@/lib/utils';
@@ -73,13 +73,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   });
 
   const transactionType = form.watch('transactionType');
-
-  const generateReference = () => {
-    const prefix = 'TXN';
-    const timestamp = Date.now().toString().slice(-8);
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    form.setValue('reference', `${prefix}-${timestamp}-${random}`);
-  };
 
   const onSubmit = (data: CashTransactionFormValues) => {
     startTransition(async () => {
@@ -384,12 +377,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                     <FormField control={form.control} name="reference" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Reference Number</FormLabel>
-                        <div className="flex gap-2">
-                           <FormControl><Input placeholder="e.g. REF12345" {...field} className={cn(highlightedFields.includes('reference') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
-                           <Button type="button" variant="outline" size="icon" onClick={generateReference}>
-                                <RefreshCw className="h-4 w-4" />
-                           </Button>
-                        </div>
+                        <FormControl><Input placeholder="e.g. REF12345" {...field} className={cn(highlightedFields.includes('reference') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
