@@ -184,7 +184,7 @@ let cashTransactions: CashTransaction[] = [
         customerName: 'Hardware Supply Co.',
         status: 'Claimed',
         createdAt: new Date('2023-10-27T14:25:00Z'),
-        updatedAt: new date('2023-10-27T14:30:00Z'),
+        updatedAt: new Date('2023-10-27T14:30:00Z'),
     },
     {
         id: 'txn-3',
