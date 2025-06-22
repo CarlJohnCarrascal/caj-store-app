@@ -24,6 +24,7 @@ import { useTransition } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowDown, ArrowUp, RefreshCw } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
