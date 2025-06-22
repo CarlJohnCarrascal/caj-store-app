@@ -77,7 +77,7 @@ export default function CheckoutPage() {
   };
 
   const discountValue = parseFloat(discount) || 0;
-  const finalTotal = Math.max(0, cartTotal - discountValue);
+  const finalTotal = cartTotal - discountValue;
   const amountTenderedValue = parseFloat(amountTendered) || 0;
   const balanceOrChange = finalTotal - amountTenderedValue;
 
