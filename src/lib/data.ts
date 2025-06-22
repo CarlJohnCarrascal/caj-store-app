@@ -322,6 +322,15 @@ export async function addAccount(account: Omit<Account, 'id'>): Promise<Account>
   return Promise.resolve(newAccount);
 }
 
+export async function deleteAccount(id: string): Promise<boolean> {
+  const index = accounts.findIndex(a => a.id === id);
+  if (index !== -1) {
+    accounts.splice(index, 1);
+    return Promise.resolve(true);
+  }
+  return Promise.resolve(false);
+}
+
 export async function getCustomers(): Promise<Customer[]> {
   return Promise.resolve(customers);
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount } from './data';
 import { Product, CartItem, Customer, Account } from './types';
 
 const productSchema = z.object({
@@ -116,4 +116,10 @@ export async function addAccountAction(data: FormData) {
   await addAccount(validatedFields.data as Omit<Account, 'id'>);
   revalidatePath('/admin/accounts');
   revalidatePath('/admin/cashio');
+}
+
+export async function deleteAccountAction(id: string) {
+    await deleteAccount(id);
+    revalidatePath('/admin/accounts');
+    revalidatePath('/admin/cashio');
 }
