@@ -20,7 +20,7 @@ import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  value: z.coerce.number().positive('Value must be a positive number'),
+  value: z.string().min(1, 'Value is required'),
   customerId: z.string().min(1, 'Customer is required'),
   note: z.string().optional(),
 });
@@ -41,9 +41,9 @@ export default function CollectionForm({ collection, customers, collectionNames 
 
   const form = useForm<CollectionFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: collection ? { ...collection, note: collection.note || '' } : {
+    defaultValues: collection ? { ...collection, value: String(collection.value), note: collection.note || '' } : {
       name: '',
-      value: 0,
+      value: '',
       customerId: '',
       note: '',
     },
@@ -102,7 +102,7 @@ export default function CollectionForm({ collection, customers, collectionNames 
                 <FormField control={form.control} name="value" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Value</FormLabel>
-                    <FormControl><Input type="text" placeholder="0.00" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g. 1500.50 or Item Details" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

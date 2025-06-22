@@ -46,11 +46,11 @@ export default function CollectionList({ collections, customers }: CollectionLis
       });
   }, [collections, searchTerm, selectedCustomer]);
 
-  const handleCopy = (value: number) => {
-    navigator.clipboard.writeText(String(value));
+  const handleCopy = (value: string) => {
+    navigator.clipboard.writeText(value);
     toast({
       title: 'Copied to clipboard!',
-      description: `Value ₱${value.toFixed(2)} has been copied.`,
+      description: `Value "${value}" has been copied.`,
     });
   };
 
@@ -120,7 +120,7 @@ export default function CollectionList({ collections, customers }: CollectionLis
                 <TableRow key={collection.id}>
                   <TableCell className="font-medium">{collection.name}</TableCell>
                   <TableCell>{collection.customerName}</TableCell>
-                  <TableCell className="text-right font-mono">₱{collection.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-right font-mono">{collection.value}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={collection.note || ''}>{collection.note || '-'}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">

@@ -274,10 +274,10 @@ let cashTransactions: CashTransaction[] = [
 ];
 
 let collections: Collection[] = [
-    { id: 'coll-1', name: 'Unpaid Invoice #123', value: 1500.50, customerId: 'cust-1', note: 'Due by end of month. Follow up on the 25th.' },
-    { id: 'coll-2', name: 'Printing Service Fee', value: 250.00, customerId: 'cust-2', note: '' },
-    { id: 'coll-3', name: 'Product Order #456', value: 899.99, customerId: 'cust-4' },
-    { id: 'coll-4', name: 'Negative Balance', value: 510.00, customerId: 'cust-6', note: 'From previous order, needs to be settled.' },
+    { id: 'coll-1', name: 'Unpaid Invoice #123', value: '1500.50', customerId: 'cust-1', note: 'Due by end of month. Follow up on the 25th.' },
+    { id: 'coll-2', name: 'Printing Service Fee', value: '250.00', customerId: 'cust-2', note: '' },
+    { id: 'coll-3', name: 'Product Order #456', value: '899.99', customerId: 'cust-4' },
+    { id: 'coll-4', name: 'Negative Balance', value: '510.00', customerId: 'cust-6', note: 'From previous order, needs to be settled.' },
 ];
 
 

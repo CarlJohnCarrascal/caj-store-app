@@ -127,7 +127,7 @@ export async function deleteAccountAction(id: string) {
 
 const collectionSchema = z.object({
     name: z.string().min(1, 'Name is required'),
-    value: z.coerce.number().positive('Value must be a positive number'),
+    value: z.string().min(1, 'Value is required'),
     customerId: z.string().min(1, 'Customer is required'),
     note: z.string().optional(),
 });

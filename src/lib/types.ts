@@ -60,7 +60,7 @@ export interface CashTransaction {
 export interface Collection {
   id: string;
   name: string;
-  value: number;
+  value: string;
   customerId: string;
   customerName?: string; // For display
   note?: string;
