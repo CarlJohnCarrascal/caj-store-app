@@ -114,6 +114,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
     setIsGenerating(true);
     try {
         const result = await extractTransactionDetails({ message });
+        console.log('Extracted Details:', result);
         const populatedFields: string[] = [];
 
         if (result.transactionType) {

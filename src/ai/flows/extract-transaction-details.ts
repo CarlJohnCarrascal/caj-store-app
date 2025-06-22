@@ -23,6 +23,7 @@ const ExtractTransactionDetailsOutputSchema = z.object({
   reference: z.string().optional().describe("The reference number or tracking code for the transaction."),
   accountName: z.string().optional().describe("The account name of the sender or receiver."),
   accountNumber: z.string().optional().describe("The account number (like a phone number for e-wallets) of the sender or receiver."),
+  datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction, if available. Format as an ISO 8601 string (e.g., '2023-10-31T15:45:00.000Z')."),
 });
 export type ExtractTransactionDetailsOutput = z.infer<typeof ExtractTransactionDetailsOutputSchema>;
 
@@ -37,17 +38,20 @@ const prompt = ai.definePrompt({
   name: 'extractTransactionDetailsPrompt',
   input: {schema: ExtractTransactionDetailsInputSchema},
   output: {schema: ExtractTransactionDetailsOutputSchema},
-  prompt: `You are an intelligent data entry assistant. Your task is to extract transaction details from a raw text message provided by a user. The user might paste a message from a banking app, an e-wallet, or just a note they wrote.
+  prompt: `You are an intelligent data entry assistant for a small business. Your task is to extract transaction details from a raw text message provided by a user. The user is likely pasting a message from their **customer's** transaction confirmation.
 
-Analyze the following message and extract the relevant information into the specified JSON format.
+Your perspective should be that of the **business**. Analyze the following message and extract the relevant information into the specified JSON format.
 
-- **transactionType**: Determine if this is money coming 'in' or going 'out'. For example, "sent you", "received", "padala" usually means 'Cash In'. "You sent", "paid", "transfer to" usually means 'Cash Out'.
-- **customerName**: Identify the name of the person or company.
+- **transactionType**: Determine if this is a 'Cash In' (money received by the business) or 'Cash Out' (money sent by the business).
+  - If the message says "You have sent" or "You paid", it means the **customer sent money to the business**. This is a **'Cash In'**.
+  - If the message says "You have received", it means the **customer received money from the business**. This is a **'Cash Out'**.
+- **customerName**: Identify the name of the customer or person involved. This is often the name associated with the account in the message.
 - **amount**: Find the monetary value of the transaction.
 - **paymentMethod**: If mentioned, identify the service used (e.g., GCash, Maya).
 - **reference**: Look for any reference or transaction ID.
-- **accountName**: The name associated with the e-wallet/bank account.
-- **accountNumber**: The number of the e-wallet/bank account.
+- **accountName**: The name associated with the e-wallet/bank account in the message.
+- **accountNumber**: The number of the e-wallet/bank account (like a phone number for e-wallets) in the message.
+- **datetime**: Extract the full date and time of the transaction. Convert it to a standard ISO 8601 format (e.g., '2023-10-31T15:45:00.000Z').
 
 If a piece of information is not present, omit the field from the output.
 
