@@ -117,7 +117,15 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     });
 
     // Calculate balance change
-    const balanceChangeFromTender = total - amountTendered;
+    let balanceChangeFromTender = total - amountTendered;
+
+    // For negative totals (cash-out), the transaction is settled in cash from the store's side.
+    // The customer's balance should not be affected by the tender amount.
+    // The cash-out itself already handled the debit from the store's financial account.
+    if (total < 0) {
+      balanceChangeFromTender = 0;
+    }
+
     let totalBalanceUpdate = balanceChangeFromTender;
 
     // If we applied the initial balance, we must subtract it from the customer's account to "zero it out"

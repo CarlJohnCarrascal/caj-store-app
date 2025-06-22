@@ -84,8 +84,10 @@ export default function CheckoutPage() {
 
   const discountValue = parseFloat(discount) || 0;
   const customerBalanceToApply = applyBalance && selectedCustomer ? selectedCustomer.balance : 0;
-  const totalAfterDiscount = cartTotal - discountValue;
-  const finalTotal = totalAfterDiscount - customerBalanceToApply;
+  
+  // Correction: finalTotal can be negative
+  const finalTotal = cartTotal - discountValue - customerBalanceToApply;
+
   const amountTenderedValue = parseFloat(amountTendered) || 0;
   const balanceOrChange = finalTotal - amountTenderedValue;
 
@@ -126,7 +128,16 @@ export default function CheckoutPage() {
   };
 
   const handlePayOrder = () => {
-    if (balanceOrChange !== 0) {
+    if (finalTotal < 0 && amountTenderedValue !== 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Incorrect Payment',
+        description: 'Amount tendered must be zero when the total is negative.',
+      });
+      return;
+    }
+    
+    if (finalTotal >= 0 && balanceOrChange !== 0) {
       toast({ variant: 'destructive', title: 'Incorrect Payment', description: 'Amount tendered must equal the total. For other amounts, use "Add to Balance".' });
       return;
     }
@@ -168,6 +179,19 @@ export default function CheckoutPage() {
                     <span className="sr-only">Add New Customer</span>
                 </Button>
             </div>
+            {selectedCustomer && (
+                <div className="mt-4 flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+                    <p className="text-sm text-muted-foreground">
+                        Selected customer: <span className="font-semibold text-foreground">{selectedCustomer.name}</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Current balance: 
+                        <span className={cn("font-medium ml-1", selectedCustomer.balance > 0 ? "text-green-600" : selectedCustomer.balance < 0 ? "text-destructive" : "text-foreground")}>
+                           ₱{selectedCustomer.balance.toFixed(2)}
+                        </span>
+                    </p>
+                </div>
+            )}
           </CardContent>
         </Card>
 
@@ -198,17 +222,19 @@ export default function CheckoutPage() {
                   />
                 </div>
               </div>
-              {selectedCustomer && (
+              {selectedCustomer && selectedCustomer.balance !== 0 && (
                 <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
-                        <Label>Apply Customer Balance</Label>
+                        <Label htmlFor='apply-balance'>Apply Customer Balance</Label>
                         <p className="text-sm text-muted-foreground">
-                            Current balance: <span className={cn("font-medium", selectedCustomer.balance > 0 ? "text-green-600" : selectedCustomer.balance < 0 ? "text-destructive" : "")}>₱{selectedCustomer.balance.toFixed(2)}</span>
+                           Use their <span className={cn("font-medium", selectedCustomer.balance > 0 ? "text-green-600" : "text-destructive")}>₱{selectedCustomer.balance.toFixed(2)}</span> balance in this transaction.
                         </p>
                     </div>
                     <Switch
+                        id='apply-balance'
                         checked={applyBalance}
                         onCheckedChange={setApplyBalance}
+                        disabled={!selectedCustomer}
                     />
                 </div>
               )}
