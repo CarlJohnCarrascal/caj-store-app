@@ -38,24 +38,23 @@ const prompt = ai.definePrompt({
   name: 'extractTransactionDetailsPrompt',
   input: {schema: ExtractTransactionDetailsInputSchema},
   output: {schema: ExtractTransactionDetailsOutputSchema},
-  prompt: `You are an intelligent data entry assistant for a small business. Your task is to extract transaction details from a raw text message provided by a user. The user is likely pasting a message from their **customer's** transaction confirmation.
+  prompt: `You are an expert system that performs Named Entity Recognition (NER) to extract structured data from raw text. Your task is to analyze a transaction message and extract the following entities into the specified JSON format. The message is from the perspective of the **business's customer**.
 
-Your perspective should be that of the **business**. Analyze the following message and extract the relevant information into the specified JSON format.
+- **transactionType**: Analyze the message to determine if it is a 'Cash In' (money received by the business) or 'Cash Out' (money sent by the business).
+  - If the message says "You have sent", "You paid", or implies the customer sent money, this is a **'Cash In'** for the business.
+  - If the message says "You have received", or implies the customer received money, this is a **'Cash Out'** for the business.
 
-- **transactionType**: Determine if this is a 'Cash In' (money received by the business) or 'Cash Out' (money sent by the business).
-  - If the message says "You have sent" or "You paid", it means the **customer sent money to the business**. This is a **'Cash In'**.
-  - If the message says "You have received", it means the **customer received money from the business**. This is a **'Cash Out'**.
-- **customerName**: Identify the name of the customer or person involved. This is often the name associated with the account in the message.
-- **amount**: Find the monetary value of the transaction.
-- **paymentMethod**: If mentioned, identify the service used (e.g., GCash, Maya).
-- **reference**: Look for any reference or transaction ID.
-- **accountName**: The name associated with the e-wallet/bank account in the message.
-- **accountNumber**: The number of the e-wallet/bank account (like a phone number for e-wallets) in the message.
-- **datetime**: Extract the full date and time of the transaction. Convert it to a standard ISO 8601 format (e.g., '2023-10-31T15:45:00.000Z').
+- **Named Entities to Extract**:
+  - **customerName / accountName**: Identify the person's name or business name involved in the transaction. Use this for both \`customerName\` and \`accountName\`.
+  - **amount**: Identify and extract the monetary value.
+  - **paymentMethod**: Identify the payment service used (e.g., GCash, Maya).
+  - **reference**: Extract any transaction ID, reference number, or tracking code.
+  - **accountNumber**: Extract the associated account number, often a phone number for e-wallets.
+  - **datetime**: Find the full date and time of the transaction. Convert it to a standard ISO 8601 format (e.g., '2023-10-31T15:45:00.000Z').
 
-If a piece of information is not present, omit the field from the output.
+If a piece of information is not present in the message, omit its corresponding field from the output.
 
-Message:
+Message to analyze:
 "{{message}}"`,
 });
 
