@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CashTransaction, Account } from '@/lib/types';
+import { CashTransaction, Account, Product } from '@/lib/types';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare } from 'lucide-react';
@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { updateCashTransactionStatusAction } from '@/lib/actions';
+import { useCart } from '@/hooks/use-cart';
 
 interface CashTransactionTableProps {
   transactions: CashTransaction[];
@@ -57,6 +58,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
   const [selectedTransaction, setSelectedTransaction] = React.useState<CashTransaction | null>(null);
   const [isUpdating, startUpdateTransition] = React.useTransition();
   const { toast } = useToast();
+  const { addToCart, setCartCustomer } = useCart();
 
 
   // Filtering state
@@ -71,10 +73,36 @@ export default function CashTransactionTable({ transactions: initialTransactions
   }, []);
 
   const handleUpdateStatus = (transactionId: string) => {
+    if (!selectedTransaction) return;
+
     startUpdateTransition(async () => {
       try {
+        const transaction = selectedTransaction;
+
+        const finalPrice = transaction.transactionType === 'Cash In'
+            ? transaction.amount + transaction.fee
+            : transaction.amount - transaction.fee;
+
+        const transactionAsProduct: Product = {
+            id: `cashio-${transaction.reference}-${Date.now()}`,
+            name: `${transaction.transactionType}: ${transaction.customerName}`,
+            price: finalPrice,
+            description: `Ref: ${transaction.reference} | Acct: ${transaction.accountName} (${transaction.accountNumber}) | Fee: ₱${transaction.fee.toFixed(2)} | Amt: ₱${transaction.amount.toFixed(2)}`,
+            group: 'Financial',
+            category: 'CashIO',
+            show: false,
+            stock: 1,
+            unit: 'each',
+            image: 'https://placehold.co/600x600.png',
+            material: 'N/A',
+            dimensions: 'N/A'
+        };
+        
+        addToCart(transactionAsProduct, 1);
+        setCartCustomer({ name: transaction.customerName });
+
         await updateCashTransactionStatusAction(transactionId);
-        toast({ title: 'Success', description: 'Transaction status has been updated.' });
+        toast({ title: 'Success', description: 'Transaction added to order and status has been updated.' });
         setSelectedTransaction(null);
       } catch (error: any) {
         toast({
@@ -303,7 +331,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
                        <p className="text-sm text-muted-foreground">
-                          {t.transactionType === 'Cash Out' ? 'From: ' : 'To: '} 
+                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '} 
                           {t.customerName}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
@@ -540,7 +568,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     onClick={() => handleUpdateStatus(selectedTransaction.id)}
                     disabled={isUpdating}
                   >
-                    {isUpdating ? 'Updating...' : 'Add to Order'}
+                    {isUpdating ? 'Adding to Order...' : 'Add to Order'}
                   </Button>
                 )}
               <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Close</Button>
@@ -551,4 +579,3 @@ export default function CashTransactionTable({ transactions: initialTransactions
     </div>
   );
 }
-
