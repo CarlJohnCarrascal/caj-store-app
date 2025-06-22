@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -48,7 +49,7 @@ export interface CashTransaction {
   dateRecieved?: Date;
   dateClaimedOrSent?: Date;
   customerName: string;
-  status: 'Pending' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'Delivered' | 'Available' | 'Claimed' | 'Cancelled';
   createdAt: Date;
   updatedAt: Date;
 }

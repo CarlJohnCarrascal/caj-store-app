@@ -240,7 +240,9 @@ export default function CashTransactionTable({ transactions: initialTransactions
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Delivered">Delivered</SelectItem>
+                  <SelectItem value="Available">Available</SelectItem>
+                  <SelectItem value="Claimed">Claimed</SelectItem>
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
@@ -271,16 +273,16 @@ export default function CashTransactionTable({ transactions: initialTransactions
                       <p className="text-sm text-muted-foreground">From: {t.customerName} ({t.accountNumber})</p>
                       <div>
                         <Badge
-                          variant={
-                            t.status === 'Completed' ? 'default' :
-                            t.status === 'Cancelled' ? 'destructive' :
-                            'secondary'
-                          }
+                          variant={t.status === 'Cancelled' ? 'destructive' : 'default'}
                           className={cn(
-                            t.status === 'Pending' && 'bg-cyan-500 text-cyan-50 hover:bg-cyan-600 border-transparent'
+                            { 'border-transparent': t.status !== 'Cancelled' },
+                            {
+                              'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
+                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Pending' || t.status === 'Available',
+                            }
                           )}
                         >
-                          {t.status === 'Pending' ? 'Not yet claimed' : t.status}
+                          {t.status}
                         </Badge>
                       </div>
                     </div>
@@ -348,7 +350,16 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     <TableCell>{t.reference}</TableCell>
                     <TableCell className='text-right font-mono'>₱{t.amount.toFixed(2)}</TableCell>
                     <TableCell>
-                        <Badge variant={t.status === 'Completed' ? 'default' : t.status === 'Cancelled' ? 'destructive' : 'secondary'}>
+                        <Badge
+                          variant={t.status === 'Cancelled' ? 'destructive' : 'default'}
+                          className={cn(
+                            { 'border-transparent': t.status !== 'Cancelled' },
+                            {
+                              'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
+                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Pending' || t.status === 'Available',
+                            }
+                          )}
+                        >
                             {t.status}
                         </Badge>
                     </TableCell>
