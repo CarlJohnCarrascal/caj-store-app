@@ -37,6 +37,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                 {cartItems.map(item => {
                   const isKg = item.unit === 'kg';
                   const isPrinting = item.category === 'Printing';
+                  const isCashIO = item.category === 'CashIO';
                   const step = isKg ? 0.01 : 1;
                   const min = isKg ? 0.01 : 1;
                   
@@ -49,7 +50,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                           fill
                           sizes="80px"
                           className="object-cover"
-                          data-ai-hint={isPrinting ? 'printing service' : 'product photo'}
+                          data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : 'product photo'}
                         />
                       </div>
                       <div className="flex-1">
@@ -57,53 +58,55 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                            <h3 className="flex-1 pr-2">{item.name}</h3>
                            <p className="pl-4">₱{(item.price * item.quantity).toFixed(2)}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>
-                        {isPrinting && item.description && (
+                        {!isCashIO && <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>}
+                        {(isPrinting || isCashIO) && item.description && (
                           <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                         )}
-                        <div className="flex items-center mt-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              const newQuantity = Math.max(min, parseFloat((item.quantity - step).toPrecision(10)));
-                              updateQuantity(item.id, newQuantity);
-                            }}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <Input
-                            type="number"
-                            step={step}
-                            min={min}
-                            value={item.quantity}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              if (!isNaN(val)) {
-                                updateQuantity(item.id, val);
-                              }
-                            }}
-                            onBlur={(e) => {
-                               const val = parseFloat(e.target.value);
-                               if(isNaN(val) || val < min) {
-                                   updateQuantity(item.id, min);
-                               }
-                            }}
-                            className="h-7 w-16 text-center mx-2"
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              const newQuantity = parseFloat((item.quantity + step).toPrecision(10));
-                              updateQuantity(item.id, newQuantity);
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        {!isCashIO && (
+                          <div className="flex items-center mt-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                const newQuantity = Math.max(min, parseFloat((item.quantity - step).toPrecision(10)));
+                                updateQuantity(item.id, newQuantity);
+                              }}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <Input
+                              type="number"
+                              step={step}
+                              min={min}
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                  updateQuantity(item.id, val);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                 const val = parseFloat(e.target.value);
+                                 if(isNaN(val) || val < min) {
+                                     updateQuantity(item.id, min);
+                                 }
+                              }}
+                              className="h-7 w-16 text-center mx-2"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                const newQuantity = parseFloat((item.quantity + step).toPrecision(10));
+                                updateQuantity(item.id, newQuantity);
+                              }}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
