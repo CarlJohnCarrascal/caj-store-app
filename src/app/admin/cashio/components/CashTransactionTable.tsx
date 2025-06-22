@@ -29,6 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CashTransactionTableProps {
   transactions: CashTransaction[];
@@ -42,6 +43,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [sort, setSort] = React.useState<{key: keyof CashTransaction | 'createdAt', order: 'asc' | 'desc'}>({ key: 'createdAt', order: 'desc' });
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
+  const [isMounted, setIsMounted] = React.useState(false);
 
   // Filtering state
   const [date, setDate] = React.useState<DateRange | undefined>();
@@ -49,6 +51,10 @@ export default function CashTransactionTable({ transactions: initialTransactions
   const [method, setMethod] = React.useState('all');
   const [accountUsed, setAccountUsed] = React.useState('all');
   const [status, setStatus] = React.useState('all');
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const filteredTransactions = React.useMemo(() => {
     return transactions
@@ -279,7 +285,9 @@ export default function CashTransactionTable({ transactions: initialTransactions
                       </div>
                     </div>
                     <div className="flex flex-col items-end text-right">
-                      <p className="text-sm text-muted-foreground mb-1.5">{format(t.createdAt, 'M/d/yyyy, pp')}</p>
+                      <div className="text-sm text-muted-foreground mb-1.5 h-4">
+                        {isMounted ? format(t.createdAt, 'M/d/yyyy, pp') : <Skeleton className="h-4 w-32" />}
+                      </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
                           ₱{t.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -325,7 +333,9 @@ export default function CashTransactionTable({ transactions: initialTransactions
             {paginatedTransactions.length > 0 ? (
                 paginatedTransactions.map(t => (
                 <TableRow key={t.id}>
-                    <TableCell>{format(t.createdAt, 'PPp')}</TableCell>
+                    <TableCell>
+                      {isMounted ? format(t.createdAt, 'PPp') : <Skeleton className="h-5 w-40" />}
+                    </TableCell>
                     <TableCell>
                         <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
                             {t.transactionType}
