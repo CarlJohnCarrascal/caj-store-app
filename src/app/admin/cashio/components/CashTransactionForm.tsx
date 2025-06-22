@@ -106,8 +106,11 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   const onAddToOrder = (data: CashTransactionFormValues) => {
     const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
 
-    const basePrice = data.transactionType === 'Cash Out' ? -data.amount : data.amount;
-    const finalPrice = basePrice - data.fee;
+    // For Cash Out, the customer pays for the amount they receive plus the fee.
+    // For Cash In, the customer gets a credit for the amount they give, minus the fee.
+    const finalPrice = data.transactionType === 'Cash Out'
+        ? data.amount + data.fee
+        : data.fee - data.amount;
 
     const transactionAsProduct: Product = {
         id: `cashio-${data.reference}-${Date.now()}`,
