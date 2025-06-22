@@ -368,6 +368,11 @@ export async function getCollections(): Promise<Collection[]> {
   return Promise.resolve(collectionsWithCustomerNames);
 }
 
+export async function getCollectionNames(): Promise<string[]> {
+    const names = collections.map(c => c.name);
+    return Promise.resolve([...new Set(names)]);
+}
+
 export async function getCollectionById(id: string): Promise<Collection | undefined> {
   return Promise.resolve(collections.find(c => c.id === id));
 }

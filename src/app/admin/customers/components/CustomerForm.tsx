@@ -26,9 +26,11 @@ type CustomerFormValues = z.infer<typeof formSchema>;
 
 interface CustomerFormProps {
   customer?: Customer;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export default function CustomerForm({ customer }: CustomerFormProps) {
+export default function CustomerForm({ customer, onSuccess, onCancel }: CustomerFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -63,8 +65,13 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
           toast({ title: 'Success', description: 'Customer added successfully.' });
           form.reset();
         }
-        router.push('/admin/customers');
-        router.refresh();
+        
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push('/admin/customers');
+          router.refresh();
+        }
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
       }
@@ -125,7 +132,7 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
             )} />
             
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
+              <Button variant="outline" type="button" onClick={onCancel ? onCancel : () => router.back()}>Cancel</Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? (customer ? 'Saving...' : 'Adding...') : (customer ? 'Save Changes' : 'Add Customer')}
               </Button>
