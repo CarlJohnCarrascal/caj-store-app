@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, logActivity } from './data';
 import { Product, CartItem, Customer, Account, Collection } from './types';
 
 const productSchema = z.object({
@@ -26,9 +26,18 @@ export async function addProductAction(data: FormData) {
     throw new Error('Invalid product data.');
   }
 
-  await addProduct(validatedFields.data);
+  const newProduct = await addProduct(validatedFields.data);
+  
+  await logActivity({
+    type: 'Product',
+    action: 'Created',
+    details: `Product "${newProduct.name}" was created.`,
+    targetId: newProduct.id,
+  });
+
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
+  revalidatePath('/admin/transactions');
 }
 
 export async function updateProductAction(id: string, data: FormData) {
@@ -40,15 +49,34 @@ export async function updateProductAction(id: string, data: FormData) {
 
   const product: Product = { id, ...validatedFields.data };
   await updateProduct(product);
+
+  await logActivity({
+      type: 'Product',
+      action: 'Updated',
+      details: `Product "${product.name}" was updated.`,
+      targetId: product.id,
+  });
+
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
   revalidatePath(`/admin/products/edit/${id}`);
+  revalidatePath('/admin/transactions');
 }
 
 export async function deleteProductAction(id: string) {
-  await deleteProduct(id);
+  const deletedProduct = await deleteProduct(id);
+  if (deletedProduct) {
+    await logActivity({
+        type: 'Product',
+        action: 'Deleted',
+        details: `Product "${deletedProduct.name}" was deleted.`,
+        targetId: id,
+    });
+  }
+
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
+  revalidatePath('/admin/transactions');
 }
 
 const orderSchema = z.object({
@@ -74,8 +102,18 @@ export async function createOrderAction(order: z.infer<typeof orderSchema>) {
     // process payment, send emails, etc.
     console.log('New Order Created:', validatedOrder.data);
 
+    // Fake order ID for logging
+    const orderId = `order-${Date.now()}`;
+    await logActivity({
+        type: 'Order',
+        action: 'Created',
+        details: `New order placed by ${validatedOrder.data.customer.name} for ₱${validatedOrder.data.total.toFixed(2)}.`,
+        targetId: orderId,
+    });
+
     // Simulate some async work
     await new Promise(res => setTimeout(res, 1000));
+    revalidatePath('/admin/transactions');
 }
 
 const customerSchema = z.object({
@@ -95,8 +133,16 @@ export async function addCustomerAction(data: FormData) {
     throw new Error('Invalid customer data.');
   }
 
-  await addCustomer(validatedFields.data as Omit<Customer, 'id'>);
+  const newCustomer = await addCustomer(validatedFields.data as Omit<Customer, 'id'>);
+  await logActivity({
+    type: 'Customer',
+    action: 'Created',
+    details: `Customer "${newCustomer.name}" was added.`,
+    targetId: newCustomer.id,
+  });
+
   revalidatePath('/admin/customers');
+  revalidatePath('/admin/transactions');
 }
 
 const accountSchema = z.object({
@@ -113,15 +159,33 @@ export async function addAccountAction(data: FormData) {
     throw new Error('Invalid account data.');
   }
 
-  await addAccount(validatedFields.data as Omit<Account, 'id'>);
+  const newAccount = await addAccount(validatedFields.data as Omit<Account, 'id'>);
+  await logActivity({
+      type: 'Account',
+      action: 'Created',
+      details: `Account "${newAccount.accountName}" was created.`,
+      targetId: newAccount.id,
+  });
+
   revalidatePath('/admin/accounts');
   revalidatePath('/admin/cashio');
+  revalidatePath('/admin/transactions');
 }
 
 export async function deleteAccountAction(id: string) {
-    await deleteAccount(id);
+    const deletedAccount = await deleteAccount(id);
+    if(deletedAccount) {
+        await logActivity({
+            type: 'Account',
+            action: 'Deleted',
+            details: `Account "${deletedAccount.accountName}" was deleted.`,
+            targetId: id,
+        });
+    }
+
     revalidatePath('/admin/accounts');
     revalidatePath('/admin/cashio');
+    revalidatePath('/admin/transactions');
 }
 
 
@@ -139,8 +203,16 @@ export async function addCollectionAction(data: FormData) {
         throw new Error('Invalid collection data.');
     }
 
-    await addCollection(validatedFields.data);
+    const newCollection = await addCollection(validatedFields.data);
+    await logActivity({
+        type: 'Collection',
+        action: 'Created',
+        details: `Collection "${newCollection.name}" was created.`,
+        targetId: newCollection.id,
+    });
+    
     revalidatePath('/admin/collections');
+    revalidatePath('/admin/transactions');
 }
 
 export async function updateCollectionAction(id: string, data: FormData) {
@@ -151,11 +223,29 @@ export async function updateCollectionAction(id: string, data: FormData) {
     }
 
     await updateCollection({ id, ...validatedFields.data });
+    await logActivity({
+        type: 'Collection',
+        action: 'Updated',
+        details: `Collection "${validatedFields.data.name}" was updated.`,
+        targetId: id,
+    });
+
     revalidatePath('/admin/collections');
     revalidatePath(`/admin/collections/edit/${id}`);
+    revalidatePath('/admin/transactions');
 }
 
 export async function deleteCollectionAction(id: string) {
-    await deleteCollection(id);
+    const deletedCollection = await deleteCollection(id);
+    if (deletedCollection) {
+        await logActivity({
+            type: 'Collection',
+            action: 'Deleted',
+            details: `Collection "${deletedCollection.name}" was deleted.`,
+            targetId: id,
+        });
+    }
+
     revalidatePath('/admin/collections');
+    revalidatePath('/admin/transactions');
 }

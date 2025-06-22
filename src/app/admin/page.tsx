@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library } from 'lucide-react';
+import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
@@ -115,6 +115,20 @@ export default function AdminDashboard() {
               </CardDescription>
                <Button asChild className="w-full mt-4">
                   <Link href="/admin/collections">Manage Collections</Link>
+               </Button>
+            </CardContent>
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-medium">Transactions</CardTitle>
+              <History className="h-6 w-6 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                View a log of all activities and changes.
+              </CardDescription>
+               <Button asChild className="w-full mt-4">
+                  <Link href="/admin/transactions">View Activity</Link>
                </Button>
             </CardContent>
           </Card>

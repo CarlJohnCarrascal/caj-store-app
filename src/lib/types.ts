@@ -20,7 +20,7 @@ export interface CartItem extends Product {
 }
 
 export interface Account {
-  id: string;
+  id:string;
   accountName: string;
   accountNumber: string;
   bankName: string;
@@ -64,4 +64,13 @@ export interface Collection {
   customerId: string;
   customerName?: string; // For display
   note?: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account';
+  action: 'Created' | 'Updated' | 'Deleted';
+  timestamp: Date;
+  details: string;
+  targetId: string;
 }

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { Product, Account, Customer, CashTransaction, Collection } from './types';
+import { Product, Account, Customer, CashTransaction, Collection, ActivityLog } from './types';
 
 let products: Product[] = [
   {
@@ -280,6 +280,33 @@ let collections: Collection[] = [
     { id: 'coll-4', name: 'Negative Balance', value: '510.00', customerId: 'cust-6', note: 'From previous order, needs to be settled.' },
 ];
 
+let activityLogs: ActivityLog[] = [
+    {
+        id: 'log-1',
+        type: 'Product',
+        action: 'Created',
+        timestamp: new Date('2023-10-25T10:00:00Z'),
+        details: 'Product "Aether-Wing Chair" was created.',
+        targetId: '1',
+    },
+    {
+        id: 'log-2',
+        type: 'Customer',
+        action: 'Created',
+        timestamp: new Date('2023-10-25T11:30:00Z'),
+        details: 'Customer "John Doe" was added.',
+        targetId: 'cust-1',
+    },
+     {
+        id: 'log-3',
+        type: 'Account',
+        action: 'Created',
+        timestamp: new Date('2023-10-26T09:00:00Z'),
+        details: 'Account "Main Business Account" was created.',
+        targetId: 'acc-1',
+    },
+];
+
 
 export async function getProducts(): Promise<Product[]> {
   // In a real app, this would fetch from a database
@@ -308,13 +335,13 @@ export async function updateProduct(updatedProduct: Product): Promise<Product | 
   return Promise.resolve(null);
 }
 
-export async function deleteProduct(id: string): Promise<boolean> {
+export async function deleteProduct(id: string): Promise<Product | null> {
   const index = products.findIndex(p => p.id === id);
   if (index !== -1) {
-    products.splice(index, 1);
-    return Promise.resolve(true);
+    const [deletedProduct] = products.splice(index, 1);
+    return Promise.resolve(deletedProduct);
   }
-  return Promise.resolve(false);
+  return Promise.resolve(null);
 }
 
 export async function getAccounts(): Promise<Account[]> {
@@ -330,13 +357,13 @@ export async function addAccount(account: Omit<Account, 'id'>): Promise<Account>
   return Promise.resolve(newAccount);
 }
 
-export async function deleteAccount(id: string): Promise<boolean> {
+export async function deleteAccount(id: string): Promise<Account | null> {
   const index = accounts.findIndex(a => a.id === id);
   if (index !== -1) {
-    accounts.splice(index, 1);
-    return Promise.resolve(true);
+    const [deletedAccount] = accounts.splice(index, 1);
+    return Promise.resolve(deletedAccount);
   }
-  return Promise.resolve(false);
+  return Promise.resolve(null);
 }
 
 export async function getCustomers(): Promise<Customer[]> {
@@ -395,11 +422,28 @@ export async function updateCollection(updatedCollection: Omit<Collection, 'cust
     return Promise.resolve(null);
 }
 
-export async function deleteCollection(id: string): Promise<boolean> {
+export async function deleteCollection(id: string): Promise<Collection | null> {
     const index = collections.findIndex(c => c.id === id);
     if (index !== -1) {
-        collections.splice(index, 1);
-        return Promise.resolve(true);
+        const [deletedCollection] = collections.splice(index, 1);
+        return Promise.resolve(deletedCollection);
     }
-    return Promise.resolve(false);
+    return Promise.resolve(null);
+}
+
+export async function getActivities(): Promise<ActivityLog[]> {
+  // sort by most recent first
+  const sortedLogs = activityLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  return Promise.resolve(sortedLogs);
+}
+
+export async function logActivity(log: Omit<ActivityLog, 'id' | 'timestamp'>): Promise<void> {
+  const newLog: ActivityLog = {
+    ...log,
+    id: `log-${Date.now()}`,
+    timestamp: new Date(),
+    targetId: log.targetId,
+  };
+  activityLogs.unshift(newLog); // Add to the beginning of the array
+  return Promise.resolve();
 }
