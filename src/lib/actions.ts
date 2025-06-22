@@ -89,6 +89,7 @@ const processOrderSchema = z.object({
     amountTendered: z.number(),
     applyCustomerBalance: z.boolean(),
     initialCustomerBalance: z.number(),
+    settlementType: z.enum(['pay_order', 'add_to_balance']),
 });
 
 export async function processOrderAction(orderData: z.infer<typeof processOrderSchema>) {
@@ -105,6 +106,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         amountTendered,
         applyCustomerBalance,
         initialCustomerBalance,
+        settlementType,
     } = validatedOrder.data;
 
     // Log the order creation
@@ -116,17 +118,18 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         targetId: orderId,
     });
 
-    // Calculate balance change
-    let balanceChangeFromTender = total - amountTendered;
-
-    // For negative totals (cash-out), the transaction is settled in cash from the store's side.
-    // The customer's balance should not be affected by the tender amount.
-    // The cash-out itself already handled the debit from the store's financial account.
-    if (total < 0) {
-      balanceChangeFromTender = 0;
+    let totalBalanceUpdate = 0;
+    
+    // Only update balance from tender if "Add to Balance" was clicked
+    if (settlementType === 'add_to_balance') {
+        let balanceChangeFromTender = total - amountTendered;
+        // For negative totals (cash-out), the transaction is settled in cash from the store's side.
+        // The customer's balance should not be affected by the tender amount.
+        if (total < 0) {
+            balanceChangeFromTender = 0;
+        }
+        totalBalanceUpdate += balanceChangeFromTender;
     }
-
-    let totalBalanceUpdate = balanceChangeFromTender;
 
     // If we applied the initial balance, we must subtract it from the customer's account to "zero it out"
     if (applyCustomerBalance) {

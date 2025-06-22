@@ -85,13 +85,12 @@ export default function CheckoutPage() {
   const discountValue = parseFloat(discount) || 0;
   const customerBalanceToApply = applyBalance && selectedCustomer ? selectedCustomer.balance : 0;
   
-  // Correction: finalTotal can be negative
   const finalTotal = cartTotal - discountValue - customerBalanceToApply;
 
   const amountTenderedValue = parseFloat(amountTendered) || 0;
   const balanceOrChange = finalTotal - amountTenderedValue;
 
-  const processOrder = () => {
+  const processOrder = (settlementType: 'pay_order' | 'add_to_balance') => {
     if (!selectedCustomerId || !selectedCustomer) {
       toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
       return;
@@ -109,6 +108,7 @@ export default function CheckoutPage() {
           amountTendered: amountTenderedValue,
           applyCustomerBalance: applyBalance,
           initialCustomerBalance: selectedCustomer.balance,
+          settlementType,
         });
 
         toast({
@@ -137,11 +137,11 @@ export default function CheckoutPage() {
       return;
     }
     
-    if (finalTotal >= 0 && balanceOrChange !== 0) {
-      toast({ variant: 'destructive', title: 'Incorrect Payment', description: 'Amount tendered must equal the total. For other amounts, use "Add to Balance".' });
-      return;
+    if (finalTotal >= 0 && amountTenderedValue < finalTotal) {
+       toast({ variant: 'destructive', title: 'Insufficient Payment', description: 'Amount tendered must be greater than or equal to the total.' });
+       return;
     }
-    processOrder();
+    processOrder('pay_order');
   };
 
   if (cartItems.length === 0 && !isSubmitting) {
@@ -317,7 +317,7 @@ export default function CheckoutPage() {
               <Button 
                 variant="secondary" 
                 className="w-full" 
-                onClick={processOrder}
+                onClick={() => processOrder('add_to_balance')}
                 disabled={isSubmitting || !selectedCustomerId}
               >
                 {isSubmitting ? 'Processing...' : `Add to Balance (₱${balanceOrChange.toFixed(2)})`}
