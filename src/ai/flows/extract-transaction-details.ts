@@ -44,7 +44,7 @@ export async function extractTransactionDetails(
 
     const prompt = `You are an expert system that performs Named Entity Recognition (NER). Extract the following entities from this transaction message and return as a JSON object with ONLY these keys: datetime, transactionType, amount, accountName, accountNumber, balance, reference, paymentMethod.
 - datetime: An ISO 8601 string.
-- transactionType: Must be either 'sent' or 'received' from the sender's perspective.
+- transactionType: Must be either "sent" or "received" from the message author's perspective.
 - amount: Must be a number.
 - paymentMethod: Must be 'Gcash', 'Maya', or 'Other'.
 If a value is not present, omit the key from the JSON object.

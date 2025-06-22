@@ -123,7 +123,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
         const populatedFields: string[] = [];
 
         if (result.transactionType) {
-            // 'sent' from the message author's (customer's) perspective means they sent you money.
+            // 'sent' from the message author's (customer's) perspective means they sent you money (Cash In).
             const formTransactionType = result.transactionType === 'sent' ? 'Cash In' : 'Cash Out';
             form.setValue('transactionType', formTransactionType, { shouldValidate: true });
             populatedFields.push('transactionType');
