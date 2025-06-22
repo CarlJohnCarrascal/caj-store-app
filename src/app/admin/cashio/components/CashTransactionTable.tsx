@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account } from '@/lib/types';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -30,6 +30,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface CashTransactionTableProps {
   transactions: CashTransaction[];
@@ -44,6 +52,8 @@ export default function CashTransactionTable({ transactions: initialTransactions
   const [sort, setSort] = React.useState<{key: keyof CashTransaction | 'createdAt', order: 'asc' | 'desc'}>({ key: 'createdAt', order: 'desc' });
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
+  const [selectedTransaction, setSelectedTransaction] = React.useState<CashTransaction | null>(null);
+
 
   // Filtering state
   const [date, setDate] = React.useState<DateRange | undefined>();
@@ -264,13 +274,17 @@ export default function CashTransactionTable({ transactions: initialTransactions
            <div>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map(t => (
-                <div key={t.id} className="border-b last:border-b-0">
+                <div
+                  key={t.id}
+                  className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => setSelectedTransaction(t)}
+                >
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
                        <p className="text-sm text-muted-foreground">
                           {t.transactionType === 'Cash In' ? 'To: ' : 'From: '} 
-                          {t.customerName} ({t.accountNumber})
+                          {t.customerName}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
                           Account Used: {t.ourAccountName}
@@ -418,6 +432,95 @@ export default function CashTransactionTable({ transactions: initialTransactions
             </div>
         </div>
       </div>
+      
+      {selectedTransaction && (
+        <Dialog open={!!selectedTransaction} onOpenChange={(isOpen) => !isOpen && setSelectedTransaction(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {selectedTransaction.transactionType === 'Cash In' ? (
+                  <ArrowUp className="h-6 w-6 text-green-600" />
+                ) : (
+                  <ArrowDown className="h-6 w-6 text-red-600" />
+                )}
+                <span>{selectedTransaction.transactionType}</span>
+              </DialogTitle>
+              <DialogDescription>
+                {isMounted ? format(selectedTransaction.createdAt, 'PPpp') : 'Loading date...'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
+                   <span className="text-muted-foreground">Amount</span>
+                   <p className="text-2xl font-bold">
+                      ₱{selectedTransaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                </div>
+                {selectedTransaction.fee > 0 && (
+                   <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Fee</span>
+                      <p>₱{selectedTransaction.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                   </div>
+                )}
+                 <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge
+                          variant={'default'}
+                          className={cn(
+                            {
+                              'bg-green-600 hover:bg-green-700': selectedTransaction.status === 'Delivered' || selectedTransaction.status === 'Claimed',
+                              'bg-cyan-500 hover:bg-cyan-600': selectedTransaction.status === 'Available',
+                            }
+                          )}
+                        >
+                          {selectedTransaction.status}
+                        </Badge>
+                   </div>
+              </div>
+              
+              <div className="space-y-3">
+                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'To' : 'From'}</h4>
+                 <div className="flex items-center gap-3 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground"/>
+                    <span>{selectedTransaction.customerName} ({selectedTransaction.accountName})</span>
+                 </div>
+                 <div className="flex items-center gap-3 text-sm">
+                    <Wallet className="h-4 w-4 text-muted-foreground"/>
+                    <span>{selectedTransaction.accountNumber}</span>
+                 </div>
+              </div>
+              
+              <div className="space-y-3">
+                 <h4 className="font-semibold">Our Account</h4>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Landmark className="h-4 w-4 text-muted-foreground"/>
+                    <span>{selectedTransaction.ourAccountName} via {selectedTransaction.paymentMethod}</span>
+                 </div>
+              </div>
+
+               <div className="space-y-3">
+                 <h4 className="font-semibold">Details</h4>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Hash className="h-4 w-4 text-muted-foreground"/>
+                    <span>{selectedTransaction.reference}</span>
+                 </div>
+                 {selectedTransaction.message && (
+                     <div className="flex items-start gap-3 text-sm">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5"/>
+                        <p className="border-l-2 pl-3 text-muted-foreground">{selectedTransaction.message}</p>
+                     </div>
+                 )}
+              </div>
+
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
+
