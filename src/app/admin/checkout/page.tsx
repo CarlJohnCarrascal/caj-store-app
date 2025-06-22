@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import { getCustomers } from '@/lib/data';
-import { createOrderAction } from '@/lib/actions';
+import { createOrderAction, createOrderAndUpdateBalanceAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,8 @@ export default function CheckoutPage() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [discount, setDiscount] = useState('');
   const [amountTendered, setAmountTendered] = useState('');
-  const [isSubmitting, startTransition] = useTransition();
+  const [isSubmittingPayment, startPaymentTransition] = useTransition();
+  const [isSubmittingBalance, startBalanceTransition] = useTransition();
 
   useEffect(() => {
     async function fetchCustomers() {
@@ -80,19 +81,24 @@ export default function CheckoutPage() {
   const amountTenderedValue = parseFloat(amountTendered) || 0;
   const balanceOrChange = finalTotal - amountTenderedValue;
 
-  async function handlePlaceOrder() {
+  async function handlePayOrder() {
     if (!selectedCustomerId) {
       toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
       return;
     }
     
+    if (balanceOrChange !== 0) {
+        toast({ variant: 'destructive', title: 'Incorrect Payment', description: 'Amount tendered must equal the total. For other amounts, use "Add to Balance".' });
+        return;
+    }
+
     const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
     if (!selectedCustomer) {
         toast({ variant: 'destructive', title: 'Error', description: 'Selected customer not found.' });
         return;
     }
 
-    startTransition(async () => {
+    startPaymentTransition(async () => {
       try {
         await createOrderAction({
           customerId: selectedCustomerId,
@@ -117,8 +123,48 @@ export default function CheckoutPage() {
       }
     });
   }
+  
+  async function handleAddToBalance() {
+    if (!selectedCustomerId) {
+      toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
+      return;
+    }
+    
+    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+    if (!selectedCustomer) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Selected customer not found.' });
+        return;
+    }
 
-  if (cartItems.length === 0 && !isSubmitting) {
+    startBalanceTransition(async () => {
+      try {
+        await createOrderAndUpdateBalanceAction({
+          customerId: selectedCustomerId,
+          customerName: selectedCustomer.name,
+          items: cartItems,
+          subtotal: cartTotal,
+          discount: discountValue,
+          total: finalTotal,
+          balanceChange: balanceOrChange
+        });
+        toast({
+          title: 'Order Placed & Balance Updated!',
+          description: `Customer balance has been updated by ₱${balanceOrChange.toFixed(2)}.`,
+        });
+        clearCart();
+        router.push('/admin/order-confirmation');
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Operation Failed',
+          description: 'There was a problem processing the order and updating balance.',
+        });
+      }
+    });
+  }
+
+
+  if (cartItems.length === 0 && !isSubmittingPayment && !isSubmittingBalance) {
     return (
         <div className="text-center">
             <h1 className="text-2xl font-semibold">Your order is empty</h1>
@@ -244,10 +290,20 @@ export default function CheckoutPage() {
                 )}
             </div>
           </CardContent>
-          <CardFooter>
-            <Button className="w-full" onClick={handlePlaceOrder} disabled={isSubmitting || !selectedCustomerId}>
-              {isSubmitting ? 'Placing Order...' : 'Place Order'}
+          <CardFooter className="flex flex-col gap-2">
+            <Button className="w-full" onClick={handlePayOrder} disabled={isSubmittingPayment || isSubmittingBalance || !selectedCustomerId}>
+              {isSubmittingPayment ? 'Processing Payment...' : 'Pay Order'}
             </Button>
+            {balanceOrChange !== 0 && (
+              <Button 
+                variant="secondary" 
+                className="w-full" 
+                onClick={handleAddToBalance} 
+                disabled={isSubmittingPayment || isSubmittingBalance || !selectedCustomerId}
+              >
+                {isSubmittingBalance ? 'Adding to Balance...' : `Add to Balance (₱${balanceOrChange.toFixed(2)})`}
+              </Button>
+            )}
           </CardFooter>
         </Card>
       </div>

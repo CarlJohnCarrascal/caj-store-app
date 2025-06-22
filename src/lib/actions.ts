@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -111,6 +111,34 @@ export async function createOrderAction(order: z.infer<typeof orderSchema>) {
     // Simulate some async work
     await new Promise(res => setTimeout(res, 1000));
     revalidatePath('/admin/transactions');
+}
+
+const orderWithBalanceSchema = orderSchema.extend({
+    balanceChange: z.number(),
+});
+
+export async function createOrderAndUpdateBalanceAction(order: z.infer<typeof orderWithBalanceSchema>) {
+    const validatedOrder = orderWithBalanceSchema.safeParse(order);
+    if (!validatedOrder.success) {
+        throw new Error('Invalid order data for balance update.');
+    }
+    const { customerId, balanceChange, customerName } = validatedOrder.data;
+
+    // Create order log first
+    await createOrderAction(order);
+    
+    // Update customer's balance
+    await updateCustomerBalance(customerId, balanceChange);
+    
+    // Log the balance update
+    await logActivity({
+        type: 'Customer',
+        action: 'Updated',
+        details: `Balance for ${customerName} updated by ₱${balanceChange.toFixed(2)} from an order.`,
+        targetId: customerId,
+    });
+    
+    revalidatePath('/admin/customers');
 }
 
 const customerSchema = z.object({

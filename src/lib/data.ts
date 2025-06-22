@@ -362,6 +362,15 @@ export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Custo
   return Promise.resolve(newCustomer);
 }
 
+export async function updateCustomerBalance(customerId: string, amount: number): Promise<Customer | null> {
+    const index = customers.findIndex(c => c.id === customerId);
+    if (index !== -1) {
+        customers[index].balance += amount;
+        return Promise.resolve(customers[index]);
+    }
+    return Promise.resolve(null);
+}
+
 export async function getCashTransactions(): Promise<CashTransaction[]> {
   const transactionsWithAccountNames = cashTransactions.map(transaction => {
     const account = accounts.find(a => a.id === transaction.accountUsedId);
