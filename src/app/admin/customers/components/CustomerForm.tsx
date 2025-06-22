@@ -15,10 +15,11 @@ import { useTransition } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  phone: z.string().optional(),
   address: z.string().min(1, 'Address is required'),
   location: z.string().min(1, 'Location is required'),
+  balance: z.coerce.number().default(0),
 });
 
 type CustomerFormValues = z.infer<typeof formSchema>;
@@ -34,12 +35,13 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
 
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: customer ? customer : {
+    defaultValues: customer ? { ...customer, email: customer.email || '', phone: customer.phone || '' } : {
       name: '',
       email: '',
       phone: '',
       address: '',
       location: '',
+      balance: 0,
     },
   });
 
@@ -48,7 +50,9 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
       try {
         const formData = new FormData();
         Object.entries(data).forEach(([key, value]) => {
-          formData.append(key, value);
+          if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
         });
 
         if (customer) {
@@ -85,14 +89,14 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
                 )} />
                 <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email (Optional)</FormLabel>
                     <FormControl><Input type="email" placeholder="e.g. john@example.com" {...field} /></FormControl>
                     <FormMessage />
                 </FormItem>
                 )} />
                 <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>Phone Number (Optional)</FormLabel>
                     <FormControl><Input placeholder="e.g. 09123456789" {...field} /></FormControl>
                     <FormMessage />
                 </FormItem>
@@ -103,6 +107,13 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
                     <FormControl><Input placeholder="e.g. Anytown" {...field} /></FormControl>
                     <FormMessage />
                 </FormItem>
+                )} />
+                 <FormField control={form.control} name="balance" render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Initial Balance</FormLabel>
+                      <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} /></FormControl>
+                      <FormMessage />
+                  </FormItem>
                 )} />
              </div>
              <FormField control={form.control} name="address" render={({ field }) => (

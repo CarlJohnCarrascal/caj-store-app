@@ -29,8 +29,8 @@ export interface Account {
 export interface Customer {
   id: string;
   name: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   address: string;
   location: string;
   balance: number;

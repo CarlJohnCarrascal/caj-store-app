@@ -283,11 +283,10 @@ export async function getCustomers(): Promise<Customer[]> {
   return Promise.resolve(customers);
 }
 
-export async function addCustomer(customer: Omit<Customer, 'id' | 'balance'>): Promise<Customer> {
+export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Customer> {
   const newCustomer: Customer = {
-    ...customer,
     id: `cust-${Date.now()}`,
-    balance: 0,
+    ...customer,
   };
   customers.push(newCustomer);
   return Promise.resolve(newCustomer);

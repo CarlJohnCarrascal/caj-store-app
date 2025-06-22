@@ -80,10 +80,11 @@ export async function createOrderAction(order: z.infer<typeof orderSchema>) {
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  phone: z.string().optional(),
   address: z.string().min(1, 'Address is required'),
   location: z.string().min(1, 'Location is required'),
+  balance: z.coerce.number().default(0),
 });
 
 
@@ -94,6 +95,6 @@ export async function addCustomerAction(data: FormData) {
     throw new Error('Invalid customer data.');
   }
 
-  await addCustomer(validatedFields.data);
+  await addCustomer(validatedFields.data as Omit<Customer, 'id'>);
   revalidatePath('/admin/customers');
 }
