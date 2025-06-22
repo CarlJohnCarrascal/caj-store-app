@@ -78,7 +78,7 @@ export default function CheckoutPage() {
   const discountValue = parseFloat(discount) || 0;
   const finalTotal = Math.max(0, cartTotal - discountValue);
   const amountTenderedValue = parseFloat(amountTendered) || 0;
-  const changeDue = amountTenderedValue > finalTotal ? amountTenderedValue - finalTotal : 0;
+  const balanceOrChange = finalTotal - amountTenderedValue;
 
   async function handlePlaceOrder() {
     if (!selectedCustomerId) {
@@ -231,10 +231,17 @@ export default function CheckoutPage() {
                     <span className="text-muted-foreground">Amount Tendered</span>
                     <span>₱{amountTenderedValue.toFixed(2)}</span>
                 </div>
-                 <div className="flex justify-between">
-                    <span className="text-muted-foreground">Change Due</span>
-                    <span>₱{changeDue.toFixed(2)}</span>
-                </div>
+                 {balanceOrChange <= 0 ? (
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Change Due</span>
+                      <span>₱{(-balanceOrChange).toFixed(2)}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between font-semibold text-base text-destructive">
+                      <span>Balance Due</span>
+                      <span>₱{balanceOrChange.toFixed(2)}</span>
+                  </div>
+                )}
             </div>
           </CardContent>
           <CardFooter>
