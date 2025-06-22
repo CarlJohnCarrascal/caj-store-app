@@ -32,6 +32,8 @@ export interface Customer {
   email: string;
   phone: string;
   address: string;
+  location: string;
+  balance: number;
 }
 
 export interface CashTransaction {

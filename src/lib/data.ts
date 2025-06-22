@@ -139,8 +139,14 @@ let accounts: Account[] = [
 ];
 
 let customers: Customer[] = [
-    { id: 'cust-1', name: 'John Doe', email: 'john.d@example.com', phone: '09112223333', address: '123 Main St, Anytown' },
-    { id: 'cust-2', name: 'Jane Smith', email: 'jane.s@example.com', phone: '09445556666', address: '456 Oak Ave, Othertown' },
+    { id: 'cust-1', name: 'John Doe', email: 'john.d@example.com', phone: '09112223333', address: '123 Main St, Anytown', location: 'Anytown', balance: 150 },
+    { id: 'cust-2', name: 'Jane Smith', email: 'jane.s@example.com', phone: '09445556666', address: '456 Oak Ave, Othertown', location: 'Othertown', balance: -50 },
+    { id: 'cust-3', name: 'Aira Buenconcejo', email: 'aira.b@example.com', phone: '09123456781', address: 'Purok 1, Siuton', location: 'Siuton', balance: 70 },
+    { id: 'cust-4', name: 'Carl John Carrascal', email: 'carl.c@example.com', phone: '09123456782', address: 'Purok 2, Siuton', location: 'Siuton', balance: 350 },
+    { id: 'cust-5', name: 'Crisanto Antiado', email: 'crisanto.a@example.com', phone: '09123456783', address: 'Purok 3, Siuton', location: 'Siuton', balance: 0 },
+    { id: 'cust-6', name: 'Crizza Rotaeche', email: 'crizza.r@example.com', phone: '09123456784', address: 'Purok 4, Siuton', location: 'Siuton', balance: -510 },
+    { id: 'cust-7', name: 'Dhon Carrascal', email: 'dhon.c@example.com', phone: '09123456785', address: 'Purok 5, Siuton', location: 'Siuton', balance: 0 },
+    { id: 'cust-8', name: 'Francis Maquiling', email: 'francis.m@example.com', phone: '09123456786', address: 'Purok 6, Siuton', location: 'Siuton', balance: 510 },
 ];
 
 let cashTransactions: CashTransaction[] = [
