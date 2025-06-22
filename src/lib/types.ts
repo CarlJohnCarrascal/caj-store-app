@@ -41,6 +41,7 @@ export interface CashTransaction {
   id: string;
   paymentMethod: 'Gcash' | 'Maya' | 'Other';
   accountUsedId: string;
+  ourAccountName?: string; // For display
   transactionType: 'Cash In' | 'Cash Out';
   message: string;
   accountName: string;

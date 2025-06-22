@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, logActivity } from './data';
-import { Product, CartItem, Customer, Account, Collection } from './types';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity } from './data';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -186,6 +186,43 @@ export async function deleteAccountAction(id: string) {
     revalidatePath('/admin/accounts');
     revalidatePath('/admin/cashio');
     revalidatePath('/admin/transactions');
+}
+
+const cashTransactionSchema = z.object({
+  transactionType: z.enum(['Cash In', 'Cash Out']),
+  accountUsedId: z.string().min(1, 'Please select an account.'),
+  paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
+  status: z.enum(['Pending', 'Delivered', 'Available', 'Claimed', 'Cancelled']),
+  customerName: z.string().min(1, 'Customer name is required.'),
+  accountName: z.string().min(1, "Sender/Receiver's account name is required."),
+  accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),
+  amount: z.coerce.number().positive('Amount must be a positive number.'),
+  fee: z.coerce.number().min(0, 'Fee cannot be negative.'),
+  reference: z.string().min(1, 'Reference is required.'),
+  message: z.string().optional().default(''),
+});
+
+export async function addCashTransactionAction(data: FormData) {
+  const validatedFields = cashTransactionSchema.safeParse(Object.fromEntries(data.entries()));
+
+  if (!validatedFields.success) {
+    console.error(validatedFields.error.flatten().fieldErrors);
+    throw new Error('Invalid cash transaction data.');
+  }
+
+  // We don't pass newBalance to addCashTransaction, it calculates it.
+  const newTransaction = await addCashTransaction(validatedFields.data);
+
+  await logActivity({
+    type: 'CashIO',
+    action: 'Created',
+    details: `${newTransaction.transactionType} of ₱${newTransaction.amount.toFixed(2)} for "${newTransaction.customerName}" was recorded.`,
+    targetId: newTransaction.id,
+  });
+
+  revalidatePath('/admin/cashio');
+  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/accounts'); // because balance changes
 }
 
 

@@ -380,7 +380,46 @@ export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Custo
 }
 
 export async function getCashTransactions(): Promise<CashTransaction[]> {
-  return Promise.resolve(cashTransactions);
+  const transactionsWithAccountNames = cashTransactions.map(transaction => {
+    const account = accounts.find(a => a.id === transaction.accountUsedId);
+    return {
+      ...transaction,
+      ourAccountName: account ? account.accountName : 'Unknown Account',
+    };
+  });
+  return Promise.resolve(transactionsWithAccountNames.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
+}
+
+export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'>): Promise<CashTransaction> {
+  const accountIndex = accounts.findIndex(acc => acc.id === transactionData.accountUsedId);
+  if (accountIndex === -1) {
+    throw new Error("Account not found");
+  }
+
+  let newBalance;
+  if (transactionData.transactionType === 'Cash In') {
+    newBalance = accounts[accountIndex].balance + transactionData.amount - transactionData.fee;
+  } else { // Cash Out
+    newBalance = accounts[accountIndex].balance - transactionData.amount - transactionData.fee;
+  }
+  accounts[accountIndex].balance = newBalance;
+
+  const newTransaction: CashTransaction = {
+    ...transactionData,
+    id: `txn-${Date.now()}`,
+    newBalance,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  if (transactionData.transactionType === 'Cash In') {
+    newTransaction.dateRecieved = new Date();
+  } else {
+    newTransaction.dateClaimedOrSent = new Date();
+  }
+
+  cashTransactions.unshift(newTransaction);
+  return Promise.resolve(newTransaction);
 }
 
 export async function getCollections(): Promise<Collection[]> {

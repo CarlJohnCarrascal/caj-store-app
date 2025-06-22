@@ -270,7 +270,13 @@ export default function CashTransactionTable({ transactions: initialTransactions
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
-                      <p className="text-sm text-muted-foreground">From: {t.customerName} ({t.accountNumber})</p>
+                       <p className="text-sm text-muted-foreground">
+                          {t.transactionType === 'Cash In' ? 'From: ' : 'To: '} 
+                          {t.customerName} ({t.accountNumber})
+                      </p>
+                      <p className="text-xs text-muted-foreground/80">
+                          Account Used: {t.ourAccountName}
+                      </p>
                       <div>
                         <Badge
                           variant={t.status === 'Cancelled' ? 'destructive' : 'default'}
@@ -320,7 +326,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
                 </Button>
               </TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Customer / Account</TableHead>
+              <TableHead>Customer / Details</TableHead>
               <TableHead>Reference</TableHead>
               <TableHead className='text-right'>
                  <Button variant="ghost" onClick={() => handleSort('amount')}>
@@ -345,7 +351,8 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     </TableCell>
                     <TableCell>
                         <div className="font-medium">{t.customerName}</div>
-                        <div className="text-sm text-muted-foreground">{t.accountName} - {t.accountNumber}</div>
+                        <div className="text-sm text-muted-foreground" title={`${t.accountName} - ${t.accountNumber}`}>{t.accountName} - {t.accountNumber}</div>
+                        <div className="text-xs text-muted-foreground/80">via {t.ourAccountName}</div>
                     </TableCell>
                     <TableCell>{t.reference}</TableCell>
                     <TableCell className='text-right font-mono'>₱{t.amount.toFixed(2)}</TableCell>
