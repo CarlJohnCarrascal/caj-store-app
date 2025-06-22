@@ -135,6 +135,27 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             form.setValue('datetime', localDateTime, { shouldValidate: true });
             populatedFields.push('datetime');
         }
+        
+        if (result.amount) {
+            form.setValue('amount', result.amount, { shouldValidate: true });
+            populatedFields.push('amount');
+        }
+        
+        if (result.accountName) {
+            form.setValue('accountName', result.accountName, { shouldValidate: true });
+            populatedFields.push('accountName');
+        }
+        
+        if (result.accountNumber) {
+            form.setValue('accountNumber', result.accountNumber, { shouldValidate: true });
+            populatedFields.push('accountNumber');
+        }
+        
+        if (result.reference) {
+            form.setValue('reference', result.reference, { shouldValidate: true });
+            populatedFields.push('reference');
+        }
+
 
         if(populatedFields.length > 0) {
             setHighlightedFields(populatedFields);

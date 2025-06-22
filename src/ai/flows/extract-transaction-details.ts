@@ -16,12 +16,19 @@ const ExtractTransactionDetailsInputSchema = z.object({
 export type ExtractTransactionDetailsInput = z.infer<typeof ExtractTransactionDetailsInputSchema>;
 
 const ExtractTransactionDetailsOutputSchema = z.object({
-  datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction, if available. Format as an ISO 8601 string (e.g., '2023-10-31T15:45:00.000Z')."),
-  transactionType: z.enum(['sent', 'received']).optional().describe("The type of transaction from the message author's perspective. 'sent' if they sent money, 'received' if they received money."),
-  error: z.string().optional(),
+  datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction. Format as an ISO 8601 string (e.g., '2023-10-31T15:45:00.000Z')."),
+  transactionType: z.enum(['sent', 'received']).optional().describe("The type of transaction from the message author's perspective."),
+  amount: z.coerce.number().positive().optional().describe('The transaction amount.'),
+  accountName: z.string().optional().describe("The sender/receiver's account name."),
+  accountNumber: z.string().optional().describe("The sender/receiver's account number."),
+  balance: z.coerce.number().optional().describe("The new balance mentioned in the message."),
+  reference: z.string().optional().describe('The transaction reference number.'),
 });
-export type ExtractTransactionDetailsOutput = z.infer<typeof ExtractTransactionDetailsOutputSchema>;
 
+// This type is what the component will receive. It includes a possible error property.
+export type ExtractTransactionDetailsOutput = z.infer<typeof ExtractTransactionDetailsOutputSchema> & {
+  error?: string;
+};
 
 export async function extractTransactionDetails(
   input: ExtractTransactionDetailsInput
@@ -40,13 +47,7 @@ const prompt = ai.definePrompt({
     name: 'extractTransactionDetailsPrompt',
     input: { schema: ExtractTransactionDetailsInputSchema },
     output: { schema: ExtractTransactionDetailsOutputSchema },
-    prompt: `You are an expert system that performs Named Entity Recognition (NER). Extract the following entities from this transaction message and return as a JSON object with ONLY these keys: datetime, transactionType.
-- datetime: An ISO 8601 string.
-- transactionType: Must be either "sent" or "received" from the message author's perspective.
-
-If a value is not present, omit the key from the JSON object.
-
-Message: """{{message}}"""`
+    prompt: `Extract the following entities from this GCash SMS and return as a JSON object with those keys: datetime, transactionType (sent/received), amount, accountName, accountNumber, balance, reference.\n\nSMS: """{{message}}"""`
 });
 
 const extractTransactionDetailsFlow = ai.defineFlow(
