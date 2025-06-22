@@ -18,7 +18,7 @@ export type ExtractTransactionDetailsInput = z.infer<typeof ExtractTransactionDe
 const ExtractTransactionDetailsOutputSchema = z.object({
   datetime: z.string().datetime({ message: "Invalid datetime string. Must be in ISO 8601 format." }).optional().describe("The date and time of the transaction in ISO 8601 format (e.g., '2023-10-31T15:45:00.000Z')."),
   transactionType: z.enum(['sent', 'received']).optional().describe("The type of transaction from the message author's perspective."),
-  amount: z.coerce.number().positive().optional().describe('The transaction amount.'),
+  amount: z.coerce.number().optional().describe('The transaction amount.'),
   accountName: z.string().optional().describe("The sender/receiver's account name."),
   accountNumber: z.string().optional().describe("The sender/receiver's account number."),
   balance: z.coerce.number().optional().describe("The new balance mentioned in the message."),
