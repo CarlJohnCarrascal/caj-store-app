@@ -41,7 +41,7 @@ export default function ProductCard({ product, showImage }: ProductCardProps) {
           {product.unit === 'kg' && <span className="text-sm font-normal text-muted-foreground"> / kg</span>}
         </p>
         <Button size="sm" onClick={() => addToCart(product)}>
-          <Plus className="mr-2 h-4 w-4" /> Add to Cart
+          <Plus className="mr-2 h-4 w-4" /> Add to Order
         </Button>
       </CardFooter>
     </Card>

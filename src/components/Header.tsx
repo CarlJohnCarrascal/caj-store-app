@@ -1,17 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, ChevronDown, Menu } from 'lucide-react';
+import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
 import { useState } from 'react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -19,17 +13,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 export default function Header() {
   const { cartCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const navLinks = [
+    { href: '/admin/store', label: 'Store', icon: <Store /> },
+    { href: '/admin/printing', label: 'Printing', icon: <Printer /> },
+    { href: '/admin/products', label: 'Manage Products', icon: <Package /> },
+  ];
 
   return (
     <>
@@ -47,46 +41,45 @@ export default function Header() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm">
                   <SheetHeader>
-                    <SheetTitle className="text-left">Menu</SheetTitle>
+                     <SheetTitle className="text-left">
+                        <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
+                            <LayoutDashboard />
+                            Dashboard
+                        </Link>
+                     </SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col space-y-1 mt-4">
-                    <Accordion type="single" collapsible className="w-full">
-                       <AccordionItem value="pos" className="border-b-0">
-                          <AccordionTrigger className="py-3 text-base font-medium hover:no-underline">Point of Sale</AccordionTrigger>
-                          <AccordionContent>
-                             <div className="flex flex-col space-y-4 pl-6 pt-2">
-                                <Link href="/" className="text-muted-foreground hover:text-primary" onClick={() => setIsMenuOpen(false)}>Store</Link>
-                                <Link href="/printing" className="text-muted-foreground hover:text-primary" onClick={() => setIsMenuOpen(false)}>Printing</Link>
-                             </div>
-                          </AccordionContent>
-                       </AccordionItem>
-                    </Accordion>
-                    <Link href="/admin" className="px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                      Admin
-                    </Link>
+                    {navLinks.map(link => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="flex items-center gap-4 px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {link.icon}
+                        {link.label}
+                      </Link>
+                    ))}
                   </nav>
                 </SheetContent>
               </Sheet>
 
               {/* Desktop Nav */}
               <nav className="hidden md:flex items-center space-x-6">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus:outline-none">
-                    Point of Sale
-                    <ChevronDown className="relative top-[1px] ml-1 h-4 w-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem asChild>
-                      <Link href="/">Store</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/printing">Printing</Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                  Admin
+                <Link href="/admin" className="text-lg font-bold flex items-center gap-2">
+                    <LayoutDashboard className="h-5 w-5" />
+                    Dashboard
                 </Link>
+                <div className="h-6 w-px bg-border" />
+                 {navLinks.map(link => (
+                   <Link
+                    key={link.href}
+                    href={link.href}
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                 ))}
               </nav>
             </div>
             
@@ -98,7 +91,7 @@ export default function Header() {
                     {cartCount}
                   </span>
                 )}
-                <span className="sr-only">Open cart</span>
+                <span className="sr-only">Open Order</span>
               </Button>
             </div>
           </div>

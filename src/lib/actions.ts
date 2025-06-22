@@ -27,8 +27,8 @@ export async function addProductAction(data: FormData) {
   }
 
   await addProduct(validatedFields.data);
-  revalidatePath('/admin');
-  revalidatePath('/');
+  revalidatePath('/admin/products');
+  revalidatePath('/admin/store');
 }
 
 export async function updateProductAction(id: string, data: FormData) {
@@ -40,15 +40,15 @@ export async function updateProductAction(id: string, data: FormData) {
 
   const product: Product = { id, ...validatedFields.data };
   await updateProduct(product);
-  revalidatePath('/admin');
-  revalidatePath('/');
-  revalidatePath(`/admin/edit/${id}`);
+  revalidatePath('/admin/products');
+  revalidatePath('/admin/store');
+  revalidatePath(`/admin/products/edit/${id}`);
 }
 
 export async function deleteProductAction(id: string) {
   await deleteProduct(id);
-  revalidatePath('/admin');
-  revalidatePath('/');
+  revalidatePath('/admin/products');
+  revalidatePath('/admin/store');
 }
 
 const orderSchema = z.object({

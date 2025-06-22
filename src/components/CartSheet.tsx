@@ -28,7 +28,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
         <SheetHeader className="px-6">
-          <SheetTitle>Shopping Cart ({cartCount} {cartCount === 1 ? 'item' : 'items'})</SheetTitle>
+          <SheetTitle>Your Order ({cartCount} {cartCount === 1 ? 'item' : 'items'})</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto">
           {cartItems.length > 0 ? (
@@ -80,7 +80,6 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             value={item.quantity}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
-                              // Allow typing, but don't update state with NaN
                               if (!isNaN(val)) {
                                 updateQuantity(item.id, val);
                               }
@@ -121,10 +120,10 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
             </ScrollArea>
           ) : (
             <div className="flex h-full flex-col items-center justify-center space-y-2 px-6">
-              <p className="text-lg text-muted-foreground">Your cart is empty</p>
+              <p className="text-lg text-muted-foreground">Your order is empty</p>
               <SheetClose asChild>
                 <Button variant="outline" asChild>
-                  <Link href="/">Start Shopping</Link>
+                  <Link href="/admin/store">Start Shopping</Link>
                 </Button>
               </SheetClose>
             </div>
@@ -138,7 +137,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
             </div>
             <SheetClose asChild>
               <Button asChild className="w-full">
-                <Link href="/checkout">
+                <Link href="/admin/checkout">
                   Proceed to Checkout <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

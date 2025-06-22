@@ -42,8 +42,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return [...prevItems, { ...product, quantity }];
     });
     toast({
-      title: "Added to cart",
-      description: `${product.name} has been added to your cart.`,
+      title: "Added to order",
+      description: `${product.name} has been added to your order.`,
     });
   };
 
