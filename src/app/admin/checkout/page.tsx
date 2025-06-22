@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import { getCustomers } from '@/lib/data';
-import { createOrderAction, createOrderAndUpdateBalanceAction } from '@/lib/actions';
+import { processOrderAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,8 @@ import { Combobox } from '@/components/ui/combobox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
+import { Switch } from '@/components/ui/switch';
+import { FormDescription } from '@/components/ui/form';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart, cartCustomer, setCartCustomer } = useCart();
@@ -33,8 +35,8 @@ export default function CheckoutPage() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [discount, setDiscount] = useState('');
   const [amountTendered, setAmountTendered] = useState('');
-  const [isSubmittingPayment, startPaymentTransition] = useTransition();
-  const [isSubmittingBalance, startBalanceTransition] = useTransition();
+  const [applyBalance, setApplyBalance] = useState(false);
+  const [isSubmitting, startTransition] = useTransition();
 
   useEffect(() => {
     async function fetchCustomers() {
@@ -60,10 +62,15 @@ export default function CheckoutPage() {
   const customerOptions = useMemo(() => {
     return customers.map(c => ({ value: c.id, label: c.name }));
   }, [customers]);
+  
+  const selectedCustomer = useMemo(() => {
+    return customers.find(c => c.id === selectedCustomerId);
+  }, [customers, selectedCustomerId]);
 
   const handleCustomerSelect = (customerId: string) => {
     const selected = customers.find(c => c.id === customerId);
     setSelectedCustomerId(customerId);
+    setApplyBalance(false); // Reset when customer changes
     if (selected) {
       setCartCustomer({ name: selected.name });
     }
@@ -77,94 +84,57 @@ export default function CheckoutPage() {
   };
 
   const discountValue = parseFloat(discount) || 0;
-  const finalTotal = cartTotal - discountValue;
+  const customerBalanceToApply = applyBalance && selectedCustomer ? selectedCustomer.balance : 0;
+  const totalAfterDiscount = cartTotal - discountValue;
+  const finalTotal = totalAfterDiscount - customerBalanceToApply;
   const amountTenderedValue = parseFloat(amountTendered) || 0;
   const balanceOrChange = finalTotal - amountTenderedValue;
 
-  async function handlePayOrder() {
-    if (!selectedCustomerId) {
+  const processOrder = () => {
+    if (!selectedCustomerId || !selectedCustomer) {
       toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
       return;
     }
-    
-    if (balanceOrChange !== 0) {
-        toast({ variant: 'destructive', title: 'Incorrect Payment', description: 'Amount tendered must equal the total. For other amounts, use "Add to Balance".' });
-        return;
-    }
 
-    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
-    if (!selectedCustomer) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Selected customer not found.' });
-        return;
-    }
-
-    startPaymentTransition(async () => {
+    startTransition(async () => {
       try {
-        await createOrderAction({
+        await processOrderAction({
           customerId: selectedCustomerId,
           customerName: selectedCustomer.name,
           items: cartItems,
           subtotal: cartTotal,
           discount: discountValue,
           total: finalTotal,
+          amountTendered: amountTenderedValue,
+          applyCustomerBalance: applyBalance,
+          initialCustomerBalance: selectedCustomer.balance,
         });
-        toast({
-          title: 'Order Placed!',
-          description: 'Thank you for your purchase.',
-        });
-        clearCart();
-        router.push('/admin/order-confirmation');
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Order Failed',
-          description: 'There was a problem placing your order. Please try again.',
-        });
-      }
-    });
-  }
-  
-  async function handleAddToBalance() {
-    if (!selectedCustomerId) {
-      toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
-      return;
-    }
-    
-    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
-    if (!selectedCustomer) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Selected customer not found.' });
-        return;
-    }
 
-    startBalanceTransition(async () => {
-      try {
-        await createOrderAndUpdateBalanceAction({
-          customerId: selectedCustomerId,
-          customerName: selectedCustomer.name,
-          items: cartItems,
-          subtotal: cartTotal,
-          discount: discountValue,
-          total: finalTotal,
-          balanceChange: balanceOrChange
-        });
         toast({
-          title: 'Order Placed & Balance Updated!',
-          description: `Customer balance has been updated by ₱${balanceOrChange.toFixed(2)}.`,
+          title: 'Order Processed!',
+          description: 'The order has been created and customer balance updated if applicable.',
         });
         clearCart();
         router.push('/admin/order-confirmation');
-      } catch (error) {
+      } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Operation Failed',
-          description: 'There was a problem processing the order and updating balance.',
+          description: error.message || 'There was a problem processing the order.',
         });
       }
     });
-  }
+  };
 
+  const handlePayOrder = () => {
+    if (balanceOrChange !== 0) {
+      toast({ variant: 'destructive', title: 'Incorrect Payment', description: 'Amount tendered must equal the total. For other amounts, use "Add to Balance".' });
+      return;
+    }
+    processOrder();
+  };
 
-  if (cartItems.length === 0 && !isSubmittingPayment && !isSubmittingBalance) {
+  if (cartItems.length === 0 && !isSubmitting) {
     return (
         <div className="text-center">
             <h1 className="text-2xl font-semibold">Your order is empty</h1>
@@ -206,27 +176,43 @@ export default function CheckoutPage() {
           <CardHeader>
             <CardTitle>Payment Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="discount">Discount (₱)</Label>
-              <Input
-                id="discount"
-                type="number"
-                placeholder="0.00"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-              />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="amountTendered">Amount Tendered (₱)</Label>
-              <Input
-                id="amountTendered"
-                type="number"
-                placeholder="0.00"
-                value={amountTendered}
-                onChange={(e) => setAmountTendered(e.target.value)}
-              />
-            </div>
+          <CardContent className="space-y-4">
+             <div className="grid sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="discount">Discount (₱)</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    placeholder="0.00"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                  />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="amountTendered">Amount Tendered (₱)</Label>
+                  <Input
+                    id="amountTendered"
+                    type="number"
+                    placeholder="0.00"
+                    value={amountTendered}
+                    onChange={(e) => setAmountTendered(e.target.value)}
+                  />
+                </div>
+              </div>
+              {selectedCustomer && (
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                        <Label>Apply Customer Balance</Label>
+                        <FormDescription>
+                            Current balance: <span className={cn("font-medium", selectedCustomer.balance > 0 ? "text-green-600" : selectedCustomer.balance < 0 ? "text-destructive" : "")}>₱{selectedCustomer.balance.toFixed(2)}</span>
+                        </FormDescription>
+                    </div>
+                    <Switch
+                        checked={applyBalance}
+                        onCheckedChange={setApplyBalance}
+                    />
+                </div>
+              )}
           </CardContent>
         </Card>
       </div>
@@ -269,6 +255,14 @@ export default function CheckoutPage() {
                     <span className="text-muted-foreground">Discount</span>
                     <span className={cn(discountValue > 0 && "text-green-600")}>- ₱{discountValue.toFixed(2)}</span>
                 </div>
+                {applyBalance && selectedCustomer && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Applied Balance</span>
+                        <span className={cn(customerBalanceToApply > 0 ? "text-green-600" : "text-destructive")}>
+                           - ₱{customerBalanceToApply.toFixed(2)}
+                        </span>
+                    </div>
+                )}
                  <div className="flex justify-between font-semibold text-base">
                     <span className="text-foreground">Total</span>
                     <span>₱{finalTotal.toFixed(2)}</span>
@@ -291,17 +285,17 @@ export default function CheckoutPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
-            <Button className="w-full" onClick={handlePayOrder} disabled={isSubmittingPayment || isSubmittingBalance || !selectedCustomerId}>
-              {isSubmittingPayment ? 'Processing Payment...' : 'Pay Order'}
+            <Button className="w-full" onClick={handlePayOrder} disabled={isSubmitting || !selectedCustomerId}>
+              {isSubmitting ? 'Processing Payment...' : 'Pay Order'}
             </Button>
             {balanceOrChange !== 0 && (
               <Button 
                 variant="secondary" 
                 className="w-full" 
-                onClick={handleAddToBalance} 
-                disabled={isSubmittingPayment || isSubmittingBalance || !selectedCustomerId}
+                onClick={processOrder}
+                disabled={isSubmitting || !selectedCustomerId}
               >
-                {isSubmittingBalance ? 'Adding to Balance...' : `Add to Balance (₱${balanceOrChange.toFixed(2)})`}
+                {isSubmitting ? 'Processing...' : `Add to Balance (₱${balanceOrChange.toFixed(2)})`}
               </Button>
             )}
           </CardFooter>

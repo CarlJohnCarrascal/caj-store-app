@@ -79,67 +79,69 @@ export async function deleteProductAction(id: string) {
   revalidatePath('/admin/transactions');
 }
 
-const orderSchema = z.object({
-  customerId: z.string().min(1, 'Customer is required'),
-  customerName: z.string().min(1),
-  items: z.array(z.any()),
-  subtotal: z.number(),
-  discount: z.number().min(0),
-  total: z.number(),
+const processOrderSchema = z.object({
+    customerId: z.string().min(1),
+    customerName: z.string().min(1),
+    items: z.array(z.any()),
+    subtotal: z.number(),
+    discount: z.number(),
+    total: z.number(),
+    amountTendered: z.number(),
+    applyCustomerBalance: z.boolean(),
+    initialCustomerBalance: z.number(),
 });
 
-
-export async function createOrderAction(order: z.infer<typeof orderSchema>) {
-    const validatedOrder = orderSchema.safeParse(order);
+export async function processOrderAction(orderData: z.infer<typeof processOrderSchema>) {
+    const validatedOrder = processOrderSchema.safeParse(orderData);
     if (!validatedOrder.success) {
-        throw new Error('Invalid order data.');
+        console.error(validatedOrder.error.flatten().fieldErrors);
+        throw new Error('Invalid order data provided.');
     }
 
-    // In a real app, you would save this to a database,
-    // process payment, send emails, etc.
-    console.log('New Order Created:', validatedOrder.data);
+    const {
+        customerId,
+        customerName,
+        total,
+        amountTendered,
+        applyCustomerBalance,
+        initialCustomerBalance,
+    } = validatedOrder.data;
 
-    // Fake order ID for logging
+    // Log the order creation
     const orderId = `order-${Date.now()}`;
     await logActivity({
         type: 'Order',
         action: 'Created',
-        details: `New order placed for ${validatedOrder.data.customerName} for ₱${validatedOrder.data.total.toFixed(2)}.`,
+        details: `New order placed for ${customerName} for ₱${total.toFixed(2)}.`,
         targetId: orderId,
     });
 
-    // Simulate some async work
-    await new Promise(res => setTimeout(res, 1000));
-    revalidatePath('/admin/transactions');
-}
+    // Calculate balance change
+    const balanceChangeFromTender = total - amountTendered;
+    let totalBalanceUpdate = balanceChangeFromTender;
 
-const orderWithBalanceSchema = orderSchema.extend({
-    balanceChange: z.number(),
-});
-
-export async function createOrderAndUpdateBalanceAction(order: z.infer<typeof orderWithBalanceSchema>) {
-    const validatedOrder = orderWithBalanceSchema.safeParse(order);
-    if (!validatedOrder.success) {
-        throw new Error('Invalid order data for balance update.');
+    // If we applied the initial balance, we must subtract it from the customer's account to "zero it out"
+    if (applyCustomerBalance) {
+        totalBalanceUpdate -= initialCustomerBalance;
     }
-    const { customerId, balanceChange, customerName } = validatedOrder.data;
 
-    // Create order log first
-    await createOrderAction(order);
+    if (totalBalanceUpdate !== 0) {
+        await updateCustomerBalance(customerId, totalBalanceUpdate);
+        await logActivity({
+            type: 'Customer',
+            action: 'Updated',
+            details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
+            targetId: customerId,
+        });
+    }
     
-    // Update customer's balance
-    await updateCustomerBalance(customerId, balanceChange);
-    
-    // Log the balance update
-    await logActivity({
-        type: 'Customer',
-        action: 'Updated',
-        details: `Balance for ${customerName} updated by ₱${balanceChange.toFixed(2)} from an order.`,
-        targetId: customerId,
-    });
-    
+    // Simulate some async work
+    await new Promise(res => setTimeout(res, 500));
+
+    revalidatePath('/admin/transactions');
     revalidatePath('/admin/customers');
 }
+
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
