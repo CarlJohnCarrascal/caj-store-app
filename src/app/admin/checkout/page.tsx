@@ -14,6 +14,7 @@ import { createOrderAction } from '@/lib/actions';
 import { Separator } from '@/components/ui/separator';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 const checkoutSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -24,7 +25,7 @@ const checkoutSchema = z.object({
 });
 
 export default function CheckoutPage() {
-  const { cartItems, cartTotal, clearCart } = useCart();
+  const { cartItems, cartTotal, clearCart, cartCustomer } = useCart();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -38,6 +39,12 @@ export default function CheckoutPage() {
       zip: '',
     },
   });
+
+  useEffect(() => {
+    if (cartCustomer) {
+      form.setValue('name', cartCustomer.name);
+    }
+  }, [cartCustomer, form]);
 
   async function onSubmit(values: z.infer<typeof checkoutSchema>) {
     try {
@@ -162,16 +169,17 @@ export default function CheckoutPage() {
           <CardContent className="p-4 space-y-4">
             {cartItems.map(item => {
               const isPrinting = item.category === 'Printing';
+              const isCashIO = item.category === 'CashIO';
               return (
               <div key={item.id} className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="relative h-16 w-16 rounded-md overflow-hidden border">
-                    <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : 'product photo'} />
+                    <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : 'product photo'} />
                   </div>
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>
-                    {isPrinting && item.description && (
+                    {!isCashIO && <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>}
+                    {(isPrinting || isCashIO) && item.description && (
                       <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                     )}
                   </div>

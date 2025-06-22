@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Account } from '@/lib/types';
+import { Account, Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addCashTransactionAction } from '@/lib/actions';
@@ -27,6 +27,7 @@ import { ArrowDown, ArrowUp, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
 import { cn } from '@/lib/utils';
+import { useCart } from '@/hooks/use-cart';
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
@@ -55,6 +56,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   const [isGenerating, setIsGenerating] = useState(false);
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [extractionResult, setExtractionResult] = useState<string | null>(null);
+  const { addToCart, setCartCustomer } = useCart();
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -103,6 +105,25 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   
   const onAddToOrder = (data: CashTransactionFormValues) => {
     const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+
+    const transactionAsProduct: Product = {
+        id: `cashio-${data.reference}-${Date.now()}`,
+        name: `${data.transactionType}: ${data.accountName}`,
+        price: data.transactionType === 'Cash In' ? -data.amount : data.amount,
+        description: `Ref: ${data.reference}`,
+        group: 'Financial',
+        category: 'CashIO',
+        show: false,
+        stock: 1,
+        unit: 'each',
+        image: 'https://placehold.co/600x600.png',
+        material: 'N/A',
+        dimensions: 'N/A'
+    };
+    
+    addToCart(transactionAsProduct, 1);
+    setCartCustomer({ name: data.accountName });
+
     submitTransaction({ ...data, status: finalStatus });
   };
 
