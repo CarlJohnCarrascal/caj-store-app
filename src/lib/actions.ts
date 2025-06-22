@@ -192,7 +192,7 @@ const cashTransactionSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
   accountUsedId: z.string().min(1, 'Please select an account.'),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
-  status: z.enum(['Pending', 'Delivered', 'Available', 'Claimed', 'Cancelled']),
+  status: z.enum(['Delivered', 'Available', 'Claimed']),
   customerName: z.string().min(1, 'Customer name is required.'),
   accountName: z.string().min(1, "Sender/Receiver's account name is required."),
   accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),

@@ -53,7 +53,7 @@ export interface CashTransaction {
   dateRecieved?: Date;
   dateClaimedOrSent?: Date;
   customerName: string;
-  status: 'Pending' | 'Delivered' | 'Available' | 'Claimed' | 'Cancelled';
+  status: 'Delivered' | 'Available' | 'Claimed';
   createdAt: Date;
   updatedAt: Date;
 }

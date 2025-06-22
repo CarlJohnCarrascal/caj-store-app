@@ -32,7 +32,7 @@ const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
   accountUsedId: z.string().min(1, 'Please select an account.'),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
-  status: z.enum(['Pending', 'Delivered', 'Available', 'Claimed', 'Cancelled']),
+  status: z.enum(['Delivered', 'Available', 'Claimed']),
   accountName: z.string().min(1, "Sender/Receiver's account name is required."),
   accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
@@ -62,7 +62,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
       transactionType: 'Cash In',
       accountUsedId: '',
       paymentMethod: 'Gcash',
-      status: 'Pending',
+      status: 'Delivered',
       accountName: '',
       accountNumber: '',
       amount: 0,
@@ -74,6 +74,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   });
 
   const transactionType = form.watch('transactionType');
+  const status = form.watch('status');
 
   const onSubmit = (data: CashTransactionFormValues) => {
     startTransition(async () => {
@@ -220,7 +221,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                           field.onChange(value);
                           // Reset status when type changes
                           if (value === 'Cash In') {
-                            form.setValue('status', 'Pending');
+                            form.setValue('status', 'Delivered');
                           } else {
                             form.setValue('status', 'Available');
                           }
@@ -323,7 +324,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                           <SelectContent>
                             {transactionType === 'Cash In' ? (
                               <>
-                                <SelectItem value="Pending">Pending</SelectItem>
                                 <SelectItem value="Delivered">Delivered</SelectItem>
                               </>
                             ) : (
@@ -332,7 +332,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                                 <SelectItem value="Claimed">Claimed</SelectItem>
                               </>
                             )}
-                            <SelectItem value="Cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -408,7 +407,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
               <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Adding...' : 'Add Transaction'}
+                  {isPending ? 'Processing...' : status === 'Available' ? 'Save' : 'Add to Order'}
                 </Button>
               </div>
             </form>

@@ -239,11 +239,9 @@ export default function CashTransactionTable({ transactions: initialTransactions
                 <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Delivered">Delivered</SelectItem>
                   <SelectItem value="Available">Available</SelectItem>
                   <SelectItem value="Claimed">Claimed</SelectItem>
-                  <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
                <div className="flex items-center gap-2 justify-self-end col-span-full lg:col-span-1">
