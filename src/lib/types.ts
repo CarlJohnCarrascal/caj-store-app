@@ -16,3 +16,39 @@ export interface Product {
 export interface CartItem extends Product {
   quantity: number;
 }
+
+export interface Account {
+  id: string;
+  accountName: string;
+  accountNumber: string;
+  bankName: string;
+  balance: number;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+export interface CashTransaction {
+  id: string;
+  paymentMethod: 'Gcash' | 'Maya' | 'Other';
+  accountUsedId: string;
+  transactionType: 'Cash In' | 'Cash Out';
+  message: string;
+  accountName: string;
+  accountNumber: string;
+  reference: string;
+  amount: number;
+  fee: number;
+  newBalance: number;
+  dateRecieved?: Date;
+  dateClaimedOrSent?: Date;
+  customerName: string;
+  status: 'Pending' | 'Completed' | 'Cancelled';
+  createdAt: Date;
+  updatedAt: Date;
+}

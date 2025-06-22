@@ -1,6 +1,6 @@
 'use server';
 
-import { Product } from './types';
+import { Product, Account, Customer, CashTransaction } from './types';
 
 let products: Product[] = [
   {
@@ -131,6 +131,56 @@ let products: Product[] = [
   },
 ];
 
+let accounts: Account[] = [
+    { id: 'acc-1', accountName: 'Main Business Account', accountNumber: '123-456-7890', bankName: 'BDO', balance: 150000 },
+    { id: 'acc-2', accountName: 'GCash Wallet', accountNumber: '09171234567', bankName: 'GCash', balance: 25000 },
+    { id: 'acc-3', accountName: 'Maya Wallet', accountNumber: '09281234567', bankName: 'Maya', balance: 18000 },
+];
+
+let customers: Customer[] = [
+    { id: 'cust-1', name: 'John Doe', email: 'john.d@example.com', phone: '09112223333', address: '123 Main St, Anytown' },
+    { id: 'cust-2', name: 'Jane Smith', email: 'jane.s@example.com', phone: '09445556666', address: '456 Oak Ave, Othertown' },
+];
+
+let cashTransactions: CashTransaction[] = [
+    {
+        id: 'txn-1',
+        paymentMethod: 'Gcash',
+        accountUsedId: 'acc-2',
+        transactionType: 'Cash In',
+        message: 'Payment for services',
+        accountName: 'John Doe',
+        accountNumber: '09112223333',
+        reference: 'REF12345',
+        amount: 1500.00,
+        fee: 0,
+        newBalance: 26500,
+        dateRecieved: new Date('2023-10-26T10:00:00Z'),
+        customerName: 'John Doe',
+        status: 'Completed',
+        createdAt: new Date('2023-10-26T09:55:00Z'),
+        updatedAt: new Date('2023-10-26T10:00:00Z'),
+    },
+    {
+        id: 'txn-2',
+        paymentMethod: 'Maya',
+        accountUsedId: 'acc-3',
+        transactionType: 'Cash Out',
+        message: 'Supplier payment',
+        accountName: 'Hardware Supply Co.',
+        accountNumber: '09998887777',
+        reference: 'REF67890',
+        amount: 5000.00,
+        fee: 10,
+        newBalance: 13000,
+        dateClaimedOrSent: new Date('2023-10-27T14:30:00Z'),
+        customerName: 'Hardware Supply Co.',
+        status: 'Completed',
+        createdAt: new Date('2023-10-27T14:25:00Z'),
+        updatedAt: new Date('2023-10-27T14:30:00Z'),
+    }
+];
+
 export async function getProducts(): Promise<Product[]> {
   // In a real app, this would fetch from a database
   return Promise.resolve(products);
@@ -165,4 +215,16 @@ export async function deleteProduct(id: string): Promise<boolean> {
     return Promise.resolve(true);
   }
   return Promise.resolve(false);
+}
+
+export async function getAccounts(): Promise<Account[]> {
+  return Promise.resolve(accounts);
+}
+
+export async function getCustomers(): Promise<Customer[]> {
+  return Promise.resolve(customers);
+}
+
+export async function getCashTransactions(): Promise<CashTransaction[]> {
+  return Promise.resolve(cashTransactions);
 }

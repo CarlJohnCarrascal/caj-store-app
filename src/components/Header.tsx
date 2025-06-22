@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -55,7 +55,7 @@ export default function Header() {
                      </SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col space-y-1 mt-4">
-                    <Accordion type="single" collapsible className="w-full">
+                    <Accordion type="multiple" className="w-full">
                         <AccordionItem value="pos" className="border-b-0">
                             <AccordionTrigger className="flex items-center gap-4 px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
                                 <div className="flex items-center gap-4">
@@ -64,33 +64,37 @@ export default function Header() {
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pl-10 space-y-1">
-                                <Link
-                                    href="/admin/store"
-                                    className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <Store className="h-5 w-5 text-muted-foreground" />
-                                    <span>Store</span>
+                                <Link href="/admin/store" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Store className="h-5 w-5 text-muted-foreground" /><span>Store</span>
                                 </Link>
-                                <Link
-                                    href="/admin/printing"
-                                    className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <Printer className="h-5 w-5 text-muted-foreground" />
-                                    <span>Printing</span>
+                                <Link href="/admin/printing" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Printer className="h-5 w-5 text-muted-foreground" /><span>Printing</span>
+                                </Link>
+                                <Link href="/admin/cashio" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
+                                </Link>
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="management" className="border-b-0">
+                            <AccordionTrigger className="flex items-center gap-4 px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                <div className="flex items-center gap-4">
+                                  <Package className="h-6 w-6" />
+                                  Management
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pl-10 space-y-1">
+                                <Link href="/admin/products" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
+                                </Link>
+                                <Link href="/admin/accounts" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Landmark className="h-5 w-5 text-muted-foreground" /><span>Accounts</span>
+                                </Link>
+                                <Link href="/admin/customers" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Users className="h-5 w-5 text-muted-foreground" /><span>Customers</span>
                                 </Link>
                             </AccordionContent>
                         </AccordionItem>
                     </Accordion>
-                    <Link
-                        href="/admin/products"
-                        className="flex items-center gap-4 px-3 py-3 text-base font-medium rounded-md hover:bg-accent transition-colors"
-                        onClick={() => setIsMenuOpen(false)}
-                    >
-                        <Package className="h-6 w-6" />
-                        Manage Products
-                    </Link>
                   </nav>
                 </SheetContent>
               </Sheet>
@@ -105,29 +109,25 @@ export default function Header() {
                  
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
-                    Point of Sale
-                    <ChevronDown className="h-4 w-4" />
+                    Point of Sale <ChevronDown className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem asChild>
-                       <Link href="/admin/store" className="flex items-center gap-2 cursor-pointer">
-                         <Store className="h-4 w-4" /> Store
-                       </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                       <Link href="/admin/printing" className="flex items-center gap-2 cursor-pointer">
-                         <Printer className="h-4 w-4" /> Printing
-                       </Link>
-                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/store" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Store</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/printing" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Link
-                  href="/admin/products"
-                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Manage Products
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
+                    Management <ChevronDown className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </nav>
             </div>
             
