@@ -113,7 +113,12 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
         const populatedFields: string[] = [];
 
         if (result.transactionType) {
-            form.setValue('transactionType', result.transactionType, { shouldValidate: true });
+            // 'received' from the message author's perspective.
+            // Assuming the message is from the business's e-wallet (e.g., a GCash notification),
+            // 'received' means the business got money -> 'Cash In'.
+            // 'sent' means the business sent money -> 'Cash Out'.
+            const formTransactionType = result.transactionType === 'received' ? 'Cash In' : 'Cash Out';
+            form.setValue('transactionType', formTransactionType, { shouldValidate: true });
             populatedFields.push('transactionType');
         }
         
