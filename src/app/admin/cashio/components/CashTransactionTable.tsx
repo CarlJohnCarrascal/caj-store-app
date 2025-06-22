@@ -269,7 +269,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
                        <p className="text-sm text-muted-foreground">
-                          {t.transactionType === 'Cash In' ? 'From: ' : 'To: '} 
+                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '} 
                           {t.customerName} ({t.accountNumber})
                       </p>
                       <p className="text-xs text-muted-foreground/80">
