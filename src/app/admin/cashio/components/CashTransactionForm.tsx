@@ -25,7 +25,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowDown, ArrowUp, RefreshCw, Bot } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { generateTransactionMessage } from '@/ai/flows/generate-transaction-message';
+import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
@@ -99,36 +99,34 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
     });
   };
 
-  const handleGenerateMessage = async () => {
-    const { transactionType, customerName, amount, paymentMethod, reference } = form.getValues();
-    if (!transactionType || !customerName || !amount) {
+  const handleExtractDetails = async () => {
+    const message = form.getValues('message');
+    if (!message || message.trim().length < 10) {
         toast({
             variant: 'destructive',
-            title: 'Missing Details',
-            description: 'Please fill in Type, Customer Name, and Amount to generate a message.',
+            title: 'Message is too short',
+            description: 'Please paste a detailed message to extract details from.',
         });
         return;
     }
     setIsGenerating(true);
     try {
-        const result = await generateTransactionMessage({
-            transactionType,
-            customerName,
-            amount,
-            paymentMethod,
-            reference: reference || '',
-        });
-        if(result.message) {
-          form.setValue('message', result.message, { shouldValidate: true });
-          toast({ title: 'Message Generated!', description: 'The AI-powered message has been populated.' });
-        } else {
-          throw new Error("AI did not return a message.");
-        }
+        const result = await extractTransactionDetails({ message });
+
+        if (result.transactionType) form.setValue('transactionType', result.transactionType, { shouldValidate: true });
+        if (result.customerName) form.setValue('customerName', result.customerName, { shouldValidate: true });
+        if (result.amount) form.setValue('amount', result.amount, { shouldValidate: true });
+        if (result.paymentMethod) form.setValue('paymentMethod', result.paymentMethod, { shouldValidate: true });
+        if (result.reference) form.setValue('reference', result.reference, { shouldValidate: true });
+        if (result.accountName) form.setValue('accountName', result.accountName, { shouldValidate: true });
+        if (result.accountNumber) form.setValue('accountNumber', result.accountNumber, { shouldValidate: true });
+
+        toast({ title: 'Details Extracted!', description: 'The form has been populated with details from the message.' });
     } catch (error) {
         toast({
             variant: 'destructive',
-            title: 'Generation Failed',
-            description: 'Could not generate a message. Please try again.',
+            title: 'Extraction Failed',
+            description: 'Could not extract details. Please fill the form manually.',
         });
     } finally {
         setIsGenerating(false);
@@ -145,6 +143,20 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField control={form.control} name="message" render={({ field }) => (
+                <FormItem>
+                    <div className="flex justify-between items-center">
+                    <FormLabel>Transaction Message (Optional)</FormLabel>
+                    <Button type="button" variant="outline" size="sm" onClick={handleExtractDetails} disabled={isGenerating}>
+                        <Bot className="mr-2 h-4 w-4" />
+                        {isGenerating ? 'Extracting...' : 'Extract Details with AI'}
+                    </Button>
+                    </div>
+                    <FormControl><Textarea placeholder="Paste transaction message here to auto-fill details..." {...field} rows={4} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+
             <FormField
               control={form.control}
               name="transactionType"
@@ -162,7 +174,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                           form.setValue('status', 'Available');
                         }
                       }}
-                      defaultValue={field.value}
+                      value={field.value}
                       className="grid grid-cols-2 gap-4"
                     >
                       <FormItem>
@@ -334,19 +346,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                            </Button>
                         </div>
                         <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="message" render={({ field }) => (
-                      <FormItem>
-                          <div className="flex justify-between items-center">
-                            <FormLabel>Message/Note (Optional)</FormLabel>
-                            <Button type="button" variant="outline" size="sm" onClick={handleGenerateMessage} disabled={isGenerating}>
-                              <Bot className="mr-2 h-4 w-4" />
-                              {isGenerating ? 'Generating...' : 'Populate with AI'}
-                            </Button>
-                          </div>
-                          <FormControl><Textarea placeholder="e.g. Payment for order #XYZ" {...field} /></FormControl>
-                          <FormMessage />
                       </FormItem>
                     )} />
                 </CardContent>
