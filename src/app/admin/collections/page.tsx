@@ -1,4 +1,4 @@
-import { getCollections } from '@/lib/data';
+import { getCollections, getCustomers } from '@/lib/data';
 import CollectionList from './components/CollectionList';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -6,6 +6,7 @@ import { PlusCircle } from 'lucide-react';
 
 export default async function CollectionsPage() {
   const collections = await getCollections();
+  const customers = await getCustomers();
   
   return (
     <div className="space-y-6">
@@ -18,7 +19,7 @@ export default async function CollectionsPage() {
           </Link>
         </Button>
       </div>
-      <CollectionList collections={collections} />
+      <CollectionList collections={collections} customers={customers} />
     </div>
   );
 }
