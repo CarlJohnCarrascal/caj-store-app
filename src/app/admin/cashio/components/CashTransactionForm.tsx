@@ -110,14 +110,21 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
     try {
         const result = await extractTransactionDetails({ message });
         console.log('Extracted Details:', result);
+
+        if (result.error) {
+            toast({
+                variant: 'destructive',
+                title: 'Extraction Failed',
+                description: result.error,
+            });
+            return;
+        }
+
         const populatedFields: string[] = [];
 
         if (result.transactionType) {
-            // 'received' from the message author's perspective.
-            // Assuming the message is from the business's e-wallet (e.g., a GCash notification),
-            // 'received' means the business got money -> 'Cash In'.
-            // 'sent' means the business sent money -> 'Cash Out'.
-            const formTransactionType = result.transactionType === 'received' ? 'Cash In' : 'Cash Out';
+            // 'sent' from the message author's (customer's) perspective means they sent you money.
+            const formTransactionType = result.transactionType === 'sent' ? 'Cash In' : 'Cash Out';
             form.setValue('transactionType', formTransactionType, { shouldValidate: true });
             populatedFields.push('transactionType');
         }
@@ -157,11 +164,11 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
         } else {
             toast({ title: 'No Details Found', description: 'The AI could not find any details to extract. Please fill the form manually.' });
         }
-    } catch (error) {
+    } catch (error: any) {
         toast({
             variant: 'destructive',
             title: 'Extraction Failed',
-            description: 'Could not extract details. Please fill the form manually.',
+            description: error.message || 'Could not extract details. Please fill the form manually.',
         });
     } finally {
         setIsGenerating(false);
