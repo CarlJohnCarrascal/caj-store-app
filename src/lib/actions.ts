@@ -80,7 +80,7 @@ export async function deleteProductAction(id: string) {
 }
 
 const processOrderSchema = z.object({
-    customerId: z.string().min(1),
+    customerId: z.string(),
     customerName: z.string().min(1),
     items: z.array(z.any()),
     subtotal: z.number(),
@@ -118,39 +118,44 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         targetId: orderId,
     });
 
-    let totalBalanceUpdate = 0;
-    
-    // Only update balance from tender if "Add to Balance" was clicked
-    if (settlementType === 'add_to_balance') {
-        let balanceChangeFromTender = total - amountTendered;
-        // For negative totals (cash-out), the transaction is settled in cash from the store's side.
-        // The customer's balance should not be affected by the tender amount.
-        if (total < 0) {
-            balanceChangeFromTender = 0;
+    if (customerId !== 'unknown') {
+        let totalBalanceUpdate = 0;
+        
+        if (settlementType === 'pay_order') {
+            // For simple payments, balance is only affected if customer balance was applied.
+            // Any change due is handled physically, not stored as balance.
+            if (applyCustomerBalance) {
+                totalBalanceUpdate -= initialCustomerBalance;
+            }
+        } else if (settlementType === 'add_to_balance') {
+            // For "Add to Balance", the entire difference is applied.
+            let balanceChangeFromTender = total - amountTendered;
+            if (total < 0) {
+                balanceChangeFromTender = 0;
+            }
+            totalBalanceUpdate += balanceChangeFromTender;
+            
+            if (applyCustomerBalance) {
+                totalBalanceUpdate -= initialCustomerBalance;
+            }
         }
-        totalBalanceUpdate += balanceChangeFromTender;
-    }
 
-    // If we applied the initial balance, we must subtract it from the customer's account to "zero it out"
-    if (applyCustomerBalance) {
-        totalBalanceUpdate -= initialCustomerBalance;
-    }
-
-    if (totalBalanceUpdate !== 0) {
-        await updateCustomerBalance(customerId, totalBalanceUpdate);
-        await logActivity({
-            type: 'Customer',
-            action: 'Updated',
-            details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
-            targetId: customerId,
-        });
+        if (totalBalanceUpdate !== 0) {
+            await updateCustomerBalance(customerId, totalBalanceUpdate);
+            await logActivity({
+                type: 'Customer',
+                action: 'Updated',
+                details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
+                targetId: customerId,
+            });
+        }
+        revalidatePath('/admin/customers');
     }
     
     // Simulate some async work
     await new Promise(res => setTimeout(res, 500));
 
     revalidatePath('/admin/transactions');
-    revalidatePath('/admin/customers');
 }
 
 

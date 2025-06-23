@@ -30,7 +30,7 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>();
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('unknown');
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [discount, setDiscount] = useState('');
   const [amountTendered, setAmountTendered] = useState('');
@@ -59,7 +59,7 @@ export default function CheckoutPage() {
   }, [cartCustomer, customers]);
 
   const customerOptions = useMemo(() => {
-    return customers.map(c => ({ value: c.id, label: c.name }));
+    return [{ value: 'unknown', label: 'Unknown Customer' }, ...customers.map(c => ({ value: c.id, label: c.name }))];
   }, [customers]);
   
   const selectedCustomer = useMemo(() => {
@@ -91,23 +91,33 @@ export default function CheckoutPage() {
   const balanceOrChange = finalTotal - amountTenderedValue;
 
   const processOrder = (settlementType: 'pay_order' | 'add_to_balance') => {
-    if (!selectedCustomerId || !selectedCustomer) {
-      toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select or add a customer.' });
+    if (!selectedCustomerId) {
+      toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select a customer.' });
       return;
+    }
+
+    const isUnknownCustomer = selectedCustomerId === 'unknown';
+    const customerForAction = isUnknownCustomer
+      ? { id: 'unknown', name: 'Unknown Customer', balance: 0 }
+      : selectedCustomer;
+    
+    if (!customerForAction) {
+        toast({ variant: 'destructive', title: 'Customer Error', description: 'Selected customer could not be found.' });
+        return;
     }
 
     startTransition(async () => {
       try {
         await processOrderAction({
-          customerId: selectedCustomerId,
-          customerName: selectedCustomer.name,
+          customerId: customerForAction.id,
+          customerName: customerForAction.name,
           items: cartItems,
           subtotal: cartTotal,
           discount: discountValue,
           total: finalTotal,
           amountTendered: amountTenderedValue,
-          applyCustomerBalance: applyBalance,
-          initialCustomerBalance: selectedCustomer.balance,
+          applyCustomerBalance: isUnknownCustomer ? false : applyBalance,
+          initialCustomerBalance: customerForAction.balance,
           settlementType,
         });
 
@@ -318,7 +328,7 @@ export default function CheckoutPage() {
                 variant="secondary" 
                 className="w-full" 
                 onClick={() => processOrder('add_to_balance')}
-                disabled={isSubmitting || !selectedCustomerId}
+                disabled={isSubmitting || !selectedCustomerId || selectedCustomerId === 'unknown'}
               >
                 {isSubmitting ? 'Processing...' : `Add to Balance (₱${balanceOrChange.toFixed(2)})`}
               </Button>
