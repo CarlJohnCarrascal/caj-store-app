@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -384,9 +385,9 @@ export default function CashTransactionTable() {
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
-                       <p className="text-sm text-muted-foreground">
-                          {t.transactionType === 'Cash Out' ? 'To: ' : 'From: '} 
-                          {t.customerName}
+                       <p className="text-sm text-muted-foreground truncate" title={`${t.accountName} (${t.accountNumber})`}>
+                          {t.transactionType === 'Cash Out' ? 'From: ' : 'To: '} 
+                          {t.accountName}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
                           Account Used: {t.ourAccountName}
@@ -582,7 +583,7 @@ export default function CashTransactionTable() {
               </div>
               
               <div className="space-y-3">
-                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'From (Sender)' : 'To (Receiver)'}</h4>
+                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
                  <div className="flex items-center gap-3 text-sm">
                     <User className="h-4 w-4 text-muted-foreground"/>
                     <span>{selectedTransaction.accountName}</span>
