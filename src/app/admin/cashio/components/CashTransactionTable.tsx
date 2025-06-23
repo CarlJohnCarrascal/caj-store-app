@@ -38,7 +38,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { updateCashTransactionStatusAction } from '@/lib/actions';
 import { useCart } from '@/hooks/use-cart';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
@@ -68,7 +67,6 @@ export default function CashTransactionTable() {
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<CashTransaction | null>(null);
-  const [isUpdating, startUpdateTransition] = React.useTransition();
   const { toast } = useToast();
   const { addToCart, setCartCustomer } = useCart();
 
@@ -120,46 +118,32 @@ export default function CashTransactionTable() {
     };
   }, []);
 
-  const handleUpdateStatus = (transactionId: string) => {
-    if (!selectedTransaction) return;
+  const handleAddToCart = (transaction: CashTransaction) => {
+    const finalPrice = transaction.transactionType === 'Cash In'
+        ? transaction.amount + transaction.fee
+        : transaction.fee - transaction.amount;
 
-    startUpdateTransition(async () => {
-      try {
-        const transaction = selectedTransaction;
+    const transactionAsProduct: Product = {
+        id: `cashio-${transaction.reference}-${Date.now()}`,
+        name: `${transaction.transactionType}: ${transaction.customerName}`,
+        price: finalPrice,
+        description: `Ref: ${transaction.reference} | Acct: ${transaction.accountName} (${transaction.accountNumber}) | Fee: ₱${transaction.fee.toFixed(2)} | Amt: ₱${transaction.amount.toFixed(2)}`,
+        group: 'Financial',
+        category: 'CashIO',
+        show: false,
+        stock: 1,
+        unit: 'each',
+        image: 'https://placehold.co/600x600.png',
+        material: 'N/A',
+        dimensions: 'N/A',
+        originalTransactionId: transaction.id
+    };
+    
+    addToCart(transactionAsProduct, 1);
+    setCartCustomer({ name: transaction.customerName });
 
-        const finalPrice = transaction.transactionType === 'Cash In'
-            ? transaction.amount + transaction.fee
-            : transaction.fee - transaction.amount;
-
-        const transactionAsProduct: Product = {
-            id: `cashio-${transaction.reference}-${Date.now()}`,
-            name: `${transaction.transactionType}: ${transaction.customerName}`,
-            price: finalPrice,
-            description: `Ref: ${transaction.reference} | Acct: ${transaction.accountName} (${transaction.accountNumber}) | Fee: ₱${transaction.fee.toFixed(2)} | Amt: ₱${transaction.amount.toFixed(2)}`,
-            group: 'Financial',
-            category: 'CashIO',
-            show: false,
-            stock: 1,
-            unit: 'each',
-            image: 'https://placehold.co/600x600.png',
-            material: 'N/A',
-            dimensions: 'N/A'
-        };
-        
-        addToCart(transactionAsProduct, 1);
-        setCartCustomer({ name: transaction.customerName });
-
-        await updateCashTransactionStatusAction(transactionId);
-        toast({ title: 'Success', description: 'Transaction added to order and status has been updated.' });
-        setSelectedTransaction(null);
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: error.message || 'Could not update the transaction.',
-        });
-      }
-    });
+    toast({ title: 'Success', description: 'Transaction added to order.' });
+    setSelectedTransaction(null);
   };
 
   const transactionsWithAccountNames = React.useMemo(() => {
@@ -635,10 +619,9 @@ export default function CashTransactionTable() {
             <DialogFooter>
               {selectedTransaction.status === 'Available' && (
                   <Button
-                    onClick={() => handleUpdateStatus(selectedTransaction.id)}
-                    disabled={isUpdating}
+                    onClick={() => handleAddToCart(selectedTransaction)}
                   >
-                    {isUpdating ? 'Adding to Order...' : 'Add to Order'}
+                    Add to Order
                   </Button>
                 )}
               <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Close</Button>

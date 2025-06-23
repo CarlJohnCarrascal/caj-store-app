@@ -102,12 +102,27 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     const {
         customerId,
         customerName,
+        items,
         total,
         amountTendered,
         applyCustomerBalance,
         initialCustomerBalance,
         settlementType,
     } = validatedOrder.data;
+
+    for (const item of items) {
+        if (item.category === 'CashIO' && item.originalTransactionId) {
+            const updatedTransaction = await updateCashTransactionStatus(item.originalTransactionId);
+            if (updatedTransaction) {
+                 await logActivity({
+                    type: 'CashIO',
+                    action: 'Updated',
+                    details: `Transaction for "${updatedTransaction.customerName}" was marked as ${updatedTransaction.status} via checkout.`,
+                    targetId: item.originalTransactionId,
+                });
+            }
+        }
+    }
 
     // Log the order creation
     const orderId = `order-${Date.now()}`;
@@ -156,6 +171,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     await new Promise(res => setTimeout(res, 500));
 
     revalidatePath('/admin/transactions');
+    revalidatePath('/admin/cashio');
 }
 
 

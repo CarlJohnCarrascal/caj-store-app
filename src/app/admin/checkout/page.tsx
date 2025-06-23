@@ -24,6 +24,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 import { Switch } from '@/components/ui/switch';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from '@/components/ui/alert-dialog';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -337,18 +348,54 @@ export default function CheckoutPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
-            <Button className="w-full" onClick={handlePayOrder} disabled={isSubmitting || !selectedCustomerId}>
-              {isSubmitting ? 'Processing Payment...' : 'Pay Order'}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="w-full" disabled={isSubmitting || !selectedCustomerId}>
+                  {isSubmitting ? 'Processing Payment...' : 'Pay Order'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm Payment</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You are about to process a payment of ₱{amountTenderedValue.toFixed(2)} for a total of ₱{finalTotal.toFixed(2)}. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handlePayOrder} disabled={isSubmitting}>
+                    {isSubmitting ? 'Processing...' : 'Confirm Payment'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            
             {balanceOrChange !== 0 && (
-              <Button 
-                variant="secondary" 
-                className="w-full" 
-                onClick={() => processOrder('add_to_balance')}
-                disabled={isSubmitting || !selectedCustomerId || selectedCustomerId === 'unknown'}
-              >
-                {isSubmitting ? 'Processing...' : `Add to Balance (₱${balanceOrChange.toFixed(2)})`}
-              </Button>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button 
+                            variant="secondary" 
+                            className="w-full" 
+                            disabled={isSubmitting || !selectedCustomerId || selectedCustomerId === 'unknown'}
+                        >
+                            {`Add to Balance (₱${balanceOrChange.toFixed(2)})`}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Balance Update</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will add ₱{balanceOrChange.toFixed(2)} to {selectedCustomer?.name}'s balance. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => processOrder('add_to_balance')} disabled={isSubmitting}>
+                                {isSubmitting ? 'Processing...' : 'Confirm'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             )}
           </CardFooter>
         </Card>
