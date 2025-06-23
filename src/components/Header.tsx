@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -41,7 +42,7 @@ export default function Header() {
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
                    <Button variant="ghost" size="icon" className="md:hidden">
-                    <Menu className="h-6 w-6" />
+                    <Menu className="h-7 w-7" />
                     <span className="sr-only">Open menu</span>
                   </Button>
                 </SheetTrigger>
@@ -149,7 +150,7 @@ export default function Header() {
             
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => setIsCartOpen(true)} className="relative">
-                <ShoppingBag className="h-6 w-6" />
+                <ShoppingBag className="h-7 w-7" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {cartCount}
