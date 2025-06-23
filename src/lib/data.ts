@@ -1,496 +1,283 @@
 
 'use server';
 
-import { Product, Account, Customer, CashTransaction, Collection, ActivityLog } from './types';
+import { db } from './firebase';
+import { ref, get, set, push, update, remove } from 'firebase/database';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog } from './types';
 
-let products: Product[] = [
-  {
-    id: '1',
-    name: 'Aether-Wing Chair',
-    group: 'Seating',
-    show: true,
-    category: 'Furniture',
-    price: 399.99,
-    stock: 15,
-    material: 'Ash Wood, Bouclé',
-    dimensions: 'W: 30", D: 32", H: 35"',
-    description: 'Ergonomically designed for comfort, this chair features a unique wingback design, providing a cozy and stylish seating experience.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '2',
-    name: 'Lunar Glow Lamp',
-    group: 'Lamps',
-    show: true,
-    category: 'Lighting',
-    price: 129.50,
-    stock: 30,
-    material: 'Ceramic, Frosted Glass',
-    dimensions: 'Dia: 10", H: 18"',
-    description: 'Casting a soft, ambient light, the Lunar Glow Lamp adds a touch of modern elegance to any room with its sculptural ceramic base.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '3',
-    name: 'Terra Weave Rug',
-    group: 'Rugs',
-    show: true,
-    category: 'Textiles',
-    price: 249.00,
-    stock: 25,
-    material: 'Jute, Wool',
-    dimensions: '5\' x 8\'',
-    description: 'Handwoven with natural jute and wool fibers, this rug brings warmth and texture to your space, grounding it with earthy tones.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '4',
-    name: 'Orbit Coffee Table',
-    group: 'Tables',
-    show: true,
-    category: 'Furniture',
-    price: 599.00,
-    stock: 10,
-    material: 'Solid Walnut, Glass',
-    dimensions: 'Dia: 36", H: 16"',
-    description: 'A statement piece with a sleek, circular design. The Orbit table combines a solid walnut frame with a tempered glass top.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-   {
-    id: '5',
-    name: 'Chrono Desk Clock',
-    group: 'Clocks',
-    show: true,
-    category: 'Decor',
-    price: 75.00,
-    stock: 50,
-    material: 'Brushed Steel, Oak',
-    dimensions: 'W: 5", D: 2", H: 5"',
-    description: 'A minimalist desk clock that combines a brushed steel case with a solid oak face. Silent quartz movement ensures no ticking.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '6',
-    name: 'Nimbus Throw Pillow',
-    group: 'Pillows',
-    show: true,
-    category: 'Textiles',
-    price: 45.99,
-    stock: 40,
-    material: 'Velvet, Down Fill',
-    dimensions: '18" x 18"',
-    description: 'Plush and luxurious, the Nimbus pillow is made from high-quality velvet and filled with soft down for ultimate comfort.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '7',
-    name: 'Strata Bookshelf',
-    group: 'Storage',
-    show: true,
-    category: 'Furniture',
-    price: 899.00,
-    stock: 8,
-    material: 'Powder-coated Steel, Oak Veneer',
-    dimensions: 'W: 40", D: 12", H: 72"',
-    description: 'A modern, modular bookshelf with a sturdy steel frame and oak veneer shelves, perfect for displaying your favorite reads and decor.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '8',
-    name: 'Solstice Scented Candle',
-    group: 'Candles',
-    show: true,
-    category: 'Decor',
-    price: 32.00,
-    stock: 100,
-    material: 'Soy Wax, Essential Oils',
-    dimensions: '3" x 4"',
-    description: 'A hand-poured soy wax candle with notes of sandalwood, amber, and citrus. Provides up to 50 hours of clean burn time.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'each',
-  },
-  {
-    id: '9',
-    name: 'Organic Coffee Beans',
-    group: 'Pantry',
-    show: true,
-    category: 'Food & Drink',
-    price: 25.00,
-    stock: 100,
-    material: 'N/A',
-    dimensions: 'N/A',
-    description: 'Rich, full-bodied organic coffee beans sourced from the highlands of Colombia. Perfect for a morning brew. Sold by the kilogram.',
-    image: 'https://placehold.co/600x600.png',
-    unit: 'kg',
-  },
-];
+// Helper function to convert Firebase snapshot to an array
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
+}
 
-let accounts: Account[] = [
-    { id: 'acc-1', accountName: 'Main Business Account', accountNumber: '123-456-7890', bankName: 'BDO', balance: 150000 },
-    { id: 'acc-2', accountName: 'GCash Wallet', accountNumber: '09171234567', bankName: 'GCash', balance: 25000 },
-    { id: 'acc-3', accountName: 'Maya Wallet', accountNumber: '09281234567', bankName: 'Maya', balance: 18000 },
-];
-
-let customers: Customer[] = [
-    { id: 'cust-1', name: 'John Doe', email: 'john.d@example.com', phone: '09112223333', address: '123 Main St, Anytown', location: 'Anytown', balance: 150 },
-    { id: 'cust-2', name: 'Jane Smith', email: 'jane.s@example.com', phone: '09445556666', address: '456 Oak Ave, Othertown', location: 'Othertown', balance: -50 },
-    { id: 'cust-3', name: 'Aira Buenconcejo', email: 'aira.b@example.com', phone: '09123456781', address: 'Purok 1, Siuton', location: 'Siuton', balance: 70 },
-    { id: 'cust-4', name: 'Carl John Carrascal', email: 'carl.c@example.com', phone: '09123456782', address: 'Purok 2, Siuton', location: 'Siuton', balance: 350 },
-    { id: 'cust-5', name: 'Crisanto Antiado', email: 'crisanto.a@example.com', phone: '09123456783', address: 'Purok 3, Siuton', location: 'Siuton', balance: 0 },
-    { id: 'cust-6', name: 'Crizza Rotaeche', email: 'crizza.r@example.com', phone: '09123456784', address: 'Purok 4, Siuton', location: 'Siuton', balance: -510 },
-    { id: 'cust-7', name: 'Dhon Carrascal', email: 'dhon.c@example.com', phone: '09123456785', address: 'Purok 5, Siuton', location: 'Siuton', balance: 0 },
-    { id: 'cust-8', name: 'Francis Maquiling', email: 'francis.m@example.com', phone: '09123456786', address: 'Purok 6, Siuton', location: 'Siuton', balance: 510 },
-];
-
-let cashTransactions: CashTransaction[] = [
-    {
-        id: 'txn-1',
-        paymentMethod: 'Gcash',
-        accountUsedId: 'acc-2',
-        transactionType: 'Cash In',
-        message: 'Payment for services',
-        accountName: 'John Doe',
-        accountNumber: '09112223333',
-        reference: 'REF12345',
-        amount: 1500.00,
-        fee: 0,
-        newBalance: 26500,
-        dateRecieved: new Date('2023-10-26T10:00:00Z'),
-        customerName: 'John Doe',
-        status: 'Delivered',
-        createdAt: new Date('2023-10-26T09:55:00Z'),
-        updatedAt: new Date('2023-10-26T10:00:00Z'),
-    },
-    {
-        id: 'txn-2',
-        paymentMethod: 'Maya',
-        accountUsedId: 'acc-3',
-        transactionType: 'Cash Out',
-        message: 'Supplier payment',
-        accountName: 'Hardware Supply Co.',
-        accountNumber: '09998887777',
-        reference: 'REF67890',
-        amount: 5000.00,
-        fee: 10,
-        newBalance: 13000,
-        dateClaimedOrSent: new Date('2023-10-27T14:30:00Z'),
-        customerName: 'Hardware Supply Co.',
-        status: 'Claimed',
-        createdAt: new Date('2023-10-27T14:25:00Z'),
-        updatedAt: new Date('2023-10-27T14:30:00Z'),
-    },
-    {
-        id: 'txn-3',
-        paymentMethod: 'Gcash',
-        accountUsedId: 'acc-2',
-        transactionType: 'Cash In',
-        message: 'New order payment',
-        accountName: 'Jane Smith',
-        accountNumber: '09445556666',
-        reference: 'REFABCDE',
-        amount: 750.00,
-        fee: 0,
-        newBalance: 27250,
-        customerName: 'Jane Smith',
-        status: 'Available',
-        createdAt: new Date('2023-10-28T11:00:00Z'),
-        updatedAt: new Date('2023-10-28T11:00:00Z'),
-    },
-    {
-        id: 'txn-4',
-        paymentMethod: 'Other',
-        accountUsedId: 'acc-1',
-        transactionType: 'Cash Out',
-        message: 'Rent payment',
-        accountName: 'Landlord',
-        accountNumber: 'N/A',
-        reference: 'RENTNOV',
-        amount: 10000.00,
-        fee: 0,
-        newBalance: 140000,
-        customerName: 'Office Rent',
-        status: 'Available',
-        createdAt: new Date('2023-10-28T15:00:00Z'),
-        updatedAt: new Date('2023-10-28T15:00:00Z'),
-    },
-    {
-        id: 'txn-6',
-        paymentMethod: 'Gcash',
-        accountUsedId: 'acc-2',
-        transactionType: 'Cash In',
-        message: 'Payment for rush print',
-        accountName: 'Mark Reyes',
-        accountNumber: '09121231234',
-        reference: 'REFPRINT',
-        amount: 350.00,
-        fee: 0,
-        newBalance: 27600,
-        customerName: 'Mark Reyes',
-        status: 'Delivered',
-        createdAt: new Date('2023-11-01T11:00:00Z'),
-        updatedAt: new Date('2023-11-01T11:00:00Z'),
-    },
-     {
-        id: 'txn-7',
-        paymentMethod: 'Other',
-        accountUsedId: 'acc-1',
-        transactionType: 'Cash Out',
-        message: 'Internet Bill',
-        accountName: 'PLDT',
-        accountNumber: '028888171',
-        reference: 'BILLNOV',
-        amount: 1699.00,
-        fee: 0,
-        newBalance: 138301,
-        customerName: 'PLDT',
-        status: 'Claimed',
-        createdAt: new Date('2023-11-02T15:00:00Z'),
-        updatedAt: new Date('2023-11-02T15:00:00Z'),
-    },
-];
-
-let collections: Collection[] = [
-    { id: 'coll-1', name: 'Unpaid Invoice #123', value: '1500.50', customerId: 'cust-1', note: 'Due by end of month. Follow up on the 25th.' },
-    { id: 'coll-2', name: 'Printing Service Fee', value: '250.00', customerId: 'cust-2', note: '' },
-    { id: 'coll-3', name: 'Product Order #456', value: '899.99', customerId: 'cust-4' },
-    { id: 'coll-4', name: 'Negative Balance', value: '510.00', customerId: 'cust-6', note: 'From previous order, needs to be settled.' },
-];
-
-let activityLogs: ActivityLog[] = [
-    {
-        id: 'log-1',
-        type: 'Product',
-        action: 'Created',
-        timestamp: new Date('2023-10-25T10:00:00Z'),
-        details: 'Product "Aether-Wing Chair" was created.',
-        targetId: '1',
-    },
-    {
-        id: 'log-2',
-        type: 'Customer',
-        action: 'Created',
-        timestamp: new Date('2023-10-25T11:30:00Z'),
-        details: 'Customer "John Doe" was added.',
-        targetId: 'cust-1',
-    },
-     {
-        id: 'log-3',
-        type: 'Account',
-        action: 'Created',
-        timestamp: new Date('2023-10-26T09:00:00Z'),
-        details: 'Account "Main Business Account" was created.',
-        targetId: 'acc-1',
-    },
-];
-
+// ==================
+// Product Functions
+// ==================
 
 export async function getProducts(): Promise<Product[]> {
-  // In a real app, this would fetch from a database
-  return Promise.resolve(products);
+  const snapshot = await get(ref(db, 'products'));
+  return snapshotToArray<Product>(snapshot).reverse();
 }
 
 export async function getProductById(id: string): Promise<Product | undefined> {
-  return Promise.resolve(products.find(p => p.id === id));
+  const snapshot = await get(ref(db, `products/${id}`));
+  if (snapshot.exists()) {
+    return { id, ...snapshot.val() };
+  }
+  return undefined;
 }
 
 export async function addProduct(product: Omit<Product, 'id'>): Promise<Product> {
-  const newProduct: Product = {
-    ...product,
-    id: `prod-${Date.now()}`,
-  };
-  products.push(newProduct);
-  return Promise.resolve(newProduct);
+  const newProductRef = push(ref(db, 'products'));
+  const newProduct = { ...product, id: newProductRef.key! };
+  await set(newProductRef, product);
+  return newProduct;
 }
 
 export async function updateProduct(updatedProduct: Product): Promise<Product | null> {
-  const index = products.findIndex(p => p.id === updatedProduct.id);
-  if (index !== -1) {
-    products[index] = updatedProduct;
-    return Promise.resolve(updatedProduct);
-  }
-  return Promise.resolve(null);
+  const { id, ...data } = updatedProduct;
+  await update(ref(db), { [`/products/${id}`]: data });
+  return updatedProduct;
 }
 
 export async function deleteProduct(id: string): Promise<Product | null> {
-  const index = products.findIndex(p => p.id === id);
-  if (index !== -1) {
-    const [deletedProduct] = products.splice(index, 1);
-    return Promise.resolve(deletedProduct);
+  const productRef = ref(db, `products/${id}`);
+  const snapshot = await get(productRef);
+  if (snapshot.exists()) {
+    const deletedProduct = { id, ...snapshot.val() };
+    await remove(productRef);
+    return deletedProduct;
   }
-  return Promise.resolve(null);
+  return null;
 }
 
+// ==================
+// Account Functions
+// ==================
+
 export async function getAccounts(): Promise<Account[]> {
-  return Promise.resolve(accounts);
+  const snapshot = await get(ref(db, 'accounts'));
+  return snapshotToArray<Account>(snapshot);
 }
 
 export async function addAccount(account: Omit<Account, 'id'>): Promise<Account> {
-  const newAccount: Account = {
-    id: `acc-${Date.now()}`,
-    ...account,
-  };
-  accounts.push(newAccount);
-  return Promise.resolve(newAccount);
+  const newAccountRef = push(ref(db, 'accounts'));
+  const newAccount = { ...account, id: newAccountRef.key! };
+  await set(newAccountRef, account);
+  return newAccount;
 }
 
 export async function deleteAccount(id: string): Promise<Account | null> {
-  const index = accounts.findIndex(a => a.id === id);
-  if (index !== -1) {
-    const [deletedAccount] = accounts.splice(index, 1);
-    return Promise.resolve(deletedAccount);
+  const accountRef = ref(db, `accounts/${id}`);
+  const snapshot = await get(accountRef);
+  if (snapshot.exists()) {
+    const deletedAccount = { id, ...snapshot.val() };
+    await remove(accountRef);
+    return deletedAccount;
   }
-  return Promise.resolve(null);
+  return null;
 }
 
+// ==================
+// Customer Functions
+// ==================
+
 export async function getCustomers(): Promise<Customer[]> {
-  return Promise.resolve(customers);
+  const snapshot = await get(ref(db, 'customers'));
+  return snapshotToArray<Customer>(snapshot);
 }
 
 export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Customer> {
-  const newCustomer: Customer = {
-    id: `cust-${Date.now()}`,
-    ...customer,
-  };
-  customers.push(newCustomer);
-  return Promise.resolve(newCustomer);
+  const newCustomerRef = push(ref(db, 'customers'));
+  const newCustomer = { ...customer, id: newCustomerRef.key! };
+  await set(newCustomerRef, customer);
+  return newCustomer;
 }
 
 export async function updateCustomerBalance(customerId: string, amount: number): Promise<Customer | null> {
-    const index = customers.findIndex(c => c.id === customerId);
-    if (index !== -1) {
-        customers[index].balance += amount;
-        return Promise.resolve(customers[index]);
+    const customerRef = ref(db, `customers/${customerId}`);
+    const snapshot = await get(customerRef);
+    if (snapshot.exists()) {
+        const currentBalance = snapshot.val().balance || 0;
+        const newBalance = currentBalance + amount;
+        await update(customerRef, { balance: newBalance });
+        return { id: customerId, ...snapshot.val(), balance: newBalance };
     }
-    return Promise.resolve(null);
+    return null;
 }
 
+// =======================
+// CashTransaction Functions
+// =======================
+
 export async function getCashTransactions(): Promise<CashTransaction[]> {
-  const transactionsWithAccountNames = cashTransactions.map(transaction => {
-    const account = accounts.find(a => a.id === transaction.accountUsedId);
+  const transactionsSnapshot = await get(ref(db, 'cashTransactions'));
+  const transactions = snapshotToArray<CashTransaction>(transactionsSnapshot);
+
+  const accountsSnapshot = await get(ref(db, 'accounts'));
+  const accountsData = accountsSnapshot.val() || {};
+
+  const transactionsWithAccountNames = transactions.map(transaction => {
+    const account = accountsData[transaction.accountUsedId];
     return {
       ...transaction,
       ourAccountName: account ? account.accountName : 'Unknown Account',
+      // Firebase stores dates as strings, so convert them back
+      createdAt: new Date(transaction.createdAt),
+      updatedAt: new Date(transaction.updatedAt),
+      ...(transaction.dateRecieved && { dateRecieved: new Date(transaction.dateRecieved) }),
+      ...(transaction.dateClaimedOrSent && { dateClaimedOrSent: new Date(transaction.dateClaimedOrSent) }),
     };
   });
-  return Promise.resolve(transactionsWithAccountNames.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
+  return transactionsWithAccountNames.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
-  const accountIndex = accounts.findIndex(acc => acc.id === transactionData.accountUsedId);
-  if (accountIndex === -1) {
+  const accountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
+  const accountSnapshot = await get(accountRef);
+  if (!accountSnapshot.exists()) {
     throw new Error("Account not found");
   }
 
+  const account = accountSnapshot.val();
   let newBalance;
   if (transactionData.transactionType === 'Cash In') {
-    newBalance = accounts[accountIndex].balance + transactionData.amount - transactionData.fee;
+    newBalance = account.balance + transactionData.amount - transactionData.fee;
   } else { // Cash Out
-    newBalance = accounts[accountIndex].balance - transactionData.amount - transactionData.fee;
+    newBalance = account.balance - transactionData.amount - transactionData.fee;
   }
-  accounts[accountIndex].balance = newBalance;
+  await update(accountRef, { balance: newBalance });
 
   const transactionDate = transactionData.datetime ? new Date(transactionData.datetime) : new Date();
+  
+  const newTransactionRef = push(ref(db, 'cashTransactions'));
 
-  const newTransaction: CashTransaction = {
+  const dataToSave: any = {
     ...transactionData,
-    id: `txn-${Date.now()}`,
     newBalance,
-    createdAt: transactionDate,
-    updatedAt: transactionDate,
+    createdAt: transactionDate.toISOString(),
+    updatedAt: transactionDate.toISOString(),
   };
 
   if (transactionData.transactionType === 'Cash In') {
-    newTransaction.dateRecieved = transactionDate;
+    dataToSave.dateRecieved = transactionDate.toISOString();
   } else {
-    newTransaction.dateClaimedOrSent = transactionDate;
+    dataToSave.dateClaimedOrSent = transactionDate.toISOString();
   }
+  
+  delete dataToSave.datetime;
 
-  cashTransactions.unshift(newTransaction);
-  return Promise.resolve(newTransaction);
+  await set(newTransactionRef, dataToSave);
+  
+  return { ...dataToSave, id: newTransactionRef.key! };
 }
 
 export async function updateCashTransactionStatus(id: string): Promise<CashTransaction | null> {
-    const index = cashTransactions.findIndex(t => t.id === id);
-    if (index !== -1) {
-        const transaction = cashTransactions[index];
+    const transactionRef = ref(db, `cashTransactions/${id}`);
+    const snapshot = await get(transactionRef);
+
+    if (snapshot.exists()) {
+        const transaction = snapshot.val();
         if (transaction.status === 'Available') {
             const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-            transaction.status = newStatus;
-            transaction.updatedAt = new Date();
-            return Promise.resolve(transaction);
+            const updatedAt = new Date().toISOString();
+            await update(transactionRef, { status: newStatus, updatedAt });
+            return { ...transaction, id, status: newStatus, updatedAt: new Date(updatedAt) };
         }
     }
-    return Promise.resolve(null);
+    return null;
 }
 
+// =======================
+// Collection Functions
+// =======================
+
 export async function getCollections(): Promise<Collection[]> {
-  // In a real app, you might do a database join. Here, we'll map the customer name.
-  const collectionsWithCustomerNames = collections.map(collection => {
-      const customer = customers.find(c => c.id === collection.customerId);
-      return {
-          ...collection,
-          customerName: customer ? customer.name : 'Unknown Customer'
-      };
-  });
-  return Promise.resolve(collectionsWithCustomerNames);
+    const collectionsSnapshot = await get(ref(db, 'collections'));
+    const collections = snapshotToArray<Collection>(collectionsSnapshot);
+    const customersSnapshot = await get(ref(db, 'customers'));
+    const customersData = customersSnapshot.val() || {};
+
+    const collectionsWithCustomerNames = collections.map(collection => {
+        const customer = customersData[collection.customerId];
+        return {
+            ...collection,
+            customerName: customer ? customer.name : 'Unknown Customer'
+        };
+    });
+    return collectionsWithCustomerNames;
 }
 
 export async function getCollectionNames(): Promise<string[]> {
-    const names = collections.map(c => c.name);
-    return Promise.resolve([...new Set(names)]);
+    const snapshot = await get(ref(db, 'collections'));
+    const names = new Set<string>();
+    if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot: any) => {
+            names.add(childSnapshot.val().name);
+        });
+    }
+    return Promise.resolve([...names]);
 }
 
 export async function getCollectionById(id: string): Promise<Collection | undefined> {
-  return Promise.resolve(collections.find(c => c.id === id));
+    const snapshot = await get(ref(db, `collections/${id}`));
+    if (snapshot.exists()) {
+        return { id, ...snapshot.val() };
+    }
+    return undefined;
 }
 
 export async function addCollection(collection: Omit<Collection, 'id' | 'customerName'>): Promise<Collection> {
-    const newCollection: Collection = {
-        ...collection,
-        id: `coll-${Date.now()}`,
-    };
-    collections.unshift(newCollection);
-    return Promise.resolve(newCollection);
+    const newCollectionRef = push(ref(db, 'collections'));
+    const newCollection = { ...collection, id: newCollectionRef.key! };
+    await set(newCollectionRef, collection);
+    return newCollection;
 }
 
 export async function updateCollection(updatedCollection: Omit<Collection, 'customerName'>): Promise<Collection | null> {
-    const index = collections.findIndex(c => c.id === updatedCollection.id);
-    if (index !== -1) {
-        collections[index] = { ...collections[index], ...updatedCollection };
-        return Promise.resolve(collections[index]);
-    }
-    return Promise.resolve(null);
+    const { id, ...data } = updatedCollection;
+    await update(ref(db), { [`/collections/${id}`]: data });
+    return updatedCollection as Collection;
 }
 
 export async function deleteCollection(id: string): Promise<Collection | null> {
-    const index = collections.findIndex(c => c.id === id);
-    if (index !== -1) {
-        const [deletedCollection] = collections.splice(index, 1);
-        return Promise.resolve(deletedCollection);
+    const collectionRef = ref(db, `collections/${id}`);
+    const snapshot = await get(collectionRef);
+    if (snapshot.exists()) {
+        const deletedCollection = { id, ...snapshot.val() };
+        await remove(collectionRef);
+        return deletedCollection;
     }
-    return Promise.resolve(null);
+    return null;
 }
 
+// =======================
+// ActivityLog Functions
+// =======================
+
 export async function getActivities(): Promise<ActivityLog[]> {
-  // sort by most recent first
-  const sortedLogs = activityLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  return Promise.resolve(sortedLogs);
+    const snapshot = await get(ref(db, 'activityLogs'));
+    const logs = snapshotToArray<ActivityLog>(snapshot);
+    // Convert timestamp strings back to Date objects
+    const logsWithDates = logs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
+    return logsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 }
 
 export async function logActivity(log: Omit<ActivityLog, 'id' | 'timestamp'>): Promise<void> {
-  const newLog: ActivityLog = {
+  const newLogRef = push(ref(db, 'activityLogs'));
+  const newLog = {
     ...log,
-    id: `log-${Date.now()}`,
-    timestamp: new Date(),
-    targetId: log.targetId,
+    timestamp: new Date().toISOString(),
   };
-  activityLogs.unshift(newLog); // Add to the beginning of the array
+  await set(newLogRef, newLog);
   return Promise.resolve();
 }
