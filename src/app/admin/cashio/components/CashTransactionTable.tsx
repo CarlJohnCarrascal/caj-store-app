@@ -582,15 +582,25 @@ export default function CashTransactionTable() {
               </div>
               
               <div className="space-y-3">
-                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'To' : 'From'}</h4>
+                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'From (Sender)' : 'To (Receiver)'}</h4>
                  <div className="flex items-center gap-3 text-sm">
                     <User className="h-4 w-4 text-muted-foreground"/>
-                    <span>{selectedTransaction.customerName} ({selectedTransaction.accountName})</span>
+                    <span>{selectedTransaction.accountName}</span>
                  </div>
                  <div className="flex items-center gap-3 text-sm">
                     <Wallet className="h-4 w-4 text-muted-foreground"/>
                     <span>{selectedTransaction.accountNumber}</span>
                  </div>
+                 
+                 {selectedTransaction.customerId && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-muted-foreground mb-1">Processed By (Store Customer)</p>
+                      <div className="flex items-center gap-3 text-sm font-medium">
+                        <User className="h-4 w-4 text-muted-foreground"/>
+                        <span>{selectedTransaction.customerName}</span>
+                      </div>
+                    </div>
+                 )}
               </div>
               
               <div className="space-y-3">
