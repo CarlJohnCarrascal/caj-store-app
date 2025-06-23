@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History } from 'lucide-react';
+import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -70,6 +70,9 @@ export default function Header() {
                                 <Link href="/admin/printing" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Printer className="h-5 w-5 text-muted-foreground" /><span>Printing</span>
                                 </Link>
+                                <Link href="/admin/e-loading" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Smartphone className="h-5 w-5 text-muted-foreground" /><span>E-loading</span>
+                                </Link>
                                 <Link href="/admin/cashio" className="flex items-center gap-4 px-3 py-2 text-base font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
                                 </Link>
@@ -120,6 +123,7 @@ export default function Header() {
                   <DropdownMenuContent>
                     <DropdownMenuItem asChild><Link href="/admin/store" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Store</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/printing" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/e-loading" className="flex items-center gap-2 cursor-pointer"><Smartphone className="h-4 w-4" /> E-loading</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

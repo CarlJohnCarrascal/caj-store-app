@@ -262,16 +262,17 @@ export default function CheckoutPage() {
                 {cartItems.map(item => {
                 const isPrinting = item.category === 'Printing';
                 const isCashIO = item.category === 'CashIO';
+                const isEloading = item.category === 'E-loading';
                 return (
                 <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                     <div className="relative h-16 w-16 rounded-md overflow-hidden border">
-                        <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : 'product photo'} />
+                        <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : isEloading ? 'loading service' : 'product photo'} />
                     </div>
                     <div>
                         <p className="font-medium">{item.name}</p>
                         {!isCashIO && <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>}
-                        {(isPrinting || isCashIO) && item.description && (
+                        {(isPrinting || isCashIO || isEloading) && item.description && (
                         <p className="text-xs text-muted-foreground mt-1 max-w-[180px] break-words">{item.description}</p>
                         )}
                     </div>
