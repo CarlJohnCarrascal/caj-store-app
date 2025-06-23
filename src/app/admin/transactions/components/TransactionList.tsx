@@ -1,15 +1,17 @@
 'use client';
 
 import { ActivityLog } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Package, Users, Library, Landmark, ShoppingCart, History, PlusCircle, Pencil, Trash2, ArrowRightLeft } from 'lucide-react';
+import { Package, Users, Library, Landmark, ShoppingCart, History, PlusCircle, Pencil, Trash2, ArrowRightLeft, Clock, Info, ShieldQuestion, Tag, Fingerprint } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue, query, limitToLast, orderByKey } from 'firebase/database';
+import { ref, onValue, query, limitToLast, orderByKey, get, endBefore } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -24,8 +26,7 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   return items;
 }
 
-interface TransactionListProps {
-}
+const ITEMS_PER_PAGE = 20;
 
 const typeIcons: { [key: string]: React.ReactNode } = {
   Product: <Package className="h-5 w-5" />,
@@ -48,24 +49,54 @@ const actionColors = {
   Deleted: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700',
 };
 
-export default function TransactionList({ }: TransactionListProps) {
+export default function TransactionList() {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [lastLoadedKey, setLastLoadedKey] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
+
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
   useEffect(() => {
-    // We query the last 50 activities to avoid loading the entire history.
-    const activitiesRef = query(ref(db, 'activityLogs'), orderByKey(), limitToLast(50));
+    const activitiesRef = query(ref(db, 'activityLogs'), orderByKey(), limitToLast(ITEMS_PER_PAGE));
     const unsubscribe = onValue(activitiesRef, (snapshot) => {
       const logs = snapshotToArray<ActivityLog>(snapshot);
       const logsWithDates = logs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
       setActivities(logsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+      
+      if (logs.length > 0) {
+        setLastLoadedKey(logs[0].id); // The oldest key is the first one in the original snapshot
+      }
+      setHasMore(logs.length === ITEMS_PER_PAGE);
       setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const handleLoadMore = async () => {
+    if (!lastLoadedKey || !hasMore) return;
+
+    setIsFetchingMore(true);
+    const activitiesRef = query(ref(db, 'activityLogs'), orderByKey(), endBefore(lastLoadedKey), limitToLast(ITEMS_PER_PAGE));
+    
+    const snapshot = await get(activitiesRef);
+    const newLogs = snapshotToArray<ActivityLog>(snapshot);
+
+    if (newLogs.length > 0) {
+      const newLogsWithDates = newLogs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
+      setActivities(prev => [...prev, ...newLogsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())]);
+      setLastLoadedKey(newLogs[0].id);
+      setHasMore(newLogs.length === ITEMS_PER_PAGE);
+    } else {
+      setHasMore(false);
+    }
+
+    setIsFetchingMore(false);
+  }
 
   if (isLoading) {
       return (
@@ -98,33 +129,90 @@ export default function TransactionList({ }: TransactionListProps) {
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <ul className="divide-y divide-border">
-          {activities.map((activity) => (
-            <li key={activity.id} className="flex items-start gap-4 p-4 hover:bg-muted/50">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                {typeIcons[activity.type] || <History className="h-5 w-5" />}
-              </div>
-              <div className="flex-grow">
-                <p className="font-medium text-foreground">{activity.details}</p>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
-                  <Badge variant="outline" className={cn("font-normal h-6", actionColors[activity.action])}>
-                    <span className="mr-1.5">{actionIcons[activity.action]}</span>
-                    {activity.action}
-                  </Badge>
-                  <span className="hidden sm:inline">&middot;</span>
-                  <span className="font-semibold">{activity.type}</span>
-                   <span className="hidden sm:inline">&middot;</span>
-                   <span title={isMounted ? format(activity.timestamp, 'PPpp') : ''}>
-                     {isMounted ? `${formatDistanceToNow(activity.timestamp)} ago` : '...'}
-                   </span>
+    <>
+      <Card>
+        <CardContent className="p-0">
+          <ul className="divide-y divide-border">
+            {activities.map((activity) => (
+              <li 
+                key={activity.id} 
+                className="flex items-start gap-4 p-4 hover:bg-muted/50 cursor-pointer"
+                onClick={() => setSelectedActivity(activity)}
+              >
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  {typeIcons[activity.type] || <History className="h-5 w-5" />}
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+                <div className="flex-grow">
+                  <p className="font-medium text-foreground">{activity.details}</p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
+                    <Badge variant="outline" className={cn("font-normal h-6", actionColors[activity.action])}>
+                      <span className="mr-1.5">{actionIcons[activity.action]}</span>
+                      {activity.action}
+                    </Badge>
+                    <span className="hidden sm:inline">&middot;</span>
+                    <span className="font-semibold">{activity.type}</span>
+                    <span className="hidden sm:inline">&middot;</span>
+                    <span title={isMounted ? format(activity.timestamp, 'PPpp') : ''}>
+                      {isMounted ? `${formatDistanceToNow(activity.timestamp)} ago` : '...'}
+                    </span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+        {hasMore && (
+            <CardFooter className="p-4 border-t">
+                <Button 
+                    className="w-full"
+                    variant="outline"
+                    onClick={handleLoadMore}
+                    disabled={isFetchingMore}
+                >
+                    {isFetchingMore ? 'Loading...' : 'Load More'}
+                </Button>
+            </CardFooter>
+        )}
+      </Card>
+
+      <Dialog open={!!selectedActivity} onOpenChange={(isOpen) => !isOpen && setSelectedActivity(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Activity Details</DialogTitle>
+            <DialogDescription>A detailed view of the recorded activity.</DialogDescription>
+          </DialogHeader>
+          {selectedActivity && isMounted && (
+            <div className="grid gap-4 py-4 text-sm">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Timestamp</div>
+                    <span className="font-mono text-right">{format(selectedActivity.timestamp, 'MMM d, yyyy, h:mm:ss a')}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground"><Info className="h-4 w-4" /> Details</div>
+                    <p className="text-right max-w-[70%]">{selectedActivity.details}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground"><ShieldQuestion className="h-4 w-4" /> Action</div>
+                    <Badge variant="outline" className={cn("font-normal", actionColors[selectedActivity.action])}>
+                        {actionIcons[selectedActivity.action]}
+                        <span className="ml-1.5">{selectedActivity.action}</span>
+                    </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground"><Tag className="h-4 w-4" /> Type</div>
+                    <span>{selectedActivity.type}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground"><Fingerprint className="h-4 w-4" /> Target ID</div>
+                    <span className="font-mono text-xs">{selectedActivity.targetId}</span>
+                </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedActivity(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
