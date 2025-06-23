@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -73,7 +73,10 @@ export default function CashTransactionTable() {
 
 
   // Filtering state
-  const [date, setDate] = React.useState<DateRange | undefined>();
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: subDays(new Date(), 4),
+    to: new Date(),
+  });
   const [type, setType] = React.useState('all');
   const [method, setMethod] = React.useState('all');
   const [accountUsed, setAccountUsed] = React.useState('all');
@@ -380,7 +383,7 @@ export default function CashTransactionTable() {
                 <div
                   key={t.id}
                   className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setSelectedTransaction(t)}
+                  onClick={()={() => setSelectedTransaction(t)}}
                 >
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
                     <div className="space-y-1.5">
@@ -583,7 +586,7 @@ export default function CashTransactionTable() {
               </div>
               
               <div className="space-y-3">
-                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
+                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash Out' ? 'From (Sender)' : 'To (Receiver)'}</h4>
                  <div className="flex items-center gap-3 text-sm">
                     <User className="h-4 w-4 text-muted-foreground"/>
                     <span>{selectedTransaction.accountName}</span>
@@ -643,3 +646,5 @@ export default function CashTransactionTable() {
     </div>
   );
 }
+
+    
