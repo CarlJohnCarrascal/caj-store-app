@@ -54,6 +54,7 @@ export interface CashTransaction {
   dateRecieved?: Date;
   dateClaimedOrSent?: Date;
   customerName: string;
+  customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
   createdAt: Date;
   updatedAt: Date;

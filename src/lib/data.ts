@@ -181,7 +181,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   return { ...dataToSave, id: newTransactionRef.key! };
 }
 
-export async function updateCashTransactionStatus(id: string): Promise<CashTransaction | null> {
+export async function updateCashTransactionStatus(id: string, customerId: string, customerName: string): Promise<CashTransaction | null> {
     const transactionRef = ref(db, `cashTransactions/${id}`);
     const snapshot = await get(transactionRef);
 
@@ -190,8 +190,15 @@ export async function updateCashTransactionStatus(id: string): Promise<CashTrans
         if (transaction.status === 'Available') {
             const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
             const updatedAt = new Date().toISOString();
-            await update(transactionRef, { status: newStatus, updatedAt });
-            return { ...transaction, id, status: newStatus, updatedAt: new Date(updatedAt) };
+            const updates = {
+                status: newStatus,
+                updatedAt,
+                customerId,
+                customerName,
+            };
+            await update(transactionRef, updates);
+            const updatedTransactionData = { ...transaction, ...updates, id };
+            return { ...updatedTransactionData, updatedAt: new Date(updatedAt) };
         }
     }
     return null;

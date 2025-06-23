@@ -112,7 +112,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
 
     for (const item of items) {
         if (item.category === 'CashIO' && item.originalTransactionId) {
-            const updatedTransaction = await updateCashTransactionStatus(item.originalTransactionId);
+            const updatedTransaction = await updateCashTransactionStatus(item.originalTransactionId, customerId, customerName);
             if (updatedTransaction) {
                  await logActivity({
                     type: 'CashIO',
@@ -284,25 +284,6 @@ export async function addCashTransactionAction(data: FormData) {
   revalidatePath('/admin/transactions');
   revalidatePath('/admin/accounts'); // because balance changes
 }
-
-export async function updateCashTransactionStatusAction(id: string) {
-  const updatedTransaction = await updateCashTransactionStatus(id);
-  
-  if (updatedTransaction) {
-    await logActivity({
-      type: 'CashIO',
-      action: 'Updated',
-      details: `Transaction for "${updatedTransaction.customerName}" was marked as ${updatedTransaction.status}.`,
-      targetId: id,
-    });
-  } else {
-    throw new Error('Transaction is not available to be updated or not found.');
-  }
-  
-  revalidatePath('/admin/cashio');
-  revalidatePath('/admin/transactions');
-}
-
 
 const collectionSchema = z.object({
     name: z.string().min(1, 'Name is required'),
