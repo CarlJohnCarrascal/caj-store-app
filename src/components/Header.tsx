@@ -50,7 +50,7 @@ export default function Header() {
                      <SheetTitle className="text-left">
                         <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
                             <LayoutDashboard />
-                            Dashboard
+                            CajStore
                         </Link>
                      </SheetTitle>
                   </SheetHeader>
@@ -109,7 +109,7 @@ export default function Header() {
               <nav className="hidden md:flex items-center space-x-6">
                 <Link href="/admin" className="text-lg font-bold flex items-center gap-2">
                     <LayoutDashboard className="h-5 w-5" />
-                    Dashboard
+                    CajStore
                 </Link>
                 <div className="h-6 w-px bg-border" />
                  
