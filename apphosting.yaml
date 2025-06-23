@@ -3,8 +3,8 @@
 
 # Specifies the region where your App Hosting backend will be located.
 # For a list of supported regions, see: https://firebase.google.com/docs/app-hosting/locations
-# For example, you can change this to "asia-southeast1"
-location: us-central1
+# For example, you can change this to "us-central1"
+location: asia-southeast1
 
 runConfig:
   # Increase this value if you'd like to automatically spin up
