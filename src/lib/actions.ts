@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -268,6 +268,11 @@ export async function addCashTransactionAction(data: FormData) {
   if (!validatedFields.success) {
     console.error(validatedFields.error.flatten().fieldErrors);
     throw new Error('Invalid cash transaction data.');
+  }
+
+  const isDuplicate = await isReferenceNumberDuplicate(validatedFields.data.reference);
+  if (isDuplicate) {
+    throw new Error(`Transaction with reference number "${validatedFields.data.reference}" already exists.`);
   }
 
   // We don't pass newBalance to addCashTransaction, it calculates it.

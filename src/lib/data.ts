@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from './firebase';
-import { ref, get, set, push, update, remove } from 'firebase/database';
+import { ref, get, set, push, update, remove, query, orderByChild, equalTo } from 'firebase/database';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog } from './types';
 
 // Helper function to convert Firebase snapshot to an array
@@ -139,6 +139,13 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
     };
   });
   return transactionsWithAccountNames.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+export async function isReferenceNumberDuplicate(reference: string): Promise<boolean> {
+  const transactionsRef = ref(db, 'cashTransactions');
+  const q = query(transactionsRef, orderByChild('reference'), equalTo(reference));
+  const snapshot = await get(q);
+  return snapshot.exists();
 }
 
 export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
