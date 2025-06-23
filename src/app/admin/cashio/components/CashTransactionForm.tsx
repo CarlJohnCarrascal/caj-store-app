@@ -20,7 +20,7 @@ import { Account, Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addCashTransactionAction } from '@/lib/actions';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowDown, ArrowUp, Bot } from 'lucide-react';
@@ -47,9 +47,10 @@ type CashTransactionFormValues = z.infer<typeof formSchema>;
 
 interface CashTransactionFormProps {
   accounts: Account[];
+  sharedText?: string;
 }
 
-export default function CashTransactionForm({ accounts }: CashTransactionFormProps) {
+export default function CashTransactionForm({ accounts, sharedText }: CashTransactionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -57,6 +58,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [extractionResult, setExtractionResult] = useState<string | null>(null);
   const { addToCart, setCartCustomer } = useCart();
+  const hasProcessedSharedText = useRef(false);
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -77,63 +79,8 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
 
   const transactionType = form.watch('transactionType');
 
-  const submitTransaction = (data: CashTransactionFormValues) => {
-    startTransition(async () => {
-      try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined) {
-            formData.append(key, String(value));
-          }
-        });
-        // Set customerName from accountName
-        formData.append('customerName', data.accountName);
-
-        await addCashTransactionAction(formData);
-        toast({ title: 'Success', description: 'Transaction added successfully.' });
-        router.push('/admin/cashio');
-        router.refresh();
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
-      }
-    });
-  };
-
-  const onSave = (data: CashTransactionFormValues) => {
-    submitTransaction({ ...data, status: 'Available' });
-  };
-  
-  const onAddToOrder = (data: CashTransactionFormValues) => {
-    const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-
-    const finalPrice = data.transactionType === 'Cash In'
-        ? data.amount + data.fee
-        : data.fee - data.amount;
-
-    const transactionAsProduct: Product = {
-        id: `cashio-${data.reference}-${Date.now()}`,
-        name: `${data.transactionType}: ${data.accountName}`,
-        price: finalPrice,
-        description: `Ref: ${data.reference} | Acct: ${data.accountName} (${data.accountNumber}) | Fee: ₱${data.fee.toFixed(2)} | Amt: ₱${data.amount.toFixed(2)}`,
-        group: 'Financial',
-        category: 'CashIO',
-        show: false,
-        stock: 1,
-        unit: 'each',
-        image: 'https://placehold.co/600x600.png',
-        material: 'N/A',
-        dimensions: 'N/A'
-    };
-    
-    addToCart(transactionAsProduct, 1);
-    setCartCustomer({ name: data.accountName });
-
-    submitTransaction({ ...data, status: finalStatus });
-  };
-
-
-  const handleExtractDetails = async () => {
-    const message = form.getValues('message');
+  const handleExtractDetails = async (messageToExtract?: string) => {
+    const message = messageToExtract || form.getValues('message');
     if (!message || message.trim().length < 10) {
         toast({
             variant: 'destructive',
@@ -143,7 +90,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
         return;
     }
     setIsGenerating(true);
-    setExtractionResult(null); // Clear previous result
+    setExtractionResult(null);
     try {
         const result = await extractTransactionDetails({ message });
 
@@ -176,7 +123,6 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
             }
             
             if (data.datetime) {
-                // Format to YYYY-MM-DDTHH:mm which is required by datetime-local input
                 const localDateTime = new Date(data.datetime).toISOString().slice(0, 16);
                 form.setValue('datetime', localDateTime, { shouldValidate: true });
                 populatedFields.push('datetime');
@@ -222,6 +168,64 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
     }
   };
 
+  useEffect(() => {
+    if (sharedText && !hasProcessedSharedText.current) {
+      form.setValue('message', sharedText);
+      handleExtractDetails(sharedText);
+      hasProcessedSharedText.current = true;
+    }
+  }, [sharedText, form, handleExtractDetails]);
+
+
+  const submitTransaction = (data: CashTransactionFormValues) => {
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+          if (value !== undefined) {
+            formData.append(key, String(value));
+          }
+        });
+        formData.append('customerName', data.accountName);
+
+        await addCashTransactionAction(formData);
+        toast({ title: 'Success', description: 'Transaction added successfully.' });
+        router.push('/admin/cashio');
+        router.refresh();
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      }
+    });
+  };
+
+  const onSave = (data: CashTransactionFormValues) => {
+    submitTransaction({ ...data, status: 'Available' });
+  };
+  
+  const onAddToOrder = (data: CashTransactionFormValues) => {
+    const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+    const finalPrice = data.transactionType === 'Cash In' ? data.amount + data.fee : -(data.amount - data.fee);
+
+    const transactionAsProduct: Product = {
+        id: `cashio-${data.reference}-${Date.now()}`,
+        name: `${data.transactionType}: ${data.accountName}`,
+        price: finalPrice,
+        description: `Ref: ${data.reference} | Acct: ${data.accountName} (${data.accountNumber}) | Fee: ₱${data.fee.toFixed(2)} | Amt: ₱${data.amount.toFixed(2)}`,
+        group: 'Financial',
+        category: 'CashIO',
+        show: false,
+        stock: 1,
+        unit: 'each',
+        image: 'https://placehold.co/600x600.png',
+        material: 'N/A',
+        dimensions: 'N/A'
+    };
+    
+    addToCart(transactionAsProduct, 1);
+    setCartCustomer({ name: data.accountName });
+    submitTransaction({ ...data, status: finalStatus });
+  };
+
 
   return (
     <>
@@ -237,7 +241,7 @@ export default function CashTransactionForm({ accounts }: CashTransactionFormPro
                   <FormItem>
                       <div className="flex justify-between items-center">
                       <FormLabel>Transaction Message (Optional)</FormLabel>
-                      <Button type="button" variant="outline" size="sm" onClick={handleExtractDetails} disabled={isGenerating}>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleExtractDetails()} disabled={isGenerating}>
                           <Bot className="mr-2 h-4 w-4" />
                           {isGenerating ? 'Extracting...' : 'Extract Details with AI'}
                       </Button>

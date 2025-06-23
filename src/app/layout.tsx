@@ -6,6 +6,7 @@ import { CartProvider } from '@/hooks/use-cart';
 export const metadata: Metadata = {
   title: 'Caj-Store',
   description: 'An online application for small business stores, offering products and printing services.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
