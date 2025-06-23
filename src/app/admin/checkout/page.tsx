@@ -8,10 +8,11 @@ import Link from 'next/link';
 
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
-import { getCustomers } from '@/lib/data';
 import { processOrderAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 import { Switch } from '@/components/ui/switch';
+
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+    const items: (T & { id: string })[] = [];
+    if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot: any) => {
+        items.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val(),
+        });
+        });
+    }
+    return items;
+}
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart, cartCustomer, setCartCustomer } = useCart();
@@ -38,15 +52,17 @@ export default function CheckoutPage() {
   const [isSubmitting, startTransition] = useTransition();
 
   useEffect(() => {
-    async function fetchCustomers() {
+    const customersRef = ref(db, 'customers');
+    const unsubscribe = onValue(customersRef, (snapshot) => {
       try {
-        const fetchedCustomers = await getCustomers();
+        const fetchedCustomers = snapshotToArray<Customer>(snapshot);
         setCustomers(fetchedCustomers);
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch customers.' });
       }
-    }
-    fetchCustomers();
+    });
+
+    return () => unsubscribe();
   }, [toast]);
 
   useEffect(() => {
@@ -77,8 +93,7 @@ export default function CheckoutPage() {
   
   const handleAddNewCustomerSuccess = async () => {
     setIsCustomerDialogOpen(false);
-    const updatedCustomers = await getCustomers();
-    setCustomers(updatedCustomers);
+    // Data will be updated by the realtime listener, no need to re-fetch
     toast({ title: "Customer added", description: "You can now select the new customer." });
   };
 

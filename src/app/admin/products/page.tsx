@@ -1,12 +1,9 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { getProducts } from '@/lib/data';
 import { PlusCircle } from 'lucide-react';
 import ProductTable from './ProductTable';
 
-export default async function AdminPage() {
-  const products = await getProducts();
-
+export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -18,7 +15,7 @@ export default async function AdminPage() {
           </Link>
         </Button>
       </div>
-      <ProductTable products={products} />
+      <ProductTable />
     </div>
   );
 }

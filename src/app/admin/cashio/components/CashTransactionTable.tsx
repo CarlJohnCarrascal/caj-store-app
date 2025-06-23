@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -41,14 +40,27 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { updateCashTransactionStatusAction } from '@/lib/actions';
 import { useCart } from '@/hooks/use-cart';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
-interface CashTransactionTableProps {
-  transactions: CashTransaction[];
-  accounts: Account[];
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
 }
 
-export default function CashTransactionTable({ transactions: initialTransactions, accounts }: CashTransactionTableProps) {
-  const [transactions, setTransactions] = React.useState(initialTransactions);
+export default function CashTransactionTable() {
+  const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
+  const [accounts, setAccounts] = React.useState<Account[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
@@ -70,6 +82,42 @@ export default function CashTransactionTable({ transactions: initialTransactions
 
   React.useEffect(() => {
     setIsMounted(true);
+
+    let transactionsLoaded = false;
+    let accountsLoaded = false;
+
+    const checkLoading = () => {
+      if (transactionsLoaded && accountsLoaded) {
+        setIsLoading(false);
+      }
+    };
+
+    const transactionsRef = ref(db, 'cashTransactions');
+    const unsubscribeTransactions = onValue(transactionsRef, (snapshot) => {
+      const transactionList = snapshotToArray<CashTransaction>(snapshot);
+      const transactionsWithDates = transactionList.map(t => ({
+          ...t,
+          createdAt: new Date(t.createdAt),
+          updatedAt: new Date(t.updatedAt),
+          ...(t.dateRecieved && { dateRecieved: new Date(t.dateRecieved as any) }),
+          ...(t.dateClaimedOrSent && { dateClaimedOrSent: new Date(t.dateClaimedOrSent as any) }),
+      }));
+      setTransactions(transactionsWithDates);
+      transactionsLoaded = true;
+      checkLoading();
+    });
+
+    const accountsRef = ref(db, 'accounts');
+    const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
+      setAccounts(snapshotToArray<Account>(snapshot));
+      accountsLoaded = true;
+      checkLoading();
+    });
+
+    return () => {
+      unsubscribeTransactions();
+      unsubscribeAccounts();
+    };
   }, []);
 
   const handleUpdateStatus = (transactionId: string) => {
@@ -114,14 +162,22 @@ export default function CashTransactionTable({ transactions: initialTransactions
     });
   };
 
+  const transactionsWithAccountNames = React.useMemo(() => {
+    const accountMap = new Map(accounts.map(acc => [acc.id, acc.accountName]));
+    return transactions.map(t => ({
+      ...t,
+      ourAccountName: accountMap.get(t.accountUsedId) || 'Unknown Account',
+    }));
+  }, [transactions, accounts]);
+
   const filteredTransactions = React.useMemo(() => {
-    return transactions
+    return transactionsWithAccountNames
       .filter(t => {
         const searchLower = search.toLowerCase();
         return (
           t.reference.toLowerCase().includes(searchLower) ||
           t.customerName.toLowerCase().includes(searchLower) ||
-          t.message.toLowerCase().includes(searchLower)
+          (t.message && t.message.toLowerCase().includes(searchLower))
         );
       })
       .filter(t => type === 'all' || t.transactionType === type)
@@ -135,7 +191,7 @@ export default function CashTransactionTable({ transactions: initialTransactions
         const transactionDate = t.createdAt;
         return transactionDate >= from && transactionDate <= new Date(to.getTime() + 86400000); // include the whole 'to' day
       });
-  }, [search, transactions, date, type, method, accountUsed, status]);
+  }, [search, transactionsWithAccountNames, date, type, method, accountUsed, status]);
 
   const summary = React.useMemo(() => {
     const totalIn = filteredTransactions
@@ -188,6 +244,20 @@ export default function CashTransactionTable({ transactions: initialTransactions
     setPage(1);
   }, [itemsPerPage, search, date, type, method, accountUsed, status]);
 
+  if (isLoading) {
+    return (
+       <div className="space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Card>
+            <div className="space-y-2 p-4">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+            </div>
+          </Card>
+       </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

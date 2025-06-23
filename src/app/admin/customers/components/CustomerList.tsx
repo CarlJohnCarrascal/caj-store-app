@@ -1,22 +1,47 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Customer } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface CustomerListProps {
-  customers: Customer[];
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+    const items: (T & { id: string })[] = [];
+    if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot: any) => {
+        items.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val(),
+        });
+        });
+    }
+    return items;
 }
 
-export default function CustomerList({ customers }: CustomerListProps) {
+export default function CustomerList() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilter, setShowFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name-asc');
+  
+  useEffect(() => {
+    const customersRef = ref(db, 'customers');
+    const unsubscribe = onValue(customersRef, (snapshot) => {
+      const customerList = snapshotToArray<Customer>(snapshot);
+      setCustomers(customerList);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
 
   const filteredAndSortedCustomers = useMemo(() => {
     let filtered = [...customers];
@@ -51,6 +76,27 @@ export default function CustomerList({ customers }: CustomerListProps) {
 
     return filtered;
   }, [customers, searchTerm, showFilter, sortBy]);
+
+  if (isLoading) {
+    return (
+       <Card>
+            <Skeleton className="h-16 w-full" />
+            <div className="p-0">
+                <div className="divide-y">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between p-4">
+                            <div>
+                                <Skeleton className="h-5 w-32" />
+                                <Skeleton className="h-4 w-24 mt-2" />
+                            </div>
+                            <Skeleton className="h-6 w-20" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </Card>
+    )
+  }
 
   return (
     <Card>

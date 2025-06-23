@@ -1,11 +1,9 @@
-import { getAccounts } from '@/lib/data';
 import AccountList from './components/AccountList';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 
-export default async function AccountsPage() {
-  const accounts = await getAccounts();
+export default function AccountsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -17,7 +15,7 @@ export default async function AccountsPage() {
           </Link>
         </Button>
       </div>
-      <AccountList accounts={accounts} />
+      <AccountList />
     </div>
   );
 }

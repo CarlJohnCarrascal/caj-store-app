@@ -1,14 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { getCashTransactions, getAccounts } from '@/lib/data';
 import { PlusCircle } from 'lucide-react';
 import CashTransactionTable from './components/CashTransactionTable';
-import { CashTransaction } from '@/lib/types';
 import Link from 'next/link';
 
-export default async function CashIOPage() {
-  const transactions: CashTransaction[] = await getCashTransactions();
-  const accounts = await getAccounts();
-
+export default function CashIOPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -20,7 +15,7 @@ export default async function CashIOPage() {
           </Link>
         </Button>
       </div>
-      <CashTransactionTable transactions={transactions} accounts={accounts} />
+      <CashTransactionTable />
     </div>
   );
 }

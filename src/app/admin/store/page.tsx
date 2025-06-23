@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Product } from '@/lib/types';
-import { getProducts } from '@/lib/data';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 import ProductCard from '@/components/ProductCard';
 import ProductListItem from '@/components/ProductListItem';
 import { Input } from '@/components/ui/input';
@@ -12,11 +13,26 @@ import { Search, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ITEMS_PER_PAGE = 10;
 
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
+}
+
 export default function StorePage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showImages, setShowImages] = useState(false);
@@ -25,12 +41,14 @@ export default function StorePage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      const prods = await getProducts();
-      const visibleProducts = prods.filter(p => p.show);
+    const productsRef = ref(db, 'products');
+    const unsubscribe = onValue(productsRef, (snapshot) => {
+      const allProducts = snapshotToArray<Product>(snapshot);
+      const visibleProducts = allProducts.filter(p => p.show);
       setProducts(visibleProducts);
-    };
-    fetchProducts();
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const { categories, groups } = useMemo(() => {
@@ -97,6 +115,23 @@ export default function StorePage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+         <Skeleton className="h-14 w-full" />
+         <Skeleton className="h-14 w-full" />
+         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                    <Skeleton className="aspect-square w-full" />
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-5 w-1/2" />
+                </div>
+            ))}
+         </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

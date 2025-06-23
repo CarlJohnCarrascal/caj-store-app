@@ -1,15 +1,30 @@
 'use client';
 
 import { ActivityLog } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Package, Users, Library, Landmark, ShoppingCart, History, PlusCircle, Pencil, Trash2, ArrowRightLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { ref, onValue, query, limitToLast, orderByKey } from 'firebase/database';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
+}
 
 interface TransactionListProps {
-  activities: ActivityLog[];
 }
 
 const typeIcons: { [key: string]: React.ReactNode } = {
@@ -33,9 +48,44 @@ const actionColors = {
   Deleted: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700',
 };
 
-export default function TransactionList({ activities }: TransactionListProps) {
+export default function TransactionList({ }: TransactionListProps) {
+  const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
+
+  useEffect(() => {
+    // We query the last 50 activities to avoid loading the entire history.
+    const activitiesRef = query(ref(db, 'activityLogs'), orderByKey(), limitToLast(50));
+    const unsubscribe = onValue(activitiesRef, (snapshot) => {
+      const logs = snapshotToArray<ActivityLog>(snapshot);
+      const logsWithDates = logs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
+      setActivities(logsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (isLoading) {
+      return (
+          <Card>
+              <CardContent className="p-0">
+                  <ul className="divide-y divide-border">
+                     {[...Array(5)].map((_, i) => (
+                        <li key={i} className="flex items-start gap-4 p-4">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="flex-grow space-y-2">
+                                <Skeleton className="h-5 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
+                        </li>
+                     ))}
+                  </ul>
+              </CardContent>
+          </Card>
+      )
+  }
 
   if (activities.length === 0) {
     return (

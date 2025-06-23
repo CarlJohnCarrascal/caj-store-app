@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { Collection, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -22,20 +22,74 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface CollectionListProps {
-  collections: Collection[];
-  customers: Customer[];
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
 }
 
-export default function CollectionList({ collections, customers }: CollectionListProps) {
+export default function CollectionList() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('all');
 
+  useEffect(() => {
+    const collectionsRef = ref(db, 'collections');
+    const customersRef = ref(db, 'customers');
+
+    let collectionsLoaded = false;
+    let customersLoaded = false;
+
+    const checkLoading = () => {
+        if (collectionsLoaded && customersLoaded) {
+            setIsLoading(false);
+        }
+    }
+
+    const unsubscribeCollections = onValue(collectionsRef, (snapshot) => {
+        setCollections(snapshotToArray<Collection>(snapshot));
+        collectionsLoaded = true;
+        checkLoading();
+    });
+
+    const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+        setCustomers(snapshotToArray<Customer>(snapshot));
+        customersLoaded = true;
+        checkLoading();
+    });
+
+    return () => {
+        unsubscribeCollections();
+        unsubscribeCustomers();
+    };
+  }, []);
+
+  const collectionsWithCustomerNames = useMemo(() => {
+     if (isLoading) return [];
+     const customerMap = new Map(customers.map(c => [c.id, c.name]));
+     return collections.map(collection => ({
+         ...collection,
+         customerName: customerMap.get(collection.customerId) || 'Unknown Customer',
+     }));
+  }, [collections, customers, isLoading]);
+
   const filteredCollections = useMemo(() => {
-    return collections
+    return collectionsWithCustomerNames
       .filter(collection => {
         if (selectedCustomer === 'all') return true;
         return collection.customerId === selectedCustomer;
@@ -44,7 +98,7 @@ export default function CollectionList({ collections, customers }: CollectionLis
         if (!searchTerm) return true;
         return collection.name.toLowerCase().includes(searchTerm.toLowerCase());
       });
-  }, [collections, searchTerm, selectedCustomer]);
+  }, [collectionsWithCustomerNames, searchTerm, selectedCustomer]);
 
   const handleCopy = (value: string) => {
     navigator.clipboard.writeText(value);
@@ -65,6 +119,38 @@ export default function CollectionList({ collections, customers }: CollectionLis
     });
   };
   
+  if (isLoading) {
+    return (
+       <Card>
+            <Skeleton className="h-16 w-full" />
+            <CardContent className="p-0">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead><Skeleton className="h-5 w-32" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-24" /></TableHead>
+                            <TableHead className="text-right"><Skeleton className="h-5 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-28" /></TableHead>
+                            <TableHead className="text-right"><Skeleton className="h-5 w-16" /></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {[...Array(5)].map((_, i) => (
+                           <TableRow key={i}>
+                                <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                <TableCell className="text-right"><Skeleton className="h-5 w-20" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                <TableCell><Skeleton className="h-9 w-24 ml-auto" /></TableCell>
+                           </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+       </Card>
+    );
+  }
+
   if (collections.length === 0) {
     return (
       <div className="text-center p-8 border rounded-lg">

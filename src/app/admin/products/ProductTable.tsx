@@ -26,16 +26,41 @@ import { Pencil, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { deleteProductAction } from '@/lib/actions';
-import { useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface ProductTableProps {
-  products: Product[];
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
 }
 
-export default function ProductTable({ products }: ProductTableProps) {
+export default function ProductTable() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const productsRef = ref(db, 'products');
+    const unsubscribe = onValue(productsRef, (snapshot) => {
+      const productList = snapshotToArray<Product>(snapshot);
+      setProducts(productList.reverse());
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleDelete = (id: string) => {
     startTransition(async () => {
@@ -47,6 +72,16 @@ export default function ProductTable({ products }: ProductTableProps) {
       }
     });
   };
+  
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(5)].map((_, i) => (
+           <Skeleton key={i} className="h-[73px] w-full rounded-lg" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <Table>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { Account } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Landmark, Trash2 } from 'lucide-react';
@@ -19,14 +19,39 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { deleteAccountAction } from '@/lib/actions';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface AccountListProps {
-  accounts: Account[];
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
 }
 
-export default function AccountList({ accounts }: AccountListProps) {
+export default function AccountList() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const accountsRef = ref(db, 'accounts');
+    const unsubscribe = onValue(accountsRef, (snapshot) => {
+      const accountList = snapshotToArray<Account>(snapshot);
+      setAccounts(accountList);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleDelete = (id: string) => {
     startTransition(async () => {
@@ -38,6 +63,30 @@ export default function AccountList({ accounts }: AccountListProps) {
       }
     });
   };
+
+  if (isLoading) {
+     return (
+       <Card>
+         <CardHeader>
+           <CardTitle>Your Accounts</CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-4">
+          {[...Array(2)].map((_, i) => (
+             <div key={i} className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-14 w-14 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-24" />
+             </div>
+          ))}
+         </CardContent>
+       </Card>
+     )
+  }
 
   return (
     <Card>

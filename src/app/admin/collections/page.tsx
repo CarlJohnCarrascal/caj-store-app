@@ -1,13 +1,9 @@
-import { getCollections, getCustomers } from '@/lib/data';
 import CollectionList from './components/CollectionList';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 
-export default async function CollectionsPage() {
-  const collections = await getCollections();
-  const customers = await getCustomers();
-  
+export default function CollectionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -19,7 +15,7 @@ export default async function CollectionsPage() {
           </Link>
         </Button>
       </div>
-      <CollectionList collections={collections} customers={customers} />
+      <CollectionList />
     </div>
   );
 }
