@@ -214,7 +214,7 @@ export default function CashTransactionTable() {
     return sorted;
   }, [filteredTransactions, sort]);
   
-  const handleSort = (key: keyof CashTransaction) => {
+  const handleSort = (key: keyof CashTransaction | 'createdAt') => {
     setSort(prev => ({
         key,
         order: prev.key === key && prev.order === 'asc' ? 'desc' : 'asc'
@@ -383,13 +383,13 @@ export default function CashTransactionTable() {
                 <div
                   key={t.id}
                   className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={()={() => setSelectedTransaction(t)}}
+                  onClick={() => setSelectedTransaction(t)}
                 >
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
                     <div className="space-y-1.5">
                       <p className="font-mono text-base font-medium">{t.reference}</p>
                        <p className="text-sm text-muted-foreground truncate" title={`${t.accountName} (${t.accountNumber})`}>
-                          {t.transactionType === 'Cash Out' ? 'From: ' : 'To: '}
+                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '}
                           {t.accountName} {t.accountNumber}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
@@ -586,7 +586,7 @@ export default function CashTransactionTable() {
               </div>
               
               <div className="space-y-3">
-                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash Out' ? 'From (Sender)' : 'To (Receiver)'}</h4>
+                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
                  <div className="flex items-center gap-3 text-sm">
                     <User className="h-4 w-4 text-muted-foreground"/>
                     <span>{selectedTransaction.accountName}</span>
@@ -633,7 +633,7 @@ export default function CashTransactionTable() {
             <DialogFooter>
               {selectedTransaction.status === 'Available' && (
                   <Button
-                    onClick={() => handleAddToCart(selectedTransaction)}
+                    onClick={() => selectedTransaction && handleAddToCart(selectedTransaction)}
                   >
                     Add to Order
                   </Button>
@@ -646,5 +646,3 @@ export default function CashTransactionTable() {
     </div>
   );
 }
-
-    
