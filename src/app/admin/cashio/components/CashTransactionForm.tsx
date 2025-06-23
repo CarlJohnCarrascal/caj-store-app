@@ -177,53 +177,78 @@ export default function CashTransactionForm({ accounts, sharedText }: CashTransa
   }, [sharedText, form, handleExtractDetails]);
 
 
-  const submitTransaction = (data: CashTransactionFormValues) => {
+  const onSave = (data: CashTransactionFormValues) => {
     startTransition(async () => {
       try {
         const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
+        const dataToSubmit = { ...data, status: 'Available' as const };
+        Object.entries(dataToSubmit).forEach(([key, value]) => {
+            formData.append(key, String(value));
+        });
+        formData.append('customerName', data.accountName);
+
+        await addCashTransactionAction(formData);
+
+        toast({ title: 'Success', description: 'Transaction saved successfully.' });
+        router.push('/admin/cashio');
+        router.refresh();
+      } catch (error: any) {
+        if (error.message === 'DUPLICATE_REFERENCE') {
+          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
+        }
+      }
+    });
+  };
+  
+  const onAddToOrder = (data: CashTransactionFormValues) => {
+    startTransition(async () => {
+      try {
+        const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+        
+        const formData = new FormData();
+        const dataToSubmit = { ...data, status: finalStatus };
+        Object.entries(dataToSubmit).forEach(([key, value]) => {
           if (value !== undefined) {
             formData.append(key, String(value));
           }
         });
         formData.append('customerName', data.accountName);
 
-        await addCashTransactionAction(formData);
-        toast({ title: 'Success', description: 'Transaction added successfully.' });
+        const newTransaction = await addCashTransactionAction(formData);
+
+        const finalPrice = newTransaction.transactionType === 'Cash In' ? newTransaction.amount + newTransaction.fee : -(newTransaction.amount - newTransaction.fee);
+
+        const transactionAsProduct: Product = {
+            id: `cashio-${newTransaction.reference}-${Date.now()}`,
+            name: `${newTransaction.transactionType}: ${newTransaction.accountName}`,
+            price: finalPrice,
+            description: `Ref: ${newTransaction.reference} | Acct: ${newTransaction.accountName} (${newTransaction.accountNumber}) | Fee: ₱${newTransaction.fee.toFixed(2)} | Amt: ₱${newTransaction.amount.toFixed(2)}`,
+            group: 'Financial',
+            category: 'CashIO',
+            show: false,
+            stock: 1,
+            unit: 'each',
+            image: 'https://placehold.co/600x600.png',
+            material: 'N/A',
+            dimensions: 'N/A'
+        };
+        
+        addToCart(transactionAsProduct, 1);
+        setCartCustomer({ name: newTransaction.customerName });
+
+        toast({ title: 'Success', description: 'Transaction added to order.' });
         router.push('/admin/cashio');
         router.refresh();
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      } catch (error: any) {
+        if (error.message === 'DUPLICATE_REFERENCE') {
+          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
+        }
       }
     });
-  };
-
-  const onSave = (data: CashTransactionFormValues) => {
-    submitTransaction({ ...data, status: 'Available' });
-  };
-  
-  const onAddToOrder = (data: CashTransactionFormValues) => {
-    const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-    const finalPrice = data.transactionType === 'Cash In' ? data.amount + data.fee : -(data.amount - data.fee);
-
-    const transactionAsProduct: Product = {
-        id: `cashio-${data.reference}-${Date.now()}`,
-        name: `${data.transactionType}: ${data.accountName}`,
-        price: finalPrice,
-        description: `Ref: ${data.reference} | Acct: ${data.accountName} (${data.accountNumber}) | Fee: ₱${data.fee.toFixed(2)} | Amt: ₱${data.amount.toFixed(2)}`,
-        group: 'Financial',
-        category: 'CashIO',
-        show: false,
-        stock: 1,
-        unit: 'each',
-        image: 'https://placehold.co/600x600.png',
-        material: 'N/A',
-        dimensions: 'N/A'
-    };
-    
-    addToCart(transactionAsProduct, 1);
-    setCartCustomer({ name: data.accountName });
-    submitTransaction({ ...data, status: finalStatus });
   };
 
 

@@ -262,7 +262,7 @@ const cashTransactionSchema = z.object({
   datetime: z.string().optional(),
 });
 
-export async function addCashTransactionAction(data: FormData) {
+export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
   const validatedFields = cashTransactionSchema.safeParse(Object.fromEntries(data.entries()));
 
   if (!validatedFields.success) {
@@ -272,10 +272,9 @@ export async function addCashTransactionAction(data: FormData) {
 
   const isDuplicate = await isReferenceNumberDuplicate(validatedFields.data.reference);
   if (isDuplicate) {
-    throw new Error(`Transaction with reference number "${validatedFields.data.reference}" already exists.`);
+    throw new Error('DUPLICATE_REFERENCE');
   }
 
-  // We don't pass newBalance to addCashTransaction, it calculates it.
   const newTransaction = await addCashTransaction(validatedFields.data);
 
   await logActivity({
@@ -287,7 +286,9 @@ export async function addCashTransactionAction(data: FormData) {
 
   revalidatePath('/admin/cashio');
   revalidatePath('/admin/transactions');
-  revalidatePath('/admin/accounts'); // because balance changes
+  revalidatePath('/admin/accounts');
+  
+  return newTransaction;
 }
 
 const collectionSchema = z.object({
