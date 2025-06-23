@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone } from 'lucide-react';
+import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone, Wrench } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
@@ -13,7 +13,7 @@ export default function AdminDashboard() {
 
       <div>
         <h2 className="text-2xl font-semibold tracking-tight mb-4">Point of Sale</h2>
-        <div className="grid md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-medium">POS Store</CardTitle>
@@ -53,6 +53,20 @@ export default function AdminDashboard() {
               </CardDescription>
                <Button asChild className="w-full mt-4">
                   <Link href="/admin/e-loading">Go to E-loading</Link>
+               </Button>
+            </CardContent>
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-medium">Other Services</CardTitle>
+              <Wrench className="h-6 w-6 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                  Handle miscellaneous services and transactions.
+              </CardDescription>
+               <Button asChild className="w-full mt-4">
+                  <Link href="/admin/other-services">Go to Services</Link>
                </Button>
             </CardContent>
           </Card>

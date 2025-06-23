@@ -39,6 +39,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   const isPrinting = item.category === 'Printing';
                   const isCashIO = item.category === 'CashIO';
                   const isEloading = item.category === 'E-loading';
+                  const isOtherService = item.category === 'Other Service';
                   const step = isKg ? 0.01 : 1;
                   const min = isKg ? 0.01 : 1;
                   
@@ -51,7 +52,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                           fill
                           sizes="80px"
                           className="object-cover"
-                          data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : isEloading ? 'loading service' : 'product photo'}
+                          data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : isEloading ? 'loading service' : isOtherService ? 'service icon' : 'product photo'}
                         />
                       </div>
                       <div className="flex-1">
@@ -59,11 +60,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                            <h3 className="flex-1 pr-2">{item.name}</h3>
                            <p className="pl-4">₱{(item.price * item.quantity).toFixed(2)}</p>
                         </div>
-                        {!(isCashIO || isEloading) && <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>}
-                        {(isPrinting || isCashIO || isEloading) && item.description && (
+                        {!(isCashIO) && <p className="text-sm text-muted-foreground">₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>}
+                        {(isPrinting || isCashIO || isEloading || isOtherService) && item.description && (
                           <p className="text-xs text-muted-foreground mt-1 max-w-[200px] break-words">{item.description}</p>
                         )}
-                        {!(isCashIO || isEloading) && (
+                        {!(isCashIO) && (
                           <div className="flex items-center mt-2">
                             <Button
                               variant="outline"
