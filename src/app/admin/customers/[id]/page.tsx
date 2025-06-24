@@ -1,7 +1,7 @@
 import { getCustomerById, getOrdersByCustomerId } from '@/lib/data';
 import { notFound } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { AtSign, Home, Phone, User, Wallet } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { AtSign, Home, Phone, User, Wallet, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -15,7 +15,6 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight } from 'lucide-react';
 import CustomerActionButtons from '../components/CustomerActionButtons';
 
 export default async function CustomerDetailsPage({ params }: { params: { id: string } }) {
@@ -34,7 +33,12 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
           <h1 className="text-3xl font-bold">{customer.name}</h1>
           <p className="text-muted-foreground">Customer Details and Order History</p>
         </div>
-        <CustomerActionButtons customer={customer} />
+        <Button asChild variant="outline">
+            <Link href="/admin/customers">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Customers
+            </Link>
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -66,11 +70,11 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader>
               <CardTitle>Balance</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-grow">
               <p className={cn(
                   "text-3xl font-bold",
                   customer.balance > 0 && "text-green-600",
@@ -82,6 +86,9 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
                 A positive balance is owed to the customer. A negative balance is owed to the store.
               </p>
             </CardContent>
+            <CardFooter>
+              <CustomerActionButtons customer={customer} className="w-full" />
+            </CardFooter>
           </Card>
         </div>
 

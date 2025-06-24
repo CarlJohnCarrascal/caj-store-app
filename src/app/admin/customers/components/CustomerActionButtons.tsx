@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,10 +11,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { updateCustomerBalanceAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
-import { ArrowLeft, Landmark, DollarSign } from 'lucide-react';
+import { Landmark, DollarSign } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CustomerActionButtonsProps {
   customer: Customer;
+  className?: string;
 }
 
 const formSchema = z.object({
@@ -24,8 +25,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function CustomerActionButtons({ customer }: CustomerActionButtonsProps) {
-  const router = useRouter();
+export default function CustomerActionButtons({ customer, className }: CustomerActionButtonsProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -67,17 +67,12 @@ export default function CustomerActionButtons({ customer }: CustomerActionButton
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <div className="flex-grow" />
-        <Button variant="outline" onClick={() => handleOpenDialog('payment')}>
+      <div className={cn("flex flex-col sm:flex-row gap-2", className)}>
+        <Button variant="outline" onClick={() => handleOpenDialog('payment')} className="flex-1">
           <DollarSign className="mr-2 h-4 w-4" />
           Make Payment
         </Button>
-        <Button onClick={() => handleOpenDialog('balance')}>
+        <Button onClick={() => handleOpenDialog('balance')} className="flex-1">
           <Landmark className="mr-2 h-4 w-4" />
           Add to Balance
         </Button>
