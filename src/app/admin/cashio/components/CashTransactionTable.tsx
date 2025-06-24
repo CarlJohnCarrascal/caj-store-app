@@ -103,8 +103,8 @@ export default function CashTransactionTable() {
           ...t,
           createdAt: new Date(t.createdAt),
           updatedAt: new Date(t.updatedAt),
-          ...(t.dateRecieved && { dateRecieved: new Date(t.dateRecieved as any) }),
-          ...(t.dateClaimedOrSent && { dateClaimedOrSent: new Date(t.dateClaimedOrSent as any) }),
+          ...(t.dateSent && { dateSent: new Date(t.dateSent as any) }),
+          ...(t.dateReceived && { dateReceived: new Date(t.dateReceived as any) }),
       }));
       setTransactions(transactionsWithDates);
       transactionsLoaded = true;

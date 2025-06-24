@@ -51,8 +51,8 @@ export interface CashTransaction {
   amount: number;
   fee: number;
   newBalance: number;
-  dateRecieved?: Date;
-  dateClaimedOrSent?: Date;
+  dateSent?: Date;
+  dateReceived?: Date;
   customerName: string;
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';

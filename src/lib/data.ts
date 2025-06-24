@@ -134,8 +134,8 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
       // Firebase stores dates as strings, so convert them back
       createdAt: new Date(transaction.createdAt),
       updatedAt: new Date(transaction.updatedAt),
-      ...(transaction.dateRecieved && { dateRecieved: new Date(transaction.dateRecieved) }),
-      ...(transaction.dateClaimedOrSent && { dateClaimedOrSent: new Date(transaction.dateClaimedOrSent) }),
+      ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent) }),
+      ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived) }),
     };
   });
   return transactionsWithAccountNames.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -164,21 +164,26 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   }
   await update(accountRef, { balance: newBalance });
 
-  const transactionDate = transactionData.datetime ? new Date(transactionData.datetime) : new Date();
+  const transactionDate = transactionData.datetime 
+    ? new Date(transactionData.datetime) 
+    : new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+  
+  const philippinesTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+
   
   const newTransactionRef = push(ref(db, 'cashTransactions'));
 
   const dataToSave: any = {
     ...transactionData,
     newBalance,
-    createdAt: transactionDate.toISOString(),
-    updatedAt: transactionDate.toISOString(),
+    createdAt: philippinesTime.toISOString(),
+    updatedAt: philippinesTime.toISOString(),
   };
 
   if (transactionData.transactionType === 'Cash In') {
-    dataToSave.dateRecieved = transactionDate.toISOString();
+    dataToSave.dateSent = transactionDate.toISOString();
   } else {
-    dataToSave.dateClaimedOrSent = transactionDate.toISOString();
+    dataToSave.dateReceived = transactionDate.toISOString();
   }
   
   delete dataToSave.datetime;
