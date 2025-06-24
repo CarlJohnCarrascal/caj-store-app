@@ -388,8 +388,8 @@ export default function CashTransactionTable() {
                   onClick={() => setSelectedTransaction(t)}
                 >
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
-                    <div className="space-y-1.5">
-                      <p className="font-mono text-base font-medium">{t.reference}</p>
+                    <div className="space-y-1.5 min-w-0">
+                      <p className="font-mono text-base font-medium break-all">{t.reference}</p>
                        <p className="text-sm text-muted-foreground truncate" title={`${t.accountName} (${t.accountNumber})`}>
                           {t.transactionType === 'Cash In' ? 'To: ' : 'From: '}
                           {t.accountName} {t.accountNumber}
