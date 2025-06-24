@@ -10,8 +10,8 @@ export default function CashIOPage() {
         <h1 className="text-3xl font-bold">Cash IO Transactions</h1>
         <Button asChild>
           <Link href="/admin/cashio/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Transaction
+            <PlusCircle className="h-5 w-5 md:mr-2" />
+            <span className="hidden md:inline">Add Transaction</span>
           </Link>
         </Button>
       </div>
