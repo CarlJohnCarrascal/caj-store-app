@@ -66,7 +66,7 @@ export default function CashTransactionTable() {
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
-  const [sort, setSort] = React.useState<{key: keyof CashTransaction | 'createdAt', order: 'asc' | 'desc'}>({ key: 'createdAt', order: 'desc' });
+  const [sort, setSort] = React.useState<{key: string, order: 'asc' | 'desc'}>({ key: 'transactionDate', order: 'desc' });
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<CashTransaction | null>(null);
@@ -157,6 +157,7 @@ export default function CashTransactionTable() {
     return transactions.map(t => ({
       ...t,
       ourAccountName: accountMap.get(t.accountUsedId) || 'Unknown Account',
+      transactionDate: t.dateSent || t.dateReceived,
     }));
   }, [transactions, accounts]);
 
@@ -175,11 +176,10 @@ export default function CashTransactionTable() {
       .filter(t => accountUsed === 'all' || t.accountUsedId === accountUsed)
       .filter(t => status === 'all' || t.status === status)
       .filter(t => {
-        if (!date?.from) return true;
+        if (!date?.from || !t.transactionDate) return true;
         const from = date.from;
         const to = date.to || from; // If no 'to' date, use 'from' for single day
-        const transactionDate = t.createdAt;
-        return transactionDate >= from && transactionDate <= new Date(to.getTime() + 86400000); // include the whole 'to' day
+        return t.transactionDate >= from && t.transactionDate <= new Date(to.getTime() + 86400000); // include the whole 'to' day
       });
   }, [search, transactionsWithAccountNames, date, type, method, accountUsed, status]);
 
@@ -197,8 +197,8 @@ export default function CashTransactionTable() {
   const sortedTransactions = React.useMemo(() => {
     const sorted = [...filteredTransactions];
     sorted.sort((a, b) => {
-      const aVal = a[sort.key as keyof CashTransaction];
-      const bVal = b[sort.key as keyof CashTransaction];
+      const aVal = (a as any)[sort.key];
+      const bVal = (b as any)[sort.key];
 
       if (aVal === undefined || bVal === undefined) return 0;
       
@@ -216,7 +216,7 @@ export default function CashTransactionTable() {
     return sorted;
   }, [filteredTransactions, sort]);
   
-  const handleSort = (key: keyof CashTransaction | 'createdAt') => {
+  const handleSort = (key: string) => {
     setSort(prev => ({
         key,
         order: prev.key === key && prev.order === 'asc' ? 'desc' : 'asc'
@@ -381,7 +381,9 @@ export default function CashTransactionTable() {
         {viewMode === 'grid' ? (
            <div>
             {paginatedTransactions.length > 0 ? (
-              paginatedTransactions.map(t => (
+              paginatedTransactions.map(t => {
+                const displayDate = t.dateSent || t.dateReceived;
+                return (
                 <div
                   key={t.id}
                   className="border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors"
@@ -413,7 +415,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted ? t.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && displayDate ? displayDate.toLocaleString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -428,7 +430,7 @@ export default function CashTransactionTable() {
                     </div>
                   </div>
                 </div>
-              ))
+              )})
             ) : (
               <div className="h-24 text-center flex items-center justify-center">
                 <p>No transactions found.</p>
@@ -440,7 +442,7 @@ export default function CashTransactionTable() {
           <TableHeader>
             <TableRow>
               <TableHead>
-                <Button variant="ghost" onClick={() => handleSort('createdAt')}>
+                <Button variant="ghost" onClick={() => handleSort('transactionDate')}>
                   Date <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
@@ -458,41 +460,44 @@ export default function CashTransactionTable() {
           </TableHeader>
           <TableBody>
             {paginatedTransactions.length > 0 ? (
-                paginatedTransactions.map(t => (
-                <TableRow key={t.id}>
-                    <TableCell>
-                      {isMounted ? t.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
-                    </TableCell>
-                    <TableCell>
-                        <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
-                            {t.transactionType}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <div className="font-medium">{t.customerName}</div>
-                        <div className="text-sm text-muted-foreground" title={`${t.accountName} - ${t.accountNumber}`}>{t.accountName} - {t.accountNumber}</div>
-                        <div className="text-xs text-muted-foreground/80">via {t.ourAccountName}</div>
-                    </TableCell>
-                    <TableCell>{t.reference}</TableCell>
-                    <TableCell className='text-right font-mono'>₱{t.amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                        <Badge
-                          variant={'default'}
-                          className={cn(
-                            {
-                              'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
-                              'bg-cyan-500 hover:bg-cyan-600': t.status === 'Available',
-                            }
-                          )}
-                        >
-                            {t.status}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className='text-right'>
-                       <Button variant="ghost" size="icon" disabled>... </Button>
-                    </TableCell>
-                </TableRow>
-                ))
+                paginatedTransactions.map(t => {
+                  const displayDate = t.dateSent || t.dateReceived;
+                  return (
+                    <TableRow key={t.id}>
+                        <TableCell>
+                          {isMounted && displayDate ? displayDate.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
+                        </TableCell>
+                        <TableCell>
+                            <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
+                                {t.transactionType}
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <div className="font-medium">{t.customerName}</div>
+                            <div className="text-sm text-muted-foreground" title={`${t.accountName} - ${t.accountNumber}`}>{t.accountName} - {t.accountNumber}</div>
+                            <div className="text-xs text-muted-foreground/80">via {t.ourAccountName}</div>
+                        </TableCell>
+                        <TableCell>{t.reference}</TableCell>
+                        <TableCell className='text-right font-mono'>₱{t.amount.toFixed(2)}</TableCell>
+                        <TableCell>
+                            <Badge
+                              variant={'default'}
+                              className={cn(
+                                {
+                                  'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
+                                  'bg-cyan-500 hover:bg-cyan-600': t.status === 'Available',
+                                }
+                              )}
+                            >
+                                {t.status}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className='text-right'>
+                           <Button variant="ghost" size="icon" disabled>... </Button>
+                        </TableCell>
+                    </TableRow>
+                  );
+                })
             ) : (
                 <TableRow>
                     <TableCell colSpan={7} className="h-24 text-center">
@@ -554,7 +559,7 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {isMounted ? selectedTransaction.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'medium' }) : 'Loading date...'}
+                {isMounted && (selectedTransaction.dateSent || selectedTransaction.dateReceived) ? (selectedTransaction.dateSent || selectedTransaction.dateReceived)!.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'medium' }) : 'Loading date...'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
