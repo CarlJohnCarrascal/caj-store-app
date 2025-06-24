@@ -3,7 +3,7 @@
 
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo } from 'firebase/database';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem } from './types';
 
 // Helper function to convert Firebase snapshot to an array
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -111,6 +111,14 @@ export async function deleteAccount(id: string): Promise<Account | null> {
 export async function getCustomers(): Promise<Customer[]> {
   const snapshot = await get(ref(db, 'customers'));
   return snapshotToArray<Customer>(snapshot);
+}
+
+export async function getCustomerById(id: string): Promise<Customer | undefined> {
+  const snapshot = await get(ref(db, `customers/${id}`));
+  if (snapshot.exists()) {
+    return { id, ...snapshot.val() };
+  }
+  return undefined;
 }
 
 export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Customer> {
@@ -357,6 +365,46 @@ export async function deleteCollection(id: string): Promise<Collection | null> {
     }
     return null;
 }
+
+// ==================
+// Order Functions
+// ==================
+
+export async function addOrder(orderData: Omit<Order, 'id'>): Promise<Order> {
+    const newOrderRef = push(ref(db, 'orders'));
+    const dataToSave = { ...orderData, createdAt: getCurrentPHTISOString() };
+    await set(newOrderRef, dataToSave);
+    return { ...dataToSave, id: newOrderRef.key! };
+}
+
+export async function getOrders(): Promise<Order[]> {
+    const snapshot = await get(ref(db, 'orders'));
+    const orders = snapshotToArray<Order>(snapshot);
+    const ordersWithDates = orders.map(order => ({ ...order, createdAt: new Date(order.createdAt) }));
+    return ordersWithDates.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+export async function getOrderById(id: string): Promise<Order | undefined> {
+    const snapshot = await get(ref(db, `orders/${id}`));
+    if (snapshot.exists()) {
+        const order = snapshot.val();
+        return { id, ...order, createdAt: new Date(order.createdAt) };
+    }
+    return undefined;
+}
+
+export async function getOrdersByCustomerId(customerId: string): Promise<Order[]> {
+    const ordersRef = ref(db, 'orders');
+    const q = query(ordersRef, orderByChild('customerId'), equalTo(customerId));
+    const snapshot = await get(q);
+    if (!snapshot.exists()) {
+        return [];
+    }
+    const orders = snapshotToArray<Order>(snapshot);
+    const ordersWithDates = orders.map(order => ({ ...order, createdAt: new Date(order.createdAt) }));
+    return ordersWithDates.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
 
 // =======================
 // ActivityLog Functions

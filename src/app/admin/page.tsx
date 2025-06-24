@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone, Wrench } from 'lucide-react';
+import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone, Wrench, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
@@ -148,7 +148,21 @@ export default function AdminDashboard() {
           </Card>
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-medium">Transactions</CardTitle>
+              <CardTitle className="text-lg font-medium">Orders</CardTitle>
+              <ShoppingCart className="h-6 w-6 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                View a log of all processed orders from the POS.
+              </CardDescription>
+               <Button asChild className="w-full mt-4">
+                  <Link href="/admin/orders">View Orders</Link>
+               </Button>
+            </CardContent>
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-medium">Activity Logs</CardTitle>
               <History className="h-6 w-6 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -156,7 +170,7 @@ export default function AdminDashboard() {
                 View a log of all activities and changes.
               </CardDescription>
                <Button asChild className="w-full mt-4">
-                  <Link href="/admin/transactions">View Activity</Link>
+                  <Link href="/admin/activity-logs">View Activity</Link>
                </Button>
             </CardContent>
           </Card>

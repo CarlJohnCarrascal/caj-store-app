@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -138,19 +139,21 @@ export default function CustomerList() {
         <div className="divide-y">
           {filteredAndSortedCustomers.length > 0 ? (
             filteredAndSortedCustomers.map(customer => (
-              <div key={customer.id} className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer">
-                <div>
-                  <p className="font-semibold">{customer.name}</p>
-                  <p className="text-sm text-muted-foreground">{customer.location}</p>
+              <Link key={customer.id} href={`/admin/customers/${customer.id}`} className="block">
+                <div className="flex items-center justify-between p-4 hover:bg-muted/50">
+                  <div>
+                    <p className="font-semibold">{customer.name}</p>
+                    <p className="text-sm text-muted-foreground">{customer.location}</p>
+                  </div>
+                  <p className={cn(
+                    "font-semibold text-lg",
+                    customer.balance > 0 && "text-green-600",
+                    customer.balance < 0 && "text-destructive"
+                  )}>
+                    ₱{customer.balance.toLocaleString()}
+                  </p>
                 </div>
-                <p className={cn(
-                  "font-semibold text-lg",
-                  customer.balance > 0 && "text-green-600",
-                  customer.balance < 0 && "text-destructive"
-                )}>
-                  ₱{customer.balance.toLocaleString()}
-                </p>
-              </div>
+              </Link>
             ))
           ) : (
             <div className="text-center p-8 text-muted-foreground">

@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -19,6 +19,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Accordion,
@@ -93,6 +94,9 @@ export default function Header() {
                                 <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
                                 </Link>
+                                <Link href="/admin/orders" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <ShoppingCart className="h-5 w-5 text-muted-foreground" /><span>Orders</span>
+                                </Link>
                                 <Link href="/admin/accounts" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Landmark className="h-5 w-5 text-muted-foreground" /><span>Accounts</span>
                                 </Link>
@@ -102,8 +106,8 @@ export default function Header() {
                                 <Link href="/admin/collections" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Library className="h-5 w-5 text-muted-foreground" /><span>Collections</span>
                                 </Link>
-                                <Link href="/admin/transactions" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <History className="h-5 w-5 text-muted-foreground" /><span>Transactions</span>
+                                <Link href="/admin/activity-logs" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <History className="h-5 w-5 text-muted-foreground" /><span>Activity Logs</span>
                                 </Link>
                             </AccordionContent>
                         </AccordionItem>
@@ -139,10 +143,13 @@ export default function Header() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/collections" className="flex items-center gap-2 cursor-pointer"><Library className="h-4 w-4" /> Collections</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link href="/admin/transactions" className="flex items-center gap-2 cursor-pointer"><History className="h-4 w-4" /> Transactions</Link></DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild><Link href="/admin/activity-logs" className="flex items-center gap-2 cursor-pointer"><History className="h-4 w-4" /> Activity Logs</Link></DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </nav>

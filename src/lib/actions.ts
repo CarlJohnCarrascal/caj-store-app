@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -104,6 +104,8 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         customerId,
         customerName,
         items,
+        subtotal,
+        discount,
         total,
         amountTendered,
         applyCustomerBalance,
@@ -125,13 +127,24 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         }
     }
 
+    const newOrder = await addOrder({
+        customerId: customerId,
+        customerName: customerName,
+        items: items,
+        subtotal: subtotal,
+        discount: discount,
+        total: total,
+        amountTendered: amountTendered,
+        settlementType: settlementType,
+        createdAt: '', // Will be set by addOrder
+    });
+
     // Log the order creation
-    const orderId = `order-${Date.now()}`;
     await logActivity({
         type: 'Order',
         action: 'Created',
         details: `New order placed for ${customerName} for ₱${total.toFixed(2)}.`,
-        targetId: orderId,
+        targetId: newOrder.id,
     });
 
     if (customerId !== 'unknown') {
@@ -168,11 +181,10 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         revalidatePath('/admin/customers');
     }
     
-    // Simulate some async work
-    await new Promise(res => setTimeout(res, 500));
-
-    revalidatePath('/admin/transactions');
+    revalidatePath('/admin/activity-logs');
     revalidatePath('/admin/cashio');
+    revalidatePath('/admin/orders');
+    revalidatePath(`/admin/customers/${customerId}`);
 }
 
 
@@ -202,7 +214,7 @@ export async function addCustomerAction(data: FormData) {
   });
 
   revalidatePath('/admin/customers');
-  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/activity-logs');
 }
 
 const accountSchema = z.object({
@@ -229,7 +241,7 @@ export async function addAccountAction(data: FormData) {
 
   revalidatePath('/admin/accounts');
   revalidatePath('/admin/cashio');
-  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteAccountAction(id: string) {
@@ -245,7 +257,7 @@ export async function deleteAccountAction(id: string) {
 
     revalidatePath('/admin/accounts');
     revalidatePath('/admin/cashio');
-    revalidatePath('/admin/transactions');
+    revalidatePath('/admin/activity-logs');
 }
 
 const cashTransactionSchema = z.object({
@@ -286,7 +298,7 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
   });
 
   revalidatePath('/admin/cashio');
-  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/activity-logs');
   revalidatePath('/admin/accounts');
   
   return newTransaction;
@@ -311,7 +323,7 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
 
   revalidatePath('/admin/cashio');
   revalidatePath(`/admin/cashio/edit/${id}`);
-  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/activity-logs');
 }
 
 const collectionSchema = z.object({
@@ -337,7 +349,7 @@ export async function addCollectionAction(data: FormData) {
     });
     
     revalidatePath('/admin/collections');
-    revalidatePath('/admin/transactions');
+    revalidatePath('/admin/activity-logs');
 }
 
 export async function updateCollectionAction(id: string, data: FormData) {
@@ -357,7 +369,7 @@ export async function updateCollectionAction(id: string, data: FormData) {
 
     revalidatePath('/admin/collections');
     revalidatePath(`/admin/collections/edit/${id}`);
-    revalidatePath('/admin/transactions');
+    revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteCollectionAction(id: string) {
@@ -372,5 +384,5 @@ export async function deleteCollectionAction(id: string) {
     }
 
     revalidatePath('/admin/collections');
-    revalidatePath('/admin/transactions');
+    revalidatePath('/admin/activity-logs');
 }

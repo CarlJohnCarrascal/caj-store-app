@@ -69,6 +69,19 @@ export interface Collection {
   note?: string;
 }
 
+export interface Order {
+  id: string;
+  customerId: string;
+  customerName: string;
+  items: CartItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  amountTendered: number;
+  settlementType: 'pay_order' | 'add_to_balance';
+  createdAt: string; // ISO string
+}
+
 export interface ActivityLog {
   id: string;
   type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account';
