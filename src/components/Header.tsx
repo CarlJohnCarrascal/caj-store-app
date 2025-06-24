@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
