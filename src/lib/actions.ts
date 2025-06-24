@@ -217,6 +217,36 @@ export async function addCustomerAction(data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
+export async function updateCustomerBalanceAction(customerId: string, amount: number) {
+    if (!customerId || customerId === 'unknown') {
+        throw new Error('Cannot update balance for an unknown customer.');
+    }
+    
+    if (typeof amount !== 'number' || isNaN(amount) || amount === 0) {
+        throw new Error('Invalid amount provided.');
+    }
+
+    const updatedCustomer = await updateCustomerBalance(customerId, amount);
+
+    if (!updatedCustomer) {
+        throw new Error('Customer not found.');
+    }
+    
+    const actionType = amount > 0 ? 'added to' : 'paid from';
+    const absAmount = Math.abs(amount).toFixed(2);
+
+    await logActivity({
+        type: 'Customer',
+        action: 'Updated',
+        details: `₱${absAmount} was ${actionType} ${updatedCustomer.name}'s balance.`,
+        targetId: customerId,
+    });
+
+    revalidatePath(`/admin/customers/${customerId}`);
+    revalidatePath('/admin/customers');
+    revalidatePath('/admin/activity-logs');
+}
+
 const accountSchema = z.object({
   accountName: z.string().min(1, 'Account name is required'),
   bankName: z.string().min(1, 'Bank name is required'),

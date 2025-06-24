@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
+import CustomerActionButtons from '../components/CustomerActionButtons';
 
 export default async function CustomerDetailsPage({ params }: { params: { id: string } }) {
   const customer = await getCustomerById(params.id);
@@ -28,9 +29,12 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{customer.name}</h1>
-        <p className="text-muted-foreground">Customer Details and Order History</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">{customer.name}</h1>
+          <p className="text-muted-foreground">Customer Details and Order History</p>
+        </div>
+        <CustomerActionButtons customer={customer} />
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
