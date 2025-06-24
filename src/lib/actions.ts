@@ -1,8 +1,9 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -289,6 +290,28 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
   revalidatePath('/admin/accounts');
   
   return newTransaction;
+}
+
+export async function updateCashTransactionAction(id: string, data: FormData) {
+  const validatedFields = cashTransactionSchema.safeParse(Object.fromEntries(data.entries()));
+
+  if (!validatedFields.success) {
+    console.error(validatedFields.error.flatten().fieldErrors);
+    throw new Error('Invalid cash transaction data.');
+  }
+
+  const updatedTransaction = await updateCashTransaction(id, validatedFields.data);
+
+  await logActivity({
+    type: 'CashIO',
+    action: 'Updated',
+    details: `Transaction for "${updatedTransaction.customerName}" was updated.`,
+    targetId: updatedTransaction.id,
+  });
+
+  revalidatePath('/admin/cashio');
+  revalidatePath(`/admin/cashio/edit/${id}`);
+  revalidatePath('/admin/transactions');
 }
 
 const collectionSchema = z.object({

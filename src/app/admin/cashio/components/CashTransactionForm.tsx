@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,10 +17,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Account, Product } from '@/lib/types';
+import { Account, Product, CashTransaction } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { addCashTransactionAction } from '@/lib/actions';
+import { addCashTransactionAction, updateCashTransactionAction } from '@/lib/actions';
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -48,9 +49,10 @@ type CashTransactionFormValues = z.infer<typeof formSchema>;
 interface CashTransactionFormProps {
   accounts: Account[];
   sharedText?: string;
+  transaction?: CashTransaction;
 }
 
-export default function CashTransactionForm({ accounts, sharedText }: CashTransactionFormProps) {
+export default function CashTransactionForm({ accounts, sharedText, transaction }: CashTransactionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -60,9 +62,18 @@ export default function CashTransactionForm({ accounts, sharedText }: CashTransa
   const { addToCart, setCartCustomer } = useCart();
   const hasProcessedSharedText = useRef(false);
 
+  const transactionDate = transaction?.dateSent || transaction?.dateReceived;
+  const formattedDate = transactionDate ? new Date(transactionDate.getTime() - (transactionDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: transaction ? {
+        ...transaction,
+        amount: Number(transaction.amount),
+        fee: Number(transaction.fee),
+        datetime: formattedDate,
+        message: transaction.message || '',
+    } : {
       transactionType: 'Cash In',
       accountUsedId: '',
       paymentMethod: 'Gcash',
@@ -251,30 +262,55 @@ export default function CashTransactionForm({ accounts, sharedText }: CashTransa
     });
   };
 
+  const onUpdate = (data: CashTransactionFormValues) => {
+    if (!transaction) return;
+    startTransition(async () => {
+        try {
+            const formData = new FormData();
+            const dataToSubmit = { ...data, customerName: data.accountName }; // Add customerName for schema validation
+            Object.entries(dataToSubmit).forEach(([key, value]) => {
+                if (value !== undefined) {
+                    formData.append(key, String(value));
+                }
+            });
+            await updateCashTransactionAction(transaction.id, formData);
+            toast({ title: 'Success', description: 'Transaction updated successfully.' });
+            router.push('/admin/cashio');
+            router.refresh();
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
+        }
+    });
+  };
+
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>New Transaction</CardTitle>
-          <CardDescription>Record a new cash in or cash out transaction.</CardDescription>
+          <CardTitle>{transaction ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
+          <CardDescription>
+            {transaction ? 'Update the details of an existing transaction.' : 'Record a new cash in or cash out transaction.'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form className="space-y-6">
-              <FormField control={form.control} name="message" render={({ field }) => (
-                  <FormItem>
-                      <div className="flex justify-between items-center">
-                      <FormLabel>Transaction Message (Optional)</FormLabel>
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleExtractDetails()} disabled={isGenerating}>
-                          <Bot className="mr-2 h-4 w-4" />
-                          {isGenerating ? 'Extracting...' : 'Extract Details with AI'}
-                      </Button>
-                      </div>
-                      <FormControl><Textarea placeholder="Paste transaction message here to auto-fill details..." {...field} rows={4} /></FormControl>
-                      <FormMessage />
-                  </FormItem>
-              )} />
+              {!transaction && (
+                <FormField control={form.control} name="message" render={({ field }) => (
+                    <FormItem>
+                        <div className="flex justify-between items-center">
+                        <FormLabel>Transaction Message (Optional)</FormLabel>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleExtractDetails()} disabled={isGenerating}>
+                            <Bot className="mr-2 h-4 w-4" />
+                            {isGenerating ? 'Extracting...' : 'Extract Details with AI'}
+                        </Button>
+                        </div>
+                        <FormControl><Textarea placeholder="Paste transaction message here to auto-fill details..." {...field} rows={4} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+              )}
 
               <FormField
                 control={form.control}
@@ -443,14 +479,22 @@ export default function CashTransactionForm({ accounts, sharedText }: CashTransa
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-                {transactionType === 'Cash Out' && (
-                  <Button variant="secondary" type="button" onClick={form.handleSubmit(onSave)} disabled={isPending}>
-                    {isPending ? 'Saving...' : 'Save'}
+                {transaction ? (
+                  <Button type="button" onClick={form.handleSubmit(onUpdate)} disabled={isPending}>
+                    {isPending ? 'Saving...' : 'Save Changes'}
                   </Button>
+                ) : (
+                  <>
+                    {transactionType === 'Cash Out' && (
+                      <Button variant="secondary" type="button" onClick={form.handleSubmit(onSave)} disabled={isPending}>
+                        {isPending ? 'Saving...' : 'Save'}
+                      </Button>
+                    )}
+                    <Button type="button" onClick={form.handleSubmit(onAddToOrder)} disabled={isPending}>
+                      {isPending ? 'Adding...' : 'Add to Order'}
+                    </Button>
+                  </>
                 )}
-                <Button type="button" onClick={form.handleSubmit(onAddToOrder)} disabled={isPending}>
-                  {isPending ? 'Adding...' : 'Add to Order'}
-                </Button>
               </div>
             </form>
           </Form>

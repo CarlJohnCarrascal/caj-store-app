@@ -158,6 +158,24 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
   return transactionsWithAccountNames.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
+export async function getCashTransactionById(id: string): Promise<CashTransaction | undefined> {
+  const snapshot = await get(ref(db, `cashTransactions/${id}`));
+  if (snapshot.exists()) {
+    const transaction = snapshot.val();
+    const transactionWithDateObjects = {
+        ...transaction,
+        id,
+        createdAt: new Date(transaction.createdAt),
+        updatedAt: new Date(transaction.updatedAt),
+        ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent as any) }),
+        ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived as any) }),
+    };
+    return transactionWithDateObjects;
+  }
+  return undefined;
+}
+
+
 export async function isReferenceNumberDuplicate(reference: string): Promise<boolean> {
   const transactionsRef = ref(db, 'cashTransactions');
   const q = query(transactionsRef, orderByChild('reference'), equalTo(reference));
@@ -212,6 +230,46 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   await set(newTransactionRef, dataToSave);
   
   return { ...dataToSave, id: newTransactionRef.key! };
+}
+
+export async function updateCashTransaction(id: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
+    const transactionRef = ref(db, `cashTransactions/${id}`);
+    const oldTransactionSnapshot = await get(transactionRef);
+    if (!oldTransactionSnapshot.exists()) {
+        throw new Error("Transaction to update not found");
+    }
+    const oldTransaction = oldTransactionSnapshot.val();
+
+    // Note: This simplified update does NOT adjust account balances. 
+    // Balance adjustments should be handled separately to avoid race conditions.
+
+    const nowPHTString = getCurrentPHTISOString();
+    let transactionDateString: string;
+    if (transactionData.datetime && transactionData.datetime.length > 0) {
+        transactionDateString = `${transactionData.datetime}:00+08:00`;
+    } else {
+        transactionDateString = oldTransaction.dateSent || oldTransaction.dateReceived || nowPHTString; // Fallback to existing date
+    }
+
+    const dataToSave: any = {
+        ...oldTransaction, // preserve fields not in form like createdAt, newBalance
+        ...transactionData,
+        updatedAt: nowPHTString,
+    };
+    
+    if (transactionData.transactionType === 'Cash In') {
+      dataToSave.dateSent = transactionDateString;
+      dataToSave.dateReceived = null;
+    } else { // Cash Out
+      dataToSave.dateReceived = transactionDateString;
+      dataToSave.dateSent = null;
+    }
+    
+    delete dataToSave.datetime;
+
+    await update(transactionRef, dataToSave);
+
+    return { ...dataToSave, id };
 }
 
 export async function updateCashTransactionStatus(id: string, customerId: string, customerName: string): Promise<CashTransaction | null> {

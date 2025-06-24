@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product } from '@/lib/types';
 import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -43,6 +43,7 @@ import { useCart } from '@/hooks/use-cart';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -99,12 +100,6 @@ export default function CashTransactionTable() {
     const transactionsRef = ref(db, 'cashTransactions');
     const unsubscribeTransactions = onValue(transactionsRef, (snapshot) => {
       const transactionList = snapshotToArray<CashTransaction>(snapshot);
-      // transactionList.forEach(t => {
-      //   let d = t.createdAt.toString().split(".")[0] + '+08:00';
-      //   console.log("new date", d);
-      //   console.log('dateReceived:', t.createdAt, 'new Date(dateReceived):', new Date(d));
-      //   console.log('dateReceived:', t.dateReceived, 'new Date(dateReceived):', new Date(t.dateReceived as any));
-      // });
       const transactionsWithDates = transactionList.map(t => ({
           ...t,
           createdAt: new Date(t.createdAt),
@@ -388,7 +383,7 @@ export default function CashTransactionTable() {
            <div>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map(t => {
-                const displayDate = t.dateSent || t.dateReceived;
+                const displayDate = t.transactionDate;
                 return (
                 <div
                   key={t.id}
@@ -399,7 +394,7 @@ export default function CashTransactionTable() {
                     <div className="space-y-1.5 min-w-0">
                       <p className="font-mono text-base font-medium break-all">{t.reference}</p>
                        <p className="text-sm text-muted-foreground truncate" title={`${t.accountName} (${t.accountNumber})`}>
-                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '}
+                          {t.transactionType === 'Cash In' ? 'From: ' : 'To: '}
                           {t.accountName} {t.accountNumber}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
@@ -421,7 +416,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && displayDate ? displayDate.toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && displayDate ? displayDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -467,11 +462,11 @@ export default function CashTransactionTable() {
           <TableBody>
             {paginatedTransactions.length > 0 ? (
                 paginatedTransactions.map(t => {
-                  const displayDate = t.dateSent || t.dateReceived;
+                  const displayDate = t.transactionDate;
                   return (
-                    <TableRow key={t.id}>
+                    <TableRow key={t.id} onClick={() => setSelectedTransaction(t)} className="cursor-pointer">
                         <TableCell>
-                          {isMounted && displayDate ? displayDate.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
+                          {isMounted && displayDate ? displayDate.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -565,7 +560,7 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {isMounted && (selectedTransaction.dateSent || selectedTransaction.dateReceived) ? (selectedTransaction.dateSent || selectedTransaction.dateReceived)!.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'medium' }) : 'Loading date...'}
+                {isMounted && (selectedTransaction.transactionDate) ? (selectedTransaction.transactionDate)!.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'medium' }) : 'Loading date...'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
@@ -599,7 +594,7 @@ export default function CashTransactionTable() {
               </div>
               
               <div className="space-y-3">
-                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
+                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'From (Sender)' : 'To (Receiver)'}</h4>
                  <div className="flex items-center gap-3 text-sm">
                     <User className="h-4 w-4 text-muted-foreground"/>
                     <span>{selectedTransaction.accountName}</span>
@@ -643,15 +638,23 @@ export default function CashTransactionTable() {
               </div>
 
             </div>
-            <DialogFooter>
-              {selectedTransaction.status === 'Available' && (
-                  <Button
-                    onClick={() => selectedTransaction && handleAddToCart(selectedTransaction)}
-                  >
-                    Add to Order
-                  </Button>
-                )}
-              <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Close</Button>
+            <DialogFooter className="sm:justify-between gap-2">
+              <Button asChild variant="secondary" className="w-full sm:w-auto">
+                <Link href={`/admin/cashio/edit/${selectedTransaction.id}`}>
+                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                </Link>
+              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full">Close</Button>
+                {selectedTransaction.status === 'Available' && (
+                    <Button
+                      onClick={() => selectedTransaction && handleAddToCart(selectedTransaction)}
+                      className="w-full"
+                    >
+                      Add to Order
+                    </Button>
+                  )}
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
