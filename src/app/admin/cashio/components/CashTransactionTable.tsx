@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product } from '@/lib/types';
-import { format, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -42,6 +42,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/use-cart';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
+import { format } from 'date-fns';
+
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -411,7 +413,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted ? format(t.createdAt, 'M/d/yyyy, pp') : <Skeleton className="h-4 w-32" />}
+                        {isMounted ? t.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -459,7 +461,7 @@ export default function CashTransactionTable() {
                 paginatedTransactions.map(t => (
                 <TableRow key={t.id}>
                     <TableCell>
-                      {isMounted ? format(t.createdAt, 'PPp') : <Skeleton className="h-5 w-40" />}
+                      {isMounted ? t.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
                     </TableCell>
                     <TableCell>
                         <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -552,7 +554,7 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {isMounted ? format(selectedTransaction.createdAt, 'PPpp') : 'Loading date...'}
+                {isMounted ? selectedTransaction.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'medium' }) : 'Loading date...'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
