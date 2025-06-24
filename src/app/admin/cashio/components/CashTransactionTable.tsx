@@ -394,7 +394,7 @@ export default function CashTransactionTable() {
                 >
                   <div className="grid grid-cols-2 gap-4 items-start p-4">
                     <div className="space-y-1.5 min-w-0">
-                      <p className="font-mono text-base font-medium break-words">{t.reference}</p>
+                      <p className="font-mono text-base font-medium break-all">{t.reference}</p>
                        <p className="text-sm text-muted-foreground truncate" title={`${t.accountName} (${t.accountNumber})`}>
                           {t.transactionType === 'Cash In' ? 'From: ' : 'To: '}
                           {t.accountName} {t.accountNumber}
