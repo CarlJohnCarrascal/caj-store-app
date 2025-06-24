@@ -44,6 +44,7 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { Separator } from '@/components/ui/separator';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -416,7 +417,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && displayDate ? displayDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && displayDate ? format(displayDate, 'PPp', { timeZone: 'Asia/Manila' }) : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -466,7 +467,7 @@ export default function CashTransactionTable() {
                   return (
                     <TableRow key={t.id} onClick={() => setSelectedTransaction(t)} className="cursor-pointer">
                         <TableCell>
-                          {isMounted && displayDate ? displayDate.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
+                          {isMounted && displayDate ? format(displayDate, 'PPp', { timeZone: 'Asia/Manila' }) : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -549,7 +550,7 @@ export default function CashTransactionTable() {
       
       {selectedTransaction && (
         <Dialog open={!!selectedTransaction} onOpenChange={(isOpen) => !isOpen && setSelectedTransaction(null)}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {selectedTransaction.transactionType === 'Cash In' ? (
@@ -560,83 +561,92 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {isMounted && (selectedTransaction.transactionDate) ? (selectedTransaction.transactionDate)!.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'long', timeStyle: 'medium' }) : 'Loading date...'}
+                {isMounted && (selectedTransaction.transactionDate) ? format(selectedTransaction.transactionDate, 'PPpp', { timeZone: 'Asia/Manila' }) : 'Loading date...'}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6 py-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
-                   <span className="text-muted-foreground">Amount</span>
-                   <p className="text-2xl font-bold">
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                  <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
+                      <span className="text-muted-foreground">Amount</span>
+                      <p className="text-2xl font-bold">
                       ₱{selectedTransaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                </div>
-                {selectedTransaction.fee > 0 && (
-                   <div className="flex justify-between items-center text-sm">
+                      </p>
+                  </div>
+                  <div className="flex justify-between items-center text-sm px-1">
                       <span className="text-muted-foreground">Fee</span>
-                      <p>₱{selectedTransaction.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                   </div>
-                )}
-                 <div className="flex justify-between items-center text-sm">
+                      <span>₱{selectedTransaction.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm px-1">
                       <span className="text-muted-foreground">Status</span>
                       <Badge
                           variant={'default'}
                           className={cn(
-                            {
+                          {
                               'bg-green-600 hover:bg-green-700': selectedTransaction.status === 'Delivered' || selectedTransaction.status === 'Claimed',
                               'bg-cyan-500 hover:bg-cyan-600': selectedTransaction.status === 'Available',
-                            }
+                          }
                           )}
-                        >
+                      >
                           {selectedTransaction.status}
-                        </Badge>
-                   </div>
+                      </Badge>
+                  </div>
               </div>
               
-              <div className="space-y-3">
-                 <h4 className="font-semibold">{selectedTransaction.transactionType === 'Cash In' ? 'From (Sender)' : 'To (Receiver)'}</h4>
-                 <div className="flex items-center gap-3 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground"/>
-                    <span>{selectedTransaction.accountName}</span>
-                 </div>
-                 <div className="flex items-center gap-3 text-sm">
-                    <Wallet className="h-4 w-4 text-muted-foreground"/>
-                    <span>{selectedTransaction.accountNumber}</span>
-                 </div>
-                 
-                 {selectedTransaction.customerId && (
-                    <div className="mt-3 pt-3 border-t">
-                      <p className="text-xs text-muted-foreground mb-1">Processed By (Store Customer)</p>
-                      <div className="flex items-center gap-3 text-sm font-medium">
-                        <User className="h-4 w-4 text-muted-foreground"/>
-                        <span>{selectedTransaction.customerName}</span>
+              <Separator />
+              
+              <div className="space-y-4">
+                  <div>
+                      <h4 className="font-semibold mb-2 text-muted-foreground">{selectedTransaction.transactionType === 'Cash In' ? 'From (Sender)' : 'To (Receiver)'}</h4>
+                      <div className="pl-2 space-y-2 text-sm border-l">
+                          <div className="flex items-start gap-3">
+                              <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                              <p className="font-medium break-words">{selectedTransaction.accountName}</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                              <Wallet className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                              <p className="font-mono break-all">{selectedTransaction.accountNumber}</p>
+                          </div>
                       </div>
-                    </div>
-                 )}
-              </div>
-              
-              <div className="space-y-3">
-                 <h4 className="font-semibold">Our Account</h4>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Landmark className="h-4 w-4 text-muted-foreground"/>
-                    <span>{selectedTransaction.ourAccountName} via {selectedTransaction.paymentMethod}</span>
-                 </div>
-              </div>
+                  </div>
 
-               <div className="space-y-3">
-                 <h4 className="font-semibold">Details</h4>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Hash className="h-4 w-4 text-muted-foreground"/>
-                    <span>{selectedTransaction.reference}</span>
-                 </div>
-                 {selectedTransaction.message && (
-                     <div className="flex items-start gap-3 text-sm">
-                        <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5"/>
-                        <p className="border-l-2 pl-3 text-muted-foreground">{selectedTransaction.message}</p>
-                     </div>
-                 )}
-              </div>
+                  {selectedTransaction.customerId && (
+                      <div>
+                          <h4 className="font-semibold mb-2 text-muted-foreground">Processed By (Store Customer)</h4>
+                          <div className="pl-2 space-y-2 text-sm border-l">
+                              <div className="flex items-start gap-3">
+                                  <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                  <p className="font-medium break-words">{selectedTransaction.customerName}</p>
+                              </div>
+                          </div>
+                      </div>
+                  )}
 
+                  <div>
+                      <h4 className="font-semibold mb-2 text-muted-foreground">Our Account</h4>
+                      <div className="pl-2 space-y-2 text-sm border-l">
+                          <div className="flex items-start gap-3">
+                              <Landmark className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
+                              <p className="break-words">{selectedTransaction.ourAccountName} via {selectedTransaction.paymentMethod}</p>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div>
+                      <h4 className="font-semibold mb-2 text-muted-foreground">Details</h4>
+                      <div className="pl-2 space-y-2 text-sm border-l">
+                          <div className="flex items-start gap-3">
+                              <Hash className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
+                              <p className="font-mono break-all">{selectedTransaction.reference}</p>
+                          </div>
+                          {selectedTransaction.message && (
+                              <div className="flex items-start gap-3">
+                                  <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
+                                  <p className="text-muted-foreground break-words">{selectedTransaction.message}</p>
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              </div>
             </div>
             <DialogFooter className="sm:justify-between gap-2">
               <Button asChild variant="secondary" className="w-full sm:w-auto">
