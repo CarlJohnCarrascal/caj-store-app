@@ -19,6 +19,23 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   return items;
 }
 
+// Helper to format a Date object into 'YYYY-MM-DDTHH:mm:ss+08:00' for the current time
+function getCurrentPHTISOString(): string {
+  const now = new Date();
+  // Create a new date object for PHT (UTC+8) by adding 8 hours
+  const phtTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
+  const year = phtTime.getUTCFullYear();
+  const month = String(phtTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(phtTime.getUTCDate()).padStart(2, '0');
+  const hours = String(phtTime.getUTCHours()).padStart(2, '0');
+  const minutes = String(phtTime.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(phtTime.getUTCSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+}
+
+
 // ==================
 // Product Functions
 // ==================
@@ -163,27 +180,31 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
     newBalance = account.balance - transactionData.amount - transactionData.fee;
   }
   await update(accountRef, { balance: newBalance });
-
-  const transactionDate = transactionData.datetime 
-    ? new Date(transactionData.datetime) 
-    : new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
   
-  const philippinesTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-
+  const nowPHTString = getCurrentPHTISOString();
+  
+  let transactionDateString: string;
+  if (transactionData.datetime && transactionData.datetime.length > 0) {
+    // Input is like 'YYYY-MM-DDTHH:mm', assume it's PHT. Append seconds and timezone.
+    transactionDateString = `${transactionData.datetime}:00+08:00`;
+  } else {
+    // If no datetime provided, use current time in PHT
+    transactionDateString = nowPHTString;
+  }
   
   const newTransactionRef = push(ref(db, 'cashTransactions'));
 
   const dataToSave: any = {
     ...transactionData,
     newBalance,
-    createdAt: philippinesTime.toISOString(),
-    updatedAt: philippinesTime.toISOString(),
+    createdAt: nowPHTString,
+    updatedAt: nowPHTString,
   };
 
   if (transactionData.transactionType === 'Cash In') {
-    dataToSave.dateSent = transactionDate.toISOString();
+    dataToSave.dateSent = transactionDateString;
   } else {
-    dataToSave.dateReceived = transactionDate.toISOString();
+    dataToSave.dateReceived = transactionDateString;
   }
   
   delete dataToSave.datetime;
@@ -201,7 +222,7 @@ export async function updateCashTransactionStatus(id: string, customerId: string
         const transaction = snapshot.val();
         if (transaction.status === 'Available') {
             const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-            const updatedAt = new Date().toISOString();
+            const updatedAt = getCurrentPHTISOString();
             const updates = {
                 status: newStatus,
                 updatedAt,
@@ -295,7 +316,7 @@ export async function logActivity(log: Omit<ActivityLog, 'id' | 'timestamp'>): P
   const newLogRef = push(ref(db, 'activityLogs'));
   const newLog = {
     ...log,
-    timestamp: new Date().toISOString(),
+    timestamp: getCurrentPHTISOString(),
   };
   await set(newLogRef, newLog);
   return Promise.resolve();

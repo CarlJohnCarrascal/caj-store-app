@@ -99,6 +99,12 @@ export default function CashTransactionTable() {
     const transactionsRef = ref(db, 'cashTransactions');
     const unsubscribeTransactions = onValue(transactionsRef, (snapshot) => {
       const transactionList = snapshotToArray<CashTransaction>(snapshot);
+      // transactionList.forEach(t => {
+      //   let d = t.createdAt.toString().split(".")[0] + '+08:00';
+      //   console.log("new date", d);
+      //   console.log('dateReceived:', t.createdAt, 'new Date(dateReceived):', new Date(d));
+      //   console.log('dateReceived:', t.dateReceived, 'new Date(dateReceived):', new Date(t.dateReceived as any));
+      // });
       const transactionsWithDates = transactionList.map(t => ({
           ...t,
           createdAt: new Date(t.createdAt),
@@ -397,7 +403,7 @@ export default function CashTransactionTable() {
                           {t.accountName} {t.accountNumber}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
-                          Account Used: {t.ourAccountName}
+                          Account Used: {t.ourAccountName} 
                       </p>
                       <div>
                         <Badge
@@ -415,7 +421,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && displayDate ? displayDate.toLocaleString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && displayDate ? displayDate.toLocaleDateString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ', ') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -465,7 +471,7 @@ export default function CashTransactionTable() {
                   return (
                     <TableRow key={t.id}>
                         <TableCell>
-                          {isMounted && displayDate ? displayDate.toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
+                          {isMounted && displayDate ? displayDate.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
