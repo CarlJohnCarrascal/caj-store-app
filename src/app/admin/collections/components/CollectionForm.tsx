@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +13,7 @@ import { Collection, Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addCollectionAction, updateCollectionAction } from '@/lib/actions';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Combobox } from '@/components/ui/combobox';
 import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -33,11 +34,16 @@ interface CollectionFormProps {
   collectionNames: string[];
 }
 
-export default function CollectionForm({ collection, customers, collectionNames }: CollectionFormProps) {
+export default function CollectionForm({ collection, customers: initialCustomers, collectionNames }: CollectionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+
+  useEffect(() => {
+    setCustomers(initialCustomers);
+  }, [initialCustomers]);
 
   const form = useForm<CollectionFormValues>({
     resolver: zodResolver(formSchema),
@@ -73,6 +79,13 @@ export default function CollectionForm({ collection, customers, collectionNames 
         toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
       }
     });
+  };
+
+  const handleAddNewCustomerSuccess = (newCustomer: Customer) => {
+    setCustomers(prev => [...prev, newCustomer]);
+    form.setValue('customerId', newCustomer.id, { shouldValidate: true });
+    setIsCustomerDialogOpen(false);
+    toast({ title: "Customer added", description: `"${newCustomer.name}" is now selected.` });
   };
 
   return (
@@ -161,11 +174,7 @@ export default function CollectionForm({ collection, customers, collectionNames 
                 </DialogDescription>
             </DialogHeader>
             <CustomerForm
-                onSuccess={() => {
-                    setIsCustomerDialogOpen(false);
-                    router.refresh();
-                    toast({ title: "Customer created", description: "You can now select the new customer from the list." });
-                }}
+                onSuccess={handleAddNewCustomerSuccess}
                 onCancel={() => setIsCustomerDialogOpen(false)}
             />
         </DialogContent>

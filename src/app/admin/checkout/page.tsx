@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useTransition } from 'react';
@@ -102,10 +103,13 @@ export default function CheckoutPage() {
     }
   };
   
-  const handleAddNewCustomerSuccess = async () => {
+  const handleAddNewCustomerSuccess = (newCustomer: Customer) => {
     setIsCustomerDialogOpen(false);
-    // Data will be updated by the realtime listener, no need to re-fetch
-    toast({ title: "Customer added", description: "You can now select the new customer." });
+    // The realtime listener will add the customer to the list.
+    // We just need to set the selected ID.
+    setSelectedCustomerId(newCustomer.id);
+    setCartCustomer({ name: newCustomer.name });
+    toast({ title: "Customer added", description: `"${newCustomer.name}" is now selected for the order.` });
   };
 
   const discountValue = parseFloat(discount) || 0;

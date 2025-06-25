@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +27,7 @@ type CustomerFormValues = z.infer<typeof formSchema>;
 
 interface CustomerFormProps {
   customer?: Customer;
-  onSuccess?: () => void;
+  onSuccess?: (newCustomer: Customer) => void;
   onCancel?: () => void;
 }
 
@@ -60,17 +61,18 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
         if (customer) {
           // TODO: Implement update customer action
           toast({ title: 'Success', description: 'Customer updated successfully.' });
-        } else {
-          await addCustomerAction(formData);
-          toast({ title: 'Success', description: 'Customer added successfully.' });
-          form.reset();
-        }
-        
-        if (onSuccess) {
-          onSuccess();
-        } else {
           router.push('/admin/customers');
           router.refresh();
+        } else {
+          const newCustomer = await addCustomerAction(formData);
+          toast({ title: 'Success', description: 'Customer added successfully.' });
+          form.reset();
+          if (onSuccess) {
+            onSuccess(newCustomer);
+          } else {
+            router.push('/admin/customers');
+            router.refresh();
+          }
         }
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });

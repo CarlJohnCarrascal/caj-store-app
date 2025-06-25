@@ -38,7 +38,7 @@ export async function addProductAction(data: FormData) {
 
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
-  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/activity-logs');
 }
 
 export async function updateProductAction(id: string, data: FormData) {
@@ -60,8 +60,8 @@ export async function updateProductAction(id: string, data: FormData) {
 
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
-  revalidatePath(`/admin/products/edit/${id}`);
-  revalidatePath('/admin/transactions');
+  revalidatePath(`/admin/edit/${id}`);
+  revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteProductAction(id: string) {
@@ -77,7 +77,7 @@ export async function deleteProductAction(id: string) {
 
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
-  revalidatePath('/admin/transactions');
+  revalidatePath('/admin/activity-logs');
 }
 
 const processOrderSchema = z.object({
@@ -198,7 +198,7 @@ const customerSchema = z.object({
 });
 
 
-export async function addCustomerAction(data: FormData) {
+export async function addCustomerAction(data: FormData): Promise<Customer> {
   const validatedFields = customerSchema.safeParse(Object.fromEntries(data.entries()));
 
   if (!validatedFields.success) {
@@ -215,6 +215,7 @@ export async function addCustomerAction(data: FormData) {
 
   revalidatePath('/admin/customers');
   revalidatePath('/admin/activity-logs');
+  return newCustomer;
 }
 
 export async function updateCustomerBalanceAction(customerId: string, amount: number) {
