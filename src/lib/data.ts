@@ -288,19 +288,23 @@ export async function updateCashTransactionStatus(id: string, customerId: string
 
     if (snapshot.exists()) {
         const transaction = snapshot.val();
-        if (transaction.status === 'Available') {
-            const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-            const updatedAt = getCurrentPHTISOString();
-            const updates = {
-                status: newStatus,
-                updatedAt,
-                customerId,
-                customerName,
-            };
-            await update(transactionRef, updates);
-            const updatedTransactionData = { ...transaction, ...updates, id };
-            return { ...updatedTransactionData, updatedAt: new Date(updatedAt), createdAt: new Date(transaction.createdAt) };
+
+        // This transaction has already been processed in an order. Return null to prevent re-running reports.
+        if (transaction.customerId) {
+            return null;
         }
+
+        const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+        const updatedAt = getCurrentPHTISOString();
+        const updates = {
+            status: newStatus,
+            updatedAt,
+            customerId,
+            customerName,
+        };
+        await update(transactionRef, updates);
+        const updatedTransactionData = { ...transaction, ...updates, id };
+        return { ...updatedTransactionData, updatedAt: new Date(updatedAt), createdAt: new Date(transaction.createdAt) };
     }
     return null;
 }
@@ -673,4 +677,3 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
-
