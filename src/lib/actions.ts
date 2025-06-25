@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport } from './data';
-import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -132,31 +132,31 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     let totalBalanceUpdate = 0;
     
     if (!isUnknownCustomer) {
-      if (applyCustomerBalance) {
-          totalBalanceUpdate -= initialCustomerBalance;
-      }
-      
-      const balanceChangeFromTender = amountTendered - total;
-      if (settlementType === 'add_to_balance') {
-          totalBalanceUpdate += balanceChangeFromTender;
-      }
+        const balanceUsed = applyCustomerBalance ? initialCustomerBalance : 0;
+        const changeToBalance = settlementType === 'add_to_balance' ? (amountTendered - total) : 0;
+        totalBalanceUpdate = -balanceUsed + changeToBalance;
+    }
+    
+    const orderPayload: Omit<Order, 'id'> = {
+        customerId,
+        customerName,
+        items,
+        subtotal,
+        discount,
+        total,
+        amountTendered,
+        settlementType,
+        createdAt: '', // Will be set by addOrder
+    };
+
+    if (!isUnknownCustomer) {
+        const newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
+        orderPayload.initialCustomerBalance = initialCustomerBalance;
+        orderPayload.newCustomerBalance = newCustomerBalance;
     }
 
-    const newCustomerBalance = isUnknownCustomer ? undefined : initialCustomerBalance + totalBalanceUpdate;
 
-    const newOrder = await addOrder({
-        customerId: customerId,
-        customerName: customerName,
-        items: items,
-        subtotal: subtotal,
-        discount: discount,
-        total: total,
-        amountTendered: amountTendered,
-        settlementType: settlementType,
-        createdAt: '', // Will be set by addOrder
-        initialCustomerBalance: isUnknownCustomer ? undefined : initialCustomerBalance,
-        newCustomerBalance: newCustomerBalance,
-    });
+    const newOrder = await addOrder(orderPayload);
 
     // Log the order creation
     await logActivity({
@@ -481,4 +481,6 @@ export async function deleteExpenseAction(id: string) {
     revalidatePath('/admin/expenses');
     revalidatePath('/admin/activity-logs');
 }
+    
+
     
