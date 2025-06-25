@@ -242,13 +242,13 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             unit: 'each',
             image: 'https://placehold.co/600x600.png',
             material: 'N/A',
-            dimensions: 'N/A'
+            dimensions: 'N/A',
+            originalTransactionId: newTransaction.id
         };
         
         addToCart(transactionAsProduct, 1);
         setCartCustomer({ name: newTransaction.accountName });
 
-        toast({ title: 'Success', description: 'Transaction added to order.' });
         router.push('/admin/cashio');
         router.refresh();
       } catch (error: any) {
