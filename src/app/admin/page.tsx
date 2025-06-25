@@ -28,6 +28,20 @@ export default function AdminDashboard() {
               </Button>
             </CardContent>
           </Card>
+           <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-medium">Cash IO</CardTitle>
+              <ArrowRightLeft className="h-6 w-6 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Manage cash in/out transactions for external payments.
+              </CardDescription>
+               <Button asChild className="w-full mt-4">
+                  <Link href="/admin/cashio">Manage Transactions</Link>
+               </Button>
+            </CardContent>
+          </Card>
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-medium">Printing Services</CardTitle>
@@ -67,20 +81,6 @@ export default function AdminDashboard() {
               </CardDescription>
                <Button asChild className="w-full mt-4">
                   <Link href="/admin/other-services">Go to Services</Link>
-               </Button>
-            </CardContent>
-          </Card>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-medium">Cash IO</CardTitle>
-              <ArrowRightLeft className="h-6 w-6 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Manage cash in/out transactions for external payments.
-              </CardDescription>
-               <Button asChild className="w-full mt-4">
-                  <Link href="/admin/cashio">Manage Transactions</Link>
                </Button>
             </CardContent>
           </Card>
