@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CashTransaction, Account, Product } from '@/lib/types';
+import { CashTransaction, Account, Product, Customer } from '@/lib/types';
 import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil } from 'lucide-react';
@@ -64,6 +64,7 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 export default function CashTransactionTable() {
   const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
   const [accounts, setAccounts] = React.useState<Account[]>([]);
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   const [search, setSearch] = React.useState('');
@@ -72,7 +73,7 @@ export default function CashTransactionTable() {
   const [sort, setSort] = React.useState<{key: string, order: 'asc' | 'desc'}>({ key: 'transactionDate', order: 'desc' });
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
-  const [selectedTransaction, setSelectedTransaction] = React.useState<CashTransaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = React.useState<any | null>(null);
   const { toast } = useToast();
   const { addToCart, setCartCustomer } = useCart();
 
@@ -92,9 +93,10 @@ export default function CashTransactionTable() {
 
     let transactionsLoaded = false;
     let accountsLoaded = false;
+    let customersLoaded = false;
 
     const checkLoading = () => {
-      if (transactionsLoaded && accountsLoaded) {
+      if (transactionsLoaded && accountsLoaded && customersLoaded) {
         setIsLoading(false);
       }
     };
@@ -121,13 +123,21 @@ export default function CashTransactionTable() {
       checkLoading();
     });
 
+    const customersRef = ref(db, 'customers');
+    const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+      setCustomers(snapshotToArray<Customer>(snapshot));
+      customersLoaded = true;
+      checkLoading();
+    });
+
     return () => {
       unsubscribeTransactions();
       unsubscribeAccounts();
+      unsubscribeCustomers();
     };
   }, []);
 
-  const handleAddToCart = (transaction: CashTransaction) => {
+  const handleAddToCart = (transaction: any) => {
     const finalPrice = transaction.transactionType === 'Cash In'
         ? transaction.amount + transaction.fee
         : transaction.fee - transaction.amount;
@@ -155,17 +165,25 @@ export default function CashTransactionTable() {
     setSelectedTransaction(null);
   };
 
-  const transactionsWithAccountNames = React.useMemo(() => {
+  const transactionsWithNames = React.useMemo(() => {
     const accountMap = new Map(accounts.map(acc => [acc.id, acc.accountName]));
-    return transactions.map(t => ({
-      ...t,
-      ourAccountName: accountMap.get(t.accountUsedId) || 'Unknown Account',
-      transactionDate: t.transactionType === 'Cash In' ? t.dateSent : t.dateReceived,
-    }));
-  }, [transactions, accounts]);
+    const customerMap = new Map(customers.map(c => [c.id, c.name]));
+    return transactions.map(t => {
+      const customerName = t.customerId
+        ? (customerMap.get(t.customerId) || (t.customerId === 'unknown' ? 'Unknown Customer' : `Customer ID: ${t.customerId}`))
+        : t.accountName;
+
+      return {
+        ...t,
+        ourAccountName: accountMap.get(t.accountUsedId) || 'Unknown Account',
+        transactionDate: t.transactionType === 'Cash In' ? t.dateSent : t.dateReceived,
+        customerName,
+      };
+    });
+  }, [transactions, accounts, customers]);
 
   const filteredTransactions = React.useMemo(() => {
-    return transactionsWithAccountNames
+    return transactionsWithNames
       .filter(t => {
         const searchLower = search.toLowerCase();
         return (
@@ -184,7 +202,7 @@ export default function CashTransactionTable() {
         const to = date.to || from; // If no 'to' date, use 'from' for single day
         return t.transactionDate >= from && t.transactionDate <= new Date(to.getTime() + 86400000); // include the whole 'to' day
       });
-  }, [search, transactionsWithAccountNames, date, type, method, accountUsed, status]);
+  }, [search, transactionsWithNames, date, type, method, accountUsed, status]);
 
   const summary = React.useMemo(() => {
     const totalIn = filteredTransactions

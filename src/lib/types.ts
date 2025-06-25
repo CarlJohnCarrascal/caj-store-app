@@ -1,3 +1,4 @@
+
 'use server';
 
 export interface Product {
@@ -53,7 +54,6 @@ export interface CashTransaction {
   newBalance: number;
   dateSent?: Date;
   dateReceived?: Date;
-  customerName: string;
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
   createdAt: Date;

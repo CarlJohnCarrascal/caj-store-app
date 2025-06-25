@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -196,7 +197,6 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
         Object.entries(dataToSubmit).forEach(([key, value]) => {
             formData.append(key, String(value));
         });
-        formData.append('customerName', data.accountName);
 
         await addCashTransactionAction(formData);
 
@@ -225,7 +225,6 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             formData.append(key, String(value));
           }
         });
-        formData.append('customerName', data.accountName);
 
         const newTransaction = await addCashTransactionAction(formData);
 
@@ -247,7 +246,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
         };
         
         addToCart(transactionAsProduct, 1);
-        setCartCustomer({ name: newTransaction.customerName });
+        setCartCustomer({ name: newTransaction.accountName });
 
         toast({ title: 'Success', description: 'Transaction added to order.' });
         router.push('/admin/cashio');
@@ -267,7 +266,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     startTransition(async () => {
         try {
             const formData = new FormData();
-            const dataToSubmit = { ...data, customerName: data.accountName }; // Add customerName for schema validation
+            const dataToSubmit = { ...data };
             Object.entries(dataToSubmit).forEach(([key, value]) => {
                 if (value !== undefined) {
                     formData.append(key, String(value));

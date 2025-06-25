@@ -282,7 +282,7 @@ export async function updateCashTransaction(id: string, transactionData: Omit<Ca
     return { ...dataToSave, id };
 }
 
-export async function updateCashTransactionStatus(id: string, customerId: string, customerName: string): Promise<CashTransaction | null> {
+export async function updateCashTransactionStatus(id: string, customerId: string): Promise<CashTransaction | null> {
     const transactionRef = ref(db, `cashTransactions/${id}`);
     const snapshot = await get(transactionRef);
 
@@ -300,7 +300,6 @@ export async function updateCashTransactionStatus(id: string, customerId: string
             status: newStatus,
             updatedAt,
             customerId,
-            customerName,
         };
         await update(transactionRef, updates);
         const updatedTransactionData = { ...transaction, ...updates, id };

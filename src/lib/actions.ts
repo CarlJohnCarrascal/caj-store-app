@@ -115,12 +115,12 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
 
     for (const item of items) {
         if (item.category === 'CashIO' && item.originalTransactionId) {
-            const updatedTransaction = await updateCashTransactionStatus(item.originalTransactionId, customerId, customerName);
+            const updatedTransaction = await updateCashTransactionStatus(item.originalTransactionId, customerId);
             if (updatedTransaction) {
                  await logActivity({
                     type: 'CashIO',
                     action: 'Updated',
-                    details: `Transaction for "${updatedTransaction.customerName}" was marked as ${updatedTransaction.status} via checkout.`,
+                    details: `Transaction for "${customerName}" was marked as ${updatedTransaction.status} via checkout.`,
                     targetId: item.originalTransactionId,
                 });
                 await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
@@ -307,7 +307,6 @@ const cashTransactionSchema = z.object({
   accountUsedId: z.string().min(1, 'Please select an account.'),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
   status: z.enum(['Delivered', 'Available', 'Claimed']),
-  customerName: z.string().min(1, 'Customer name is required.'),
   accountName: z.string().min(1, "Sender/Receiver's account name is required."),
   accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
@@ -335,7 +334,7 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
   await logActivity({
     type: 'CashIO',
     action: 'Created',
-    details: `${newTransaction.transactionType} of ₱${newTransaction.amount.toFixed(2)} for "${newTransaction.customerName}" was recorded.`,
+    details: `${newTransaction.transactionType} of ₱${newTransaction.amount.toFixed(2)} for "${validatedFields.data.accountName}" was recorded.`,
     targetId: newTransaction.id,
   });
   
@@ -361,7 +360,7 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
   await logActivity({
     type: 'CashIO',
     action: 'Updated',
-    details: `Transaction for "${updatedTransaction.customerName}" was updated.`,
+    details: `Transaction for "${updatedTransaction.accountName}" was updated.`,
     targetId: updatedTransaction.id,
   });
 
