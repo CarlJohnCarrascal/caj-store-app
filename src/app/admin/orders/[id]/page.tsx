@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AtSign, Home, Phone, User, Wallet } from 'lucide-react';
+import { AtSign, Home, Phone, User, Wallet, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default async function OrderDetailsPage({ params }: { params: { id: string } }) {
   const order = await getOrderById(params.id);
@@ -22,10 +23,19 @@ export default async function OrderDetailsPage({ params }: { params: { id: strin
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Order Details</h1>
-        <p className="text-muted-foreground font-mono text-sm mt-1">{order.id}</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Order Details</h1>
+          <p className="text-muted-foreground font-mono text-sm mt-1">{order.id}</p>
+        </div>
+        <Button asChild variant="outline">
+            <Link href="/admin/orders">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Orders
+            </Link>
+        </Button>
       </div>
+
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
