@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Order } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { ref, onValue, query, limitToLast, orderByKey } from 'firebase/database';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -18,8 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -37,8 +37,12 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 export default function OrderList() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
+    // We fetch the last 50 orders and paginate on the client.
+    // This can be optimized later for server-side pagination if needed.
     const ordersRef = query(ref(db, 'orders'), orderByKey(), limitToLast(50));
     const unsubscribe = onValue(ordersRef, (snapshot) => {
       const orderList = snapshotToArray<Order>(snapshot);
@@ -52,6 +56,17 @@ export default function OrderList() {
 
     return () => unsubscribe();
   }, []);
+
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return orders.slice(startIndex, startIndex + itemsPerPage);
+  }, [orders, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   if (isLoading) {
     return (
@@ -108,7 +123,7 @@ export default function OrderList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
+            {paginatedOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">{order.id}</TableCell>
                 <TableCell className="font-medium">{order.customerName}</TableCell>
@@ -131,6 +146,43 @@ export default function OrderList() {
           </TableBody>
         </Table>
       </CardContent>
+      {totalPages > 1 && (
+        <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 border-t">
+            <div className="text-sm text-muted-foreground">
+                Showing {Math.min(itemsPerPage * currentPage, orders.length)} of {orders.length} orders.
+            </div>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm">Rows per page:</span>
+                    <Select value={String(itemsPerPage)} onValueChange={v => setItemsPerPage(Number(v))}>
+                        <SelectTrigger className="w-20"><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            {[10, 20, 50].map(v => <SelectItem key={v} value={String(v)}>{v}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p-1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+            </div>
+        </CardFooter>
+      )}
     </Card>
   );
 }
