@@ -13,15 +13,29 @@ export default function OrderConfirmationPage() {
           </div>
           <CardTitle className="mt-4 text-2xl">Order Confirmed!</CardTitle>
           <CardDescription>
-            Thank you for your order. We've received it and will start processing it right away.
+            The order has been processed successfully.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-6">
-            You will receive an email confirmation shortly with your order details.
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            What would you like to do next?
           </p>
-          <Button asChild>
-            <Link href="/admin/store">Continue Shopping</Link>
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button asChild>
+              <Link href="/admin/store">New Store Order</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/printing">Printing Service</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/e-loading">E-Loading</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/cashio">Cash IO</Link>
+            </Button>
+          </div>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/admin">Back to Dashboard</Link>
           </Button>
         </CardContent>
       </Card>
