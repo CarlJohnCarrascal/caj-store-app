@@ -157,16 +157,12 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                 totalBalanceUpdate -= initialCustomerBalance;
             }
         } else if (settlementType === 'add_to_balance') {
-            // For "Add to Balance", the entire difference is applied.
-            let balanceChangeFromTender = total - amountTendered;
-            if (total < 0) {
-                balanceChangeFromTender = 0;
-            }
+            // For "Add to Balance", the customer's balance is updated by the amount they over/underpaid.
+            // change = tendered - total.
+            // If total=500, tendered=0, change is -500. Customer balance goes down by 500 (owes more).
+            // If total=-980, tendered=0, change is 980. Customer balance goes up by 980 (store owes more).
+            const balanceChangeFromTender = amountTendered - total;
             totalBalanceUpdate += balanceChangeFromTender;
-            
-            if (applyCustomerBalance) {
-                totalBalanceUpdate -= initialCustomerBalance;
-            }
         }
 
         if (totalBalanceUpdate !== 0) {
