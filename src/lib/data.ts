@@ -591,26 +591,39 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
     }
 }
 
-export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string) {
+export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
     const date = new Date(); // Use current date for the report
     const paths = getReportPaths(date);
+    const orderValue = Math.abs(orderTotal); // Use absolute value as requested
 
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `customerReports${periodPath}`);
         
-        if (type === 'new_customer') {
-            await runTransaction(reportRef, (currentData: any) => {
-                if (currentData === null) {
-                    currentData = { newCustomerCount: 0, activeCustomers: {} };
-                }
-                currentData.newCustomerCount = (currentData.newCustomerCount || 0) + 1;
-                return currentData;
-            });
-        } else if (type === 'order') {
-            if (customerId !== 'unknown') {
-                const activeCustomerRef = ref(db, `customerReports${periodPath}/activeCustomers/${customerId}`);
-                await set(activeCustomerRef, true);
+        await runTransaction(reportRef, (currentData: any) => {
+            if (currentData === null) {
+                currentData = { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0, activeCustomers: {} };
             }
-        }
+
+            if (type === 'new_customer') {
+                currentData.newCustomerCount = (currentData.newCustomerCount || 0) + 1;
+            } else if (type === 'order') {
+                // Update overall stats
+                currentData.totalOrders = (currentData.totalOrders || 0) + 1;
+                currentData.totalOrderValue = (currentData.totalOrderValue || 0) + orderValue;
+
+                // Update specific customer stats (including 'unknown')
+                if (!currentData.activeCustomers) {
+                    currentData.activeCustomers = {};
+                }
+                if (!currentData.activeCustomers[customerId]) {
+                    currentData.activeCustomers[customerId] = { orderCount: 0, totalValue: 0 };
+                }
+                
+                currentData.activeCustomers[customerId].orderCount = (currentData.activeCustomers[customerId].orderCount || 0) + 1;
+                currentData.activeCustomers[customerId].totalValue = (currentData.activeCustomers[customerId].totalValue || 0) + orderValue;
+            }
+            
+            return currentData;
+        });
     }
 }

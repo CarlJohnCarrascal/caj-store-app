@@ -165,6 +165,9 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     
     await updateSalesReports(newOrder);
 
+    // This will now handle both known and unknown customers and pass the total.
+    await updateCustomerReports('order', customerId, total);
+
     if (!isUnknownCustomer) {
         if (totalBalanceUpdate !== 0) {
             await updateCustomerBalance(customerId, totalBalanceUpdate);
@@ -175,7 +178,6 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                 targetId: customerId,
             });
         }
-        await updateCustomerReports('order', customerId);
     }
     
     revalidatePath('/admin/activity-logs');
