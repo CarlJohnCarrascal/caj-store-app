@@ -80,6 +80,8 @@ export interface Order {
   amountTendered: number;
   settlementType: 'pay_order' | 'add_to_balance';
   createdAt: string; // ISO string
+  initialCustomerBalance?: number;
+  newCustomerBalance?: number;
 }
 
 export interface ActivityLog {

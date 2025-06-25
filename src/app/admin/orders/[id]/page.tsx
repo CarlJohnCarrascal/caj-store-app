@@ -143,10 +143,29 @@ export default async function OrderDetailsPage({ params }: { params: { id: strin
                     <p>{customer.address}, {customer.location}</p>
                 </div>
                 <Separator />
-                <div className="flex items-center gap-3">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                    <p>Current Balance: <span className="font-bold">₱{customer.balance.toFixed(2)}</span></p>
-                </div>
+                {typeof order.initialCustomerBalance === 'number' && typeof order.newCustomerBalance === 'number' ? (
+                  <>
+                    <h4 className="font-medium pt-2">Balance Change from this Order</h4>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Balance Before</span>
+                        <span>₱{order.initialCustomerBalance.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Balance After</span>
+                        <span>₱{order.newCustomerBalance.toFixed(2)}</span>
+                    </div>
+                    <Separator />
+                     <div className="flex items-center gap-3 pt-2">
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <p>Current Balance: <span className="font-bold">₱{customer.balance.toFixed(2)}</span></p>
+                    </div>
+                  </>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <p>Current Balance: <span className="font-bold">₱{customer.balance.toFixed(2)}</span></p>
+                    </div>
+                )}
               </CardContent>
             </Card>
           ) : (

@@ -41,9 +41,7 @@ export default function OrderList() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    // We fetch the last 50 orders and paginate on the client.
-    // This can be optimized later for server-side pagination if needed.
-    const ordersRef = query(ref(db, 'orders'), orderByKey(), limitToLast(50));
+    const ordersRef = query(ref(db, 'orders'), orderByKey(), limitToLast(100));
     const unsubscribe = onValue(ordersRef, (snapshot) => {
       const orderList = snapshotToArray<Order>(snapshot);
       const ordersWithDates = orderList.map(o => ({
@@ -83,7 +81,7 @@ export default function OrderList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...Array(5)].map((_, i) => (
+              {[...Array(10)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
@@ -157,7 +155,7 @@ export default function OrderList() {
                     <Select value={String(itemsPerPage)} onValueChange={v => setItemsPerPage(Number(v))}>
                         <SelectTrigger className="w-20"><SelectValue/></SelectTrigger>
                         <SelectContent>
-                            {[10, 20, 50].map(v => <SelectItem key={v} value={String(v)}>{v}</SelectItem>)}
+                            {[10, 20, 50, 100].map(v => <SelectItem key={v} value={String(v)}>{v}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>

@@ -127,6 +127,22 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         }
     }
 
+    const isUnknownCustomer = customerId === 'unknown';
+    let totalBalanceUpdate = 0;
+    
+    if (!isUnknownCustomer) {
+      if (settlementType === 'pay_order') {
+          if (applyCustomerBalance) {
+              totalBalanceUpdate -= initialCustomerBalance;
+          }
+      } else if (settlementType === 'add_to_balance') {
+          const balanceChangeFromTender = amountTendered - total;
+          totalBalanceUpdate += balanceChangeFromTender;
+      }
+    }
+
+    const newCustomerBalance = isUnknownCustomer ? undefined : initialCustomerBalance + totalBalanceUpdate;
+
     const newOrder = await addOrder({
         customerId: customerId,
         customerName: customerName,
@@ -137,6 +153,8 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         amountTendered: amountTendered,
         settlementType: settlementType,
         createdAt: '', // Will be set by addOrder
+        initialCustomerBalance: isUnknownCustomer ? undefined : initialCustomerBalance,
+        newCustomerBalance: newCustomerBalance,
     });
 
     // Log the order creation
@@ -147,39 +165,20 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         targetId: newOrder.id,
     });
 
-    if (customerId !== 'unknown') {
-        let totalBalanceUpdate = 0;
-        
-        if (settlementType === 'pay_order') {
-            // For simple payments, balance is only affected if customer balance was applied.
-            // Any change due is handled physically, not stored as balance.
-            if (applyCustomerBalance) {
-                totalBalanceUpdate -= initialCustomerBalance;
-            }
-        } else if (settlementType === 'add_to_balance') {
-            // For "Add to Balance", the customer's balance is updated by the amount they over/underpaid.
-            // change = tendered - total.
-            // If total=500, tendered=0, change is -500. Customer balance goes down by 500 (owes more).
-            // If total=-980, tendered=0, change is 980. Customer balance goes up by 980 (store owes more).
-            const balanceChangeFromTender = amountTendered - total;
-            totalBalanceUpdate += balanceChangeFromTender;
-        }
-
-        if (totalBalanceUpdate !== 0) {
-            await updateCustomerBalance(customerId, totalBalanceUpdate);
-            await logActivity({
-                type: 'Customer',
-                action: 'Updated',
-                details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
-                targetId: customerId,
-            });
-        }
-        revalidatePath('/admin/customers');
+    if (customerId !== 'unknown' && totalBalanceUpdate !== 0) {
+        await updateCustomerBalance(customerId, totalBalanceUpdate);
+        await logActivity({
+            type: 'Customer',
+            action: 'Updated',
+            details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
+            targetId: customerId,
+        });
     }
     
     revalidatePath('/admin/activity-logs');
     revalidatePath('/admin/cashio');
     revalidatePath('/admin/orders');
+    revalidatePath('/admin/customers');
     revalidatePath(`/admin/customers/${customerId}`);
 }
 
