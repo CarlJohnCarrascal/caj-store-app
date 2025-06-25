@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from './firebase';
@@ -572,43 +573,63 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
+        
         await runTransaction(reportRef, (currentData: any) => {
             if (currentData === null) {
                 currentData = {
-                    cashinTotal: 0,
-                    cashoutTotal: 0,
-                    allTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
-                    orderedTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
+                    cashIn: 0,
+                    cashOut: 0,
+                    cashInFee: 0,
+                    cashOutFee: 0,
+                    total: 0,
+                    totalFee: 0,
                     customers: {},
                 };
             }
 
-            if (transaction.transactionType === 'Cash In') {
-                currentData.cashinTotal = (currentData.cashinTotal || 0) + transaction.amount;
-            } else { // Cash Out
-                currentData.cashoutTotal = (currentData.cashoutTotal || 0) + transaction.amount;
+            // This part runs for ALL transactions to update top-level stats
+            if (type === 'allTransactions') {
+                currentData.total = (currentData.total || 0) + transaction.amount;
+                currentData.totalFee = (currentData.totalFee || 0) + transaction.fee;
+
+                if (transaction.transactionType === 'Cash In') {
+                    currentData.cashIn = (currentData.cashIn || 0) + transaction.amount;
+                    currentData.cashInFee = (currentData.cashInFee || 0) + transaction.fee;
+                } else { // Cash Out
+                    currentData.cashOut = (currentData.cashOut || 0) + transaction.amount;
+                    currentData.cashOutFee = (currentData.cashOutFee || 0) + transaction.fee;
+                }
             }
             
-            // Update the aggregate data ('allTransactions' or 'orderedTransactions')
-            const categoryData = currentData[type] || { count: 0, totalFees: 0, totalAmount: 0 };
-            categoryData.count += 1;
-            categoryData.totalFees += transaction.fee;
-            categoryData.totalAmount = (categoryData.totalAmount || 0) + transaction.amount;
-            currentData[type] = categoryData;
-            
-            // If it's an ordered transaction with a customerId, update customer-specific report
-            const finalCustomerId = customerId || 'unknown';
+            // This part runs ONLY for ordered transactions to update the customer breakdown
             if (type === 'orderedTransactions') {
+                const finalCustomerId = customerId || 'unknown';
+                
                 if (!currentData.customers) {
                     currentData.customers = {};
                 }
                 if (!currentData.customers[finalCustomerId]) {
-                    currentData.customers[finalCustomerId] = { count: 0, totalFees: 0, totalAmount: 0 };
+                    currentData.customers[finalCustomerId] = {
+                        cashIn: 0,
+                        cashOut: 0,
+                        cashInFee: 0,
+                        cashOutFee: 0,
+                        total: 0,
+                        totalFee: 0,
+                    };
                 }
+                
+                const customerReport = currentData.customers[finalCustomerId];
+                customerReport.total = (customerReport.total || 0) + transaction.amount;
+                customerReport.totalFee = (customerReport.totalFee || 0) + transaction.fee;
 
-                currentData.customers[finalCustomerId].count += 1;
-                currentData.customers[finalCustomerId].totalFees += transaction.fee;
-                currentData.customers[finalCustomerId].totalAmount += transaction.amount;
+                if (transaction.transactionType === 'Cash In') {
+                    customerReport.cashIn = (customerReport.cashIn || 0) + transaction.amount;
+                    customerReport.cashInFee = (customerReport.cashInFee || 0) + transaction.fee;
+                } else { // Cash Out
+                    customerReport.cashOut = (customerReport.cashOut || 0) + transaction.amount;
+                    customerReport.cashOutFee = (customerReport.cashOutFee || 0) + transaction.fee;
+                }
             }
             
             return currentData;
@@ -652,3 +673,4 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
+
