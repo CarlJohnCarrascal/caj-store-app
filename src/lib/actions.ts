@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -123,6 +123,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                     details: `Transaction for "${updatedTransaction.customerName}" was marked as ${updatedTransaction.status} via checkout.`,
                     targetId: item.originalTransactionId,
                 });
+                await updateCashIOReport(updatedTransaction, 'orderedTransactions');
             }
         }
     }
@@ -134,9 +135,9 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
       if (applyCustomerBalance) {
           totalBalanceUpdate -= initialCustomerBalance;
       }
-
+      
+      const balanceChangeFromTender = amountTendered - total;
       if (settlementType === 'add_to_balance') {
-          const balanceChangeFromTender = amountTendered - (total + totalBalanceUpdate);
           totalBalanceUpdate += balanceChangeFromTender;
       }
     }
@@ -164,6 +165,8 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         details: `New order placed for ${customerName} for ₱${total.toFixed(2)}.`,
         targetId: newOrder.id,
     });
+    
+    await updateSalesReports(newOrder);
 
     if (customerId !== 'unknown' && totalBalanceUpdate !== 0) {
         await updateCustomerBalance(customerId, totalBalanceUpdate);
@@ -322,6 +325,8 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
     details: `${newTransaction.transactionType} of ₱${newTransaction.amount.toFixed(2)} for "${newTransaction.customerName}" was recorded.`,
     targetId: newTransaction.id,
   });
+  
+  await updateCashIOReport(newTransaction, 'allTransactions');
 
   revalidatePath('/admin/cashio');
   revalidatePath('/admin/activity-logs');

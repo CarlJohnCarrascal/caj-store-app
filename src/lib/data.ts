@@ -2,8 +2,9 @@
 'use server';
 
 import { db } from './firebase';
-import { ref, get, set, push, update, remove, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense } from './types';
+import { getISOWeek, format } from 'date-fns';
 
 // Helper function to convert Firebase snapshot to an array
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -297,7 +298,7 @@ export async function updateCashTransactionStatus(id: string, customerId: string
             };
             await update(transactionRef, updates);
             const updatedTransactionData = { ...transaction, ...updates, id };
-            return { ...updatedTransactionData, updatedAt: new Date(updatedAt) };
+            return { ...updatedTransactionData, updatedAt: new Date(updatedAt), createdAt: new Date(transaction.createdAt) };
         }
     }
     return null;
@@ -488,4 +489,103 @@ export async function deleteExpense(id: string): Promise<Expense | null> {
         return deletedExpense;
     }
     return null;
+}
+
+// ========================
+// Reporting Functions
+// ========================
+
+function getReportPaths(date: Date) {
+    const year = format(date, 'yyyy');
+    const month = format(date, 'MM');
+    const week = getISOWeek(date);
+    const day = format(date, 'yyyy-MM-dd');
+    
+    return {
+        daily: `/daily/${day}`,
+        weekly: `/weekly/${year}-${week}`,
+        monthly: `/monthly/${year}-${month}`,
+        yearly: `/yearly/${year}`,
+        overall: `/overall/summary`
+    };
+}
+
+export async function updateSalesReports(order: Order) {
+  const date = new Date(order.createdAt);
+  const paths = getReportPaths(date);
+
+  const salesByService: { [key: string]: number } = {};
+  const servicesInOrder = new Set<string>();
+
+  for (const item of order.items) {
+    let category = 'Store'; // Default category for regular products
+    if (['CashIO', 'Printing', 'E-loading', 'Other Service'].includes(item.category)) {
+      category = item.category;
+    }
+    
+    servicesInOrder.add(category);
+    
+    let saleValue = item.price * item.quantity;
+    if (category === 'CashIO' && item.originalTransactionId) {
+        const cashTx = await getCashTransactionById(item.originalTransactionId);
+        saleValue = cashTx ? cashTx.fee : 0; 
+    }
+    
+    salesByService[category] = (salesByService[category] || 0) + saleValue;
+  }
+
+  for (const periodPath of Object.values(paths)) {
+    const reportRef = ref(db, `salesReports${periodPath}`);
+    await runTransaction(reportRef, (currentData: any) => {
+        if (currentData === null) {
+            currentData = { totalOrders: 0, totalSales: 0, byService: {} };
+        }
+        
+        currentData.totalOrders = (currentData.totalOrders || 0) + 1;
+        currentData.totalSales = (currentData.totalSales || 0) + order.total;
+
+        if (!currentData.byService) currentData.byService = {};
+
+        for (const service of servicesInOrder) {
+            if (!currentData.byService[service]) {
+                currentData.byService[service] = { orders: 0, sales: 0 };
+            }
+            currentData.byService[service].orders = (currentData.byService[service].orders || 0) + 1;
+        }
+        
+        for (const [service, sales] of Object.entries(salesByService)) {
+            if (sales > 0) {
+                if (!currentData.byService[service]) {
+                     currentData.byService[service] = { orders: 0, sales: 0 };
+                }
+                currentData.byService[service].sales = (currentData.byService[service].sales || 0) + sales;
+            }
+        }
+        return currentData;
+    });
+  }
+}
+
+export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions') {
+    const date = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
+    const paths = getReportPaths(date);
+
+    for (const periodPath of Object.values(paths)) {
+        const reportRef = ref(db, `cashIOReports${periodPath}`);
+        await runTransaction(reportRef, (currentData: any) => {
+            if (currentData === null) {
+                currentData = {
+                    allTransactions: { count: 0, totalFees: 0 },
+                    orderedTransactions: { count: 0, totalFees: 0 },
+                };
+            }
+            
+            const categoryData = currentData[type] || { count: 0, totalFees: 0 };
+            categoryData.count += 1;
+            categoryData.totalFees += transaction.fee;
+            currentData[type] = categoryData;
+            
+            return currentData;
+        });
+    }
 }
