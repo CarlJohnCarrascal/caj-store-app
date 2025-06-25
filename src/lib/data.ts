@@ -239,7 +239,14 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
 
   await set(newTransactionRef, dataToSave);
   
-  return { ...dataToSave, id: newTransactionRef.key! };
+  const result = { ...dataToSave, id: newTransactionRef.key! };
+  return {
+      ...result,
+      createdAt: new Date(result.createdAt),
+      updatedAt: new Date(result.updatedAt),
+      ...(result.dateSent && { dateSent: new Date(result.dateSent) }),
+      ...(result.dateReceived && { dateReceived: new Date(result.dateReceived) }),
+  };
 }
 
 export async function updateCashTransaction(id: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
@@ -303,7 +310,15 @@ export async function updateCashTransactionStatus(id: string, customerId: string
         };
         await update(transactionRef, updates);
         const updatedTransactionData = { ...transaction, ...updates, id };
-        return { ...updatedTransactionData, updatedAt: new Date(updatedAt), createdAt: new Date(transaction.createdAt) };
+        
+        const returnedTransaction = {
+             ...updatedTransactionData, 
+             updatedAt: new Date(updatedAt), 
+             createdAt: new Date(transaction.createdAt),
+             ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent) }),
+             ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived) }),
+        };
+        return returnedTransaction as CashTransaction;
     }
     return null;
 }
@@ -578,7 +593,8 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
-    const date = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
+    const transactionDate = transaction.dateReceived || transaction.dateSent;
+    const date = transactionDate ? new Date(transactionDate) : new Date(); // Fallback to now if no date
     const paths = getReportPaths(date);
 
     for (const periodPath of Object.values(paths)) {
@@ -691,4 +707,5 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
+
 
