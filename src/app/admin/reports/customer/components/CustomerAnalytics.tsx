@@ -1,0 +1,274 @@
+
+'use client';
+
+import { useState, useEffect, useMemo, ReactNode } from 'react';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { DollarSign, ShoppingCart, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import type { Customer } from '@/lib/types';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+
+// Types for Customer Reports
+type ActiveCustomerData = {
+    orderCount: number;
+    totalValue: number;
+};
+
+type ReportEntry = {
+    newCustomerCount: number;
+    totalOrders: number;
+    totalOrderValue: number;
+    activeCustomers: { [customerId: string]: ActiveCustomerData };
+};
+
+type ReportPeriodData = {
+    [key: string]: ReportEntry;
+};
+
+type AllReports = {
+    daily?: ReportPeriodData;
+    weekly?: ReportPeriodData;
+    monthly?: ReportPeriodData;
+    yearly?: ReportPeriodData;
+    overall?: ReportPeriodData;
+};
+
+// Helper function to convert snapshot to array
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+    const items: (T & { id: string })[] = [];
+    if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot: any) => {
+        items.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val(),
+        });
+        });
+    }
+    return items;
+}
+
+const chartConfig = {
+  newCustomerCount: {
+    label: 'New Customers',
+    color: 'hsl(var(--chart-1))',
+  },
+  totalOrders: {
+    label: 'Total Orders',
+    color: 'hsl(var(--chart-2))',
+  }
+} satisfies ChartConfig;
+
+
+const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string> }) => {
+    const sortedData = useMemo(() => {
+        if (!data) return [];
+        const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
+        return entries.sort((a, b) => b.key.localeCompare(a.key));
+    }, [data]);
+    
+    const chartData = useMemo(() => {
+        return sortedData.map(entry => ({
+            name: entry.key,
+            newCustomerCount: entry.newCustomerCount || 0,
+            totalOrders: entry.totalOrders || 0,
+        })).reverse();
+    }, [sortedData]);
+
+    const formatXAxis = (value: string) => {
+        if (!value || typeof value !== 'string') return '';
+        try {
+            if (periodName === 'Weekly') {
+                const [, week] = value.split('-');
+                return week ? `W${week}` : value;
+            }
+            if (periodName === 'Monthly') {
+                return format(new Date(value), 'MMM yyyy');
+            }
+            if (periodName === 'Yearly' || periodName === 'Overall') {
+                return value;
+            }
+            return format(new Date(value), 'MMM dd');
+        } catch(e) {
+            return value;
+        }
+    };
+
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+
+    const summary = sortedData[0] || { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0, activeCustomers: {} };
+
+    const allActiveCustomers = useMemo(() => {
+        const aggregatedCustomers: { [id: string]: ActiveCustomerData & { id: string, name: string } } = {};
+        sortedData.forEach(period => {
+            Object.entries(period.activeCustomers || {}).forEach(([id, stats]) => {
+                if (!aggregatedCustomers[id]) {
+                    aggregatedCustomers[id] = { ...stats, id, name: customerMap.get(id) || 'Unknown Customer' };
+                } else {
+                    aggregatedCustomers[id].orderCount += stats.orderCount;
+                    aggregatedCustomers[id].totalValue += stats.totalValue;
+                }
+            });
+        });
+        return Object.values(aggregatedCustomers).sort((a, b) => b.totalValue - a.totalValue);
+    }, [sortedData, customerMap]);
+
+    return (
+        <div className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Order Value</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">₱{summary.totalOrderValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{summary.totalOrders.toLocaleString()}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">New Customers</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">+{summary.newCustomerCount.toLocaleString()}</div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Customer & Order Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                        <BarChart data={chartData} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+                            <YAxis />
+                            <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar dataKey="newCustomerCount" fill="var(--color-newCustomerCount)" radius={4} />
+                            <Bar dataKey="totalOrders" fill="var(--color-totalOrders)" radius={4} />
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Top Customers by Value</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Customer</TableHead>
+                                <TableHead className="text-right">Orders</TableHead>
+                                <TableHead className="text-right">Total Value</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {allActiveCustomers.map(customer => (
+                                <TableRow key={customer.id}>
+                                    <TableCell className="font-medium">
+                                        {customer.name === 'Unknown Customer' ? (
+                                            <span>{customer.name}</span>
+                                        ) : (
+                                            <Button variant="link" asChild className="p-0 h-auto">
+                                                <Link href={`/admin/customers/${customer.id}`}>
+                                                    {customer.name}
+                                                </Link>
+                                            </Button>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right">{customer.orderCount.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">₱{customer.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+export default function CustomerAnalytics() {
+    const [reports, setReports] = useState<AllReports | null>(null);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
+
+    useEffect(() => {
+        let reportsLoaded = false;
+        let customersLoaded = false;
+
+        const checkLoading = () => {
+            if(reportsLoaded && customersLoaded) setIsLoading(false);
+        }
+
+        const reportsRef = ref(db, 'customerReports');
+        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+            setReports(snapshot.exists() ? snapshot.val() : null);
+            reportsLoaded = true;
+            checkLoading();
+        });
+
+        const customersRef = ref(db, 'customers');
+        const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+            setCustomers(snapshotToArray<Customer>(snapshot));
+            customersLoaded = true;
+            checkLoading();
+        });
+
+        return () => {
+            unsubscribeReports();
+            unsubscribeCustomers();
+        }
+    }, []);
+
+    if (isLoading) {
+        return <div className="space-y-6"><Skeleton className="h-[120px]" /><Skeleton className="h-[300px]" /><Skeleton className="h-[200px]" /></div>;
+    }
+    
+    if (!reports) {
+        return <div className="text-center py-16"><h2 className="text-xl font-semibold">No Customer Data Found</h2><p className="text-muted-foreground mt-2">Process some orders to see customer reports here.</p></div>;
+    }
+
+    return (
+        <Tabs defaultValue="daily" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
+                <TabsTrigger value="daily">Daily</TabsTrigger>
+                <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="yearly">Yearly</TabsTrigger>
+                <TabsTrigger value="overall">Overall</TabsTrigger>
+            </TabsList>
+            <TabsContent value="daily"><ReportView data={reports.daily} periodName="Daily" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="overall"><ReportView data={reports.overall} periodName="Overall" customerMap={customerMap} /></TabsContent>
+        </Tabs>
+    );
+}
