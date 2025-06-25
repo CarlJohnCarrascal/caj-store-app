@@ -3,7 +3,7 @@
 
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo } from 'firebase/database';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense } from './types';
 
 // Helper function to convert Firebase snapshot to an array
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -426,4 +426,66 @@ export async function logActivity(log: Omit<ActivityLog, 'id' | 'timestamp'>): P
   };
   await set(newLogRef, newLog);
   return Promise.resolve();
+}
+
+// ===================
+// Expense Functions
+// ===================
+
+export async function getExpenses(): Promise<Expense[]> {
+  const snapshot = await get(ref(db, 'expenses'));
+  const expenses = snapshotToArray<Expense>(snapshot);
+  const expensesWithDates = expenses.map(e => ({
+    ...e,
+    date: new Date(e.date),
+    createdAt: new Date(e.createdAt),
+  }));
+  return expensesWithDates.sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
+export async function getExpenseById(id: string): Promise<Expense | undefined> {
+  const snapshot = await get(ref(db, `expenses/${id}`));
+  if (snapshot.exists()) {
+    const expense = snapshot.val();
+    const expenseWithDate = {
+      ...expense,
+      id,
+      date: new Date(expense.date),
+      createdAt: new Date(expense.createdAt),
+    };
+    return expenseWithDate;
+  }
+  return undefined;
+}
+
+export async function addExpense(expenseData: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+  const newExpenseRef = push(ref(db, 'expenses'));
+  const dataToSave = {
+    ...expenseData,
+    date: new Date(expenseData.date).toISOString(),
+    createdAt: getCurrentPHTISOString(),
+  };
+  await set(newExpenseRef, dataToSave);
+  return { ...dataToSave, id: newExpenseRef.key! };
+}
+
+export async function updateExpense(id: string, expenseData: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+    const expenseRef = ref(db, `expenses/${id}`);
+    const dataToSave = {
+        ...expenseData,
+        date: new Date(expenseData.date).toISOString(),
+    };
+    await update(expenseRef, dataToSave);
+    return { ...dataToSave, id, createdAt: '' }; // createdAt is not updated
+}
+
+export async function deleteExpense(id: string): Promise<Expense | null> {
+    const expenseRef = ref(db, `expenses/${id}`);
+    const snapshot = await get(expenseRef);
+    if (snapshot.exists()) {
+        const deletedExpense = { id, ...snapshot.val() };
+        await remove(expenseRef);
+        return deletedExpense;
+    }
+    return null;
 }

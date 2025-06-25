@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction } from './types';
 
 const productSchema = z.object({
@@ -131,18 +131,14 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     let totalBalanceUpdate = 0;
     
     if (!isUnknownCustomer) {
-        // First, deduct any customer balance that was applied to the order.
-        // This happens for both settlement types.
-        if (applyCustomerBalance) {
-            totalBalanceUpdate -= initialCustomerBalance;
-        }
+      if (applyCustomerBalance) {
+          totalBalanceUpdate -= initialCustomerBalance;
+      }
 
-        // If settlement is 'add_to_balance', the over/underpayment also affects the balance.
-        // If settlement is 'pay_order', change is given in cash and does not affect the balance.
-        if (settlementType === 'add_to_balance') {
-            const balanceChangeFromTender = amountTendered - total;
-            totalBalanceUpdate += balanceChangeFromTender;
-        }
+      if (settlementType === 'add_to_balance') {
+          const balanceChangeFromTender = amountTendered - (total + totalBalanceUpdate);
+          totalBalanceUpdate += balanceChangeFromTender;
+      }
     }
 
     const newCustomerBalance = isUnknownCustomer ? undefined : initialCustomerBalance + totalBalanceUpdate;
@@ -417,4 +413,67 @@ export async function deleteCollectionAction(id: string) {
     revalidatePath('/admin/activity-logs');
 }
 
+const expenseSchema = z.object({
+  description: z.string().min(1, 'Description is required.'),
+  amount: z.coerce.number().positive('Amount must be positive.'),
+  category: z.string().min(1, 'Category is required.'),
+  date: z.string().min(1, 'Date is required.'),
+  notes: z.string().optional(),
+});
+
+export async function addExpenseAction(data: FormData) {
+  const validatedFields = expenseSchema.safeParse(Object.fromEntries(data.entries()));
+
+  if (!validatedFields.success) {
+    throw new Error('Invalid expense data.');
+  }
+
+  const newExpense = await addExpense(validatedFields.data);
+
+  await logActivity({
+    type: 'Expense',
+    action: 'Created',
+    details: `Expense "${newExpense.description}" for ₱${newExpense.amount.toFixed(2)} was recorded.`,
+    targetId: newExpense.id,
+  });
+
+  revalidatePath('/admin/expenses');
+  revalidatePath('/admin/activity-logs');
+}
+
+export async function updateExpenseAction(id: string, data: FormData) {
+  const validatedFields = expenseSchema.safeParse(Object.fromEntries(data.entries()));
+
+  if (!validatedFields.success) {
+    throw new Error('Invalid expense data.');
+  }
+
+  await updateExpense(id, validatedFields.data);
+
+  await logActivity({
+    type: 'Expense',
+    action: 'Updated',
+    details: `Expense "${validatedFields.data.description}" was updated.`,
+    targetId: id,
+  });
+
+  revalidatePath('/admin/expenses');
+  revalidatePath(`/admin/expenses/edit/${id}`);
+  revalidatePath('/admin/activity-logs');
+}
+
+export async function deleteExpenseAction(id: string) {
+    const deletedExpense = await deleteExpense(id);
+    if (deletedExpense) {
+        await logActivity({
+            type: 'Expense',
+            action: 'Deleted',
+            details: `Expense "${deletedExpense.description}" was deleted.`,
+            targetId: id,
+        });
+    }
+
+    revalidatePath('/admin/expenses');
+    revalidatePath('/admin/activity-logs');
+}
     

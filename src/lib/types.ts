@@ -86,9 +86,19 @@ export interface Order {
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense';
   action: 'Created' | 'Updated' | 'Deleted';
   timestamp: Date;
   details: string;
   targetId: string;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: string; // ISO string
+  notes?: string;
+  createdAt: string; // ISO string
 }
