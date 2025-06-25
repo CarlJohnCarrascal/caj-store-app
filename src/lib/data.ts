@@ -575,14 +575,15 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         await runTransaction(reportRef, (currentData: any) => {
             if (currentData === null) {
                 currentData = {
-                    allTransactions: { count: 0, totalFees: 0 },
-                    orderedTransactions: { count: 0, totalFees: 0 },
+                    allTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
+                    orderedTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
                 };
             }
             
-            const categoryData = currentData[type] || { count: 0, totalFees: 0 };
+            const categoryData = currentData[type] || { count: 0, totalFees: 0, totalAmount: 0 };
             categoryData.count += 1;
             categoryData.totalFees += transaction.fee;
+            categoryData.totalAmount = (categoryData.totalAmount || 0) + transaction.amount;
             currentData[type] = categoryData;
             
             return currentData;
