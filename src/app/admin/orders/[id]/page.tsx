@@ -54,7 +54,6 @@ export default async function OrderDetailsPage({ params }: { params: { id: strin
                       </TableCell>
                       <TableCell>
                         <p className="font-medium">{item.name}</p>
-                        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                       </TableCell>
                       <TableCell className="text-right">₱{item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{item.quantity}{item.unit === 'kg' ? ' kg' : ''}</TableCell>
