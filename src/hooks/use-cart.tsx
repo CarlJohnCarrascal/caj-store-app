@@ -2,7 +2,6 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { CartItem, Product } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -21,7 +20,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartCustomer, setCartCustomer] = useState<{ name: string } | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -63,13 +61,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       }
       return [...prevItems, { ...product, quantity }];
     });
-
-    if (product.category !== 'CashIO') {
-      toast({
-        title: "Added to order",
-        description: `${product.name} has been added to your order.`,
-      });
-    }
   };
 
   const removeFromCart = (productId: string) => {
