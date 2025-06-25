@@ -575,10 +575,18 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         await runTransaction(reportRef, (currentData: any) => {
             if (currentData === null) {
                 currentData = {
+                    cashinTotal: 0,
+                    cashoutTotal: 0,
                     allTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
                     orderedTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
                     customers: {},
                 };
+            }
+
+            if (transaction.transactionType === 'Cash In') {
+                currentData.cashinTotal = (currentData.cashinTotal || 0) + transaction.amount;
+            } else { // Cash Out
+                currentData.cashoutTotal = (currentData.cashoutTotal || 0) + transaction.amount;
             }
             
             // Update the aggregate data ('allTransactions' or 'orderedTransactions')
@@ -589,17 +597,18 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
             currentData[type] = categoryData;
             
             // If it's an ordered transaction with a customerId, update customer-specific report
-            if (type === 'orderedTransactions' && customerId) {
+            const finalCustomerId = customerId || 'unknown';
+            if (type === 'orderedTransactions') {
                 if (!currentData.customers) {
                     currentData.customers = {};
                 }
-                if (!currentData.customers[customerId]) {
-                    currentData.customers[customerId] = { count: 0, totalFees: 0, totalAmount: 0 };
+                if (!currentData.customers[finalCustomerId]) {
+                    currentData.customers[finalCustomerId] = { count: 0, totalFees: 0, totalAmount: 0 };
                 }
 
-                currentData.customers[customerId].count += 1;
-                currentData.customers[customerId].totalFees += transaction.fee;
-                currentData.customers[customerId].totalAmount += transaction.amount;
+                currentData.customers[finalCustomerId].count += 1;
+                currentData.customers[finalCustomerId].totalFees += transaction.fee;
+                currentData.customers[finalCustomerId].totalAmount += transaction.amount;
             }
             
             return currentData;
