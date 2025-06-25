@@ -150,6 +150,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         total,
         amountTendered,
         settlementType,
+        applyCustomerBalance,
         createdAt: '', // Will be set by addOrder
     };
 

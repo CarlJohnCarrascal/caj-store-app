@@ -82,6 +82,7 @@ export interface Order {
   createdAt: string; // ISO string
   initialCustomerBalance?: number;
   newCustomerBalance?: number;
+  applyCustomerBalance?: boolean;
 }
 
 export interface ActivityLog {

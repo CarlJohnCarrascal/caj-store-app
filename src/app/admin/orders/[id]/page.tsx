@@ -100,6 +100,14 @@ export default async function OrderDetailsPage({ params }: { params: { id: strin
                 <span className="text-muted-foreground">Discount</span>
                 <span>- ₱{order.discount.toFixed(2)}</span>
               </div>
+              {order.applyCustomerBalance && typeof order.initialCustomerBalance === 'number' && (
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Applied Balance</span>
+                    <span className={cn(order.initialCustomerBalance > 0 ? "text-green-600" : "text-destructive")}>
+                        - ₱{order.initialCustomerBalance.toFixed(2)}
+                    </span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between font-bold text-base">
                 <span>Total</span>
