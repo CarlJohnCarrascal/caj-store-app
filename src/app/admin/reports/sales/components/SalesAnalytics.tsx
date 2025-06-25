@@ -54,10 +54,35 @@ const chartConfig = {
 const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
   const sortedData = useMemo(() => {
     if (!data) return [];
-    return Object.entries(data)
-      .map(([key, value]) => ({ key, ...value }))
-      .sort((a, b) => new Date(b.key).getTime() - new Date(a.key).getTime());
-  }, [data]);
+    const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
+
+    if (periodName === 'Overall') {
+        return entries;
+    }
+
+    return entries.sort((a, b) => {
+        if (periodName === 'Weekly') {
+            const [yearA, weekA] = a.key.split('-').map(Number);
+            const [yearB, weekB] = b.key.split('-').map(Number);
+            if (yearA && yearB && weekA && weekB) {
+                if (yearB !== yearA) return yearB - yearA;
+                return weekB - weekA;
+            }
+        }
+        
+        try {
+            const dateA = new Date(a.key);
+            const dateB = new Date(b.key);
+            if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+                return dateB.getTime() - dateA.getTime();
+            }
+        } catch(e) {
+            // Fallback for any parsing error
+        }
+        
+        return b.key.localeCompare(a.key);
+    });
+  }, [data, periodName]);
 
   const chartData = useMemo(() => {
     return sortedData.map(entry => ({
@@ -65,6 +90,31 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
       totalSales: entry.totalSales,
     })).reverse(); // Reverse for chronological order in chart
   }, [sortedData]);
+  
+  const formatXAxis = (value: string) => {
+    if (!value || typeof value !== 'string') return '';
+    
+    try {
+        if (periodName === 'Weekly') {
+            const [, week] = value.split('-');
+            return week ? `W${week}` : value;
+        }
+        if (periodName === 'Monthly') {
+            return format(new Date(value), 'MMM yyyy');
+        }
+        if (periodName === 'Yearly') {
+            return value;
+        }
+        if (periodName === 'Overall') {
+            return 'Overall';
+        }
+        // Default for Daily
+        return format(new Date(value), 'MMM dd');
+    } catch(e) {
+        return value; // Fallback to raw value if formatting fails
+    }
+  };
+
 
   if (!data) {
     return (
@@ -111,7 +161,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
           <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
             <BarChart data={chartData} accessibilityLayer>
               <CartesianGrid vertical={false} />
-              <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(value) => format(new Date(value), 'MMM dd')} />
+              <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
               <YAxis tickFormatter={(value) => `₱${value / 1000}k`} />
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
               <Bar dataKey="totalSales" fill="var(--color-totalSales)" radius={4} />
