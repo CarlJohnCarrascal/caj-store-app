@@ -590,3 +590,27 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         });
     }
 }
+
+export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string) {
+    const date = new Date(); // Use current date for the report
+    const paths = getReportPaths(date);
+
+    for (const periodPath of Object.values(paths)) {
+        const reportRef = ref(db, `customerReports${periodPath}`);
+        
+        if (type === 'new_customer') {
+            await runTransaction(reportRef, (currentData: any) => {
+                if (currentData === null) {
+                    currentData = { newCustomerCount: 0, activeCustomers: {} };
+                }
+                currentData.newCustomerCount = (currentData.newCustomerCount || 0) + 1;
+                return currentData;
+            });
+        } else if (type === 'order') {
+            if (customerId !== 'unknown') {
+                const activeCustomerRef = ref(db, `customerReports${periodPath}/activeCustomers/${customerId}`);
+                await set(activeCustomerRef, true);
+            }
+        }
+    }
+}

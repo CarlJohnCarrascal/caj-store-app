@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order } from './types';
 
 const productSchema = z.object({
@@ -129,13 +129,10 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     }
 
     const isUnknownCustomer = customerId === 'unknown';
-    let totalBalanceUpdate = 0;
     
-    if (!isUnknownCustomer) {
-        const balanceUsed = applyCustomerBalance ? initialCustomerBalance : 0;
-        const changeToBalance = settlementType === 'add_to_balance' ? (amountTendered - total) : 0;
-        totalBalanceUpdate = -balanceUsed + changeToBalance;
-    }
+    const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
+    const changeToBalance = settlementType === 'add_to_balance' ? (amountTendered - total) : 0;
+    const totalBalanceUpdate = changeToBalance - balanceUsed;
     
     const orderPayload: Omit<Order, 'id'> = {
         customerId,
@@ -168,14 +165,17 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     
     await updateSalesReports(newOrder);
 
-    if (customerId !== 'unknown' && totalBalanceUpdate !== 0) {
-        await updateCustomerBalance(customerId, totalBalanceUpdate);
-        await logActivity({
-            type: 'Customer',
-            action: 'Updated',
-            details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
-            targetId: customerId,
-        });
+    if (!isUnknownCustomer) {
+        if (totalBalanceUpdate !== 0) {
+            await updateCustomerBalance(customerId, totalBalanceUpdate);
+            await logActivity({
+                type: 'Customer',
+                action: 'Updated',
+                details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
+                targetId: customerId,
+            });
+        }
+        await updateCustomerReports('order', customerId);
     }
     
     revalidatePath('/admin/activity-logs');
@@ -210,6 +210,8 @@ export async function addCustomerAction(data: FormData): Promise<Customer> {
     details: `Customer "${newCustomer.name}" was added.`,
     targetId: newCustomer.id,
   });
+  
+  await updateCustomerReports('new_customer', newCustomer.id);
 
   revalidatePath('/admin/customers');
   revalidatePath('/admin/activity-logs');
