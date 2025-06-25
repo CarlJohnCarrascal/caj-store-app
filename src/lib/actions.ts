@@ -131,14 +131,18 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     let totalBalanceUpdate = 0;
     
     if (!isUnknownCustomer) {
-      if (settlementType === 'pay_order') {
-          if (applyCustomerBalance) {
-              totalBalanceUpdate -= initialCustomerBalance;
-          }
-      } else if (settlementType === 'add_to_balance') {
-          const balanceChangeFromTender = amountTendered - total;
-          totalBalanceUpdate += balanceChangeFromTender;
-      }
+        // First, deduct any customer balance that was applied to the order.
+        // This happens for both settlement types.
+        if (applyCustomerBalance) {
+            totalBalanceUpdate -= initialCustomerBalance;
+        }
+
+        // If settlement is 'add_to_balance', the over/underpayment also affects the balance.
+        // If settlement is 'pay_order', change is given in cash and does not affect the balance.
+        if (settlementType === 'add_to_balance') {
+            const balanceChangeFromTender = amountTendered - total;
+            totalBalanceUpdate += balanceChangeFromTender;
+        }
     }
 
     const newCustomerBalance = isUnknownCustomer ? undefined : initialCustomerBalance + totalBalanceUpdate;
@@ -412,3 +416,5 @@ export async function deleteCollectionAction(id: string) {
     revalidatePath('/admin/collections');
     revalidatePath('/admin/activity-logs');
 }
+
+    
