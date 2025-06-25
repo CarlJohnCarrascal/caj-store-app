@@ -520,52 +520,59 @@ export async function updateSalesReports(order: Order) {
 
   const salesByService: { [key: string]: number } = {};
   const servicesInOrder = new Set<string>();
+  let reportableSubtotal = 0;
 
   for (const item of order.items) {
-    let category = 'Store'; // Default category for regular products
+    let category = 'Store'; // Default category
     if (['CashIO', 'Printing', 'E-loading', 'Other Service'].includes(item.category)) {
       category = item.category;
     }
-    
     servicesInOrder.add(category);
-    
-    let saleValue = item.price * item.quantity;
+
+    let saleValue = 0;
     if (category === 'CashIO' && item.originalTransactionId) {
-        const cashTx = await getCashTransactionById(item.originalTransactionId);
-        saleValue = cashTx ? cashTx.fee : 0; 
+      const cashTx = await getCashTransactionById(item.originalTransactionId);
+      // The sale/revenue from a CashIO transaction is its fee. This is always positive.
+      saleValue = cashTx ? cashTx.fee : 0;
+    } else {
+      // For regular products and other services, the sale is the price.
+      saleValue = item.price * item.quantity;
     }
-    
+
     salesByService[category] = (salesByService[category] || 0) + saleValue;
+    reportableSubtotal += saleValue;
   }
+
+  // The final reportable sale is the sum of revenue from all items, minus the discount.
+  // This correctly ignores any customer balance applied.
+  const finalReportableSale = reportableSubtotal - order.discount;
 
   for (const periodPath of Object.values(paths)) {
     const reportRef = ref(db, `salesReports${periodPath}`);
     await runTransaction(reportRef, (currentData: any) => {
-        if (currentData === null) {
-            currentData = { totalOrders: 0, totalSales: 0, byService: {} };
-        }
-        
-        currentData.totalOrders = (currentData.totalOrders || 0) + 1;
-        currentData.totalSales = (currentData.totalSales || 0) + order.total;
+      if (currentData === null) {
+        currentData = { totalOrders: 0, totalSales: 0, byService: {} };
+      }
 
-        if (!currentData.byService) currentData.byService = {};
+      currentData.totalOrders = (currentData.totalOrders || 0) + 1;
+      currentData.totalSales = (currentData.totalSales || 0) + finalReportableSale;
 
-        for (const service of servicesInOrder) {
-            if (!currentData.byService[service]) {
-                currentData.byService[service] = { orders: 0, sales: 0 };
-            }
-            currentData.byService[service].orders = (currentData.byService[service].orders || 0) + 1;
+      if (!currentData.byService) currentData.byService = {};
+
+      for (const service of servicesInOrder) {
+        if (!currentData.byService[service]) {
+          currentData.byService[service] = { orders: 0, sales: 0 };
         }
-        
-        for (const [service, sales] of Object.entries(salesByService)) {
-            if (sales > 0) {
-                if (!currentData.byService[service]) {
-                     currentData.byService[service] = { orders: 0, sales: 0 };
-                }
-                currentData.byService[service].sales = (currentData.byService[service].sales || 0) + sales;
-            }
+        currentData.byService[service].orders = (currentData.byService[service].orders || 0) + 1;
+      }
+      
+      for (const [service, sales] of Object.entries(salesByService)) {
+        // This check is needed in case a service exists in the report but not in the current order.
+        if (currentData.byService[service]) {
+          currentData.byService[service].sales = (currentData.byService[service].sales || 0) + sales;
         }
-        return currentData;
+      }
+      return currentData;
     });
   }
 }
@@ -584,7 +591,9 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                     cashOut: 0,
                     cashInFee: 0,
                     cashOutFee: 0,
-                    total: 0,
+                    cashInTotal: 0,
+                    cashOutTotal: 0,
+                    totalAmount: 0,
                     totalFee: 0,
                     customers: {},
                 };
@@ -592,15 +601,17 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 
             // This part runs for ALL transactions to update top-level stats
             if (type === 'allTransactions') {
-                currentData.total = (currentData.total || 0) + transaction.amount;
+                currentData.totalAmount = (currentData.totalAmount || 0) + transaction.amount;
                 currentData.totalFee = (currentData.totalFee || 0) + transaction.fee;
 
                 if (transaction.transactionType === 'Cash In') {
-                    currentData.cashIn = (currentData.cashIn || 0) + transaction.amount;
+                    currentData.cashIn = (currentData.cashIn || 0) + 1;
                     currentData.cashInFee = (currentData.cashInFee || 0) + transaction.fee;
+                    currentData.cashInTotal = (currentData.cashInTotal || 0) + transaction.amount;
                 } else { // Cash Out
-                    currentData.cashOut = (currentData.cashOut || 0) + transaction.amount;
+                    currentData.cashOut = (currentData.cashOut || 0) + 1;
                     currentData.cashOutFee = (currentData.cashOutFee || 0) + transaction.fee;
+                    currentData.cashOutTotal = (currentData.cashOutTotal || 0) + transaction.amount;
                 }
             }
             
@@ -617,21 +628,25 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                         cashOut: 0,
                         cashInFee: 0,
                         cashOutFee: 0,
-                        total: 0,
+                        cashInTotal: 0,
+                        cashOutTotal: 0,
+                        totalAmount: 0,
                         totalFee: 0,
                     };
                 }
                 
                 const customerReport = currentData.customers[finalCustomerId];
-                customerReport.total = (customerReport.total || 0) + transaction.amount;
+                customerReport.totalAmount = (customerReport.totalAmount || 0) + transaction.amount;
                 customerReport.totalFee = (customerReport.totalFee || 0) + transaction.fee;
 
                 if (transaction.transactionType === 'Cash In') {
-                    customerReport.cashIn = (customerReport.cashIn || 0) + transaction.amount;
+                    customerReport.cashIn = (customerReport.cashIn || 0) + 1;
                     customerReport.cashInFee = (customerReport.cashInFee || 0) + transaction.fee;
+                    customerReport.cashInTotal = (customerReport.cashInTotal || 0) + transaction.amount;
                 } else { // Cash Out
-                    customerReport.cashOut = (customerReport.cashOut || 0) + transaction.amount;
+                    customerReport.cashOut = (customerReport.cashOut || 0) + 1;
                     customerReport.cashOutFee = (customerReport.cashOutFee || 0) + transaction.fee;
+                    customerReport.cashOutTotal = (customerReport.cashOutTotal || 0) + transaction.amount;
                 }
             }
             
@@ -676,3 +691,4 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
+
