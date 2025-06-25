@@ -123,15 +123,22 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                     details: `Transaction for "${updatedTransaction.customerName}" was marked as ${updatedTransaction.status} via checkout.`,
                     targetId: item.originalTransactionId,
                 });
-                await updateCashIOReport(updatedTransaction, 'orderedTransactions');
+                await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
             }
         }
     }
 
     const isUnknownCustomer = customerId === 'unknown';
     
+    // Correctly calculate the total change to the customer's balance.
+    // 1. Balance Used: If applyCustomerBalance is true, this is how much of their credit is used.
     const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
+    
+    // 2. Change to Balance: If settling to balance, this is the amount tendered minus the total. Can be positive (change) or negative (debt).
+    // If just paying, this is 0.
     const changeToBalance = settlementType === 'add_to_balance' ? (amountTendered - total) : 0;
+    
+    // 3. Total Balance Update: The net effect on the customer's balance.
     const totalBalanceUpdate = changeToBalance - balanceUsed;
     
     const orderPayload: Omit<Order, 'id'> = {
@@ -166,7 +173,8 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     await updateSalesReports(newOrder);
 
     // This will now handle both known and unknown customers and pass the total.
-    await updateCustomerReports('order', customerId, total);
+    const orderValueForReport = Math.abs(total);
+    await updateCustomerReports('order', customerId, orderValueForReport);
 
     if (!isUnknownCustomer) {
         if (totalBalanceUpdate !== 0) {

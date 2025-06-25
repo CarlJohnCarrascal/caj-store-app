@@ -566,7 +566,7 @@ export async function updateSalesReports(order: Order) {
   }
 }
 
-export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions') {
+export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
     const date = transaction.createdAt ? new Date(transaction.createdAt) : new Date();
     const paths = getReportPaths(date);
 
@@ -577,14 +577,30 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                 currentData = {
                     allTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
                     orderedTransactions: { count: 0, totalFees: 0, totalAmount: 0 },
+                    customers: {},
                 };
             }
             
+            // Update the aggregate data ('allTransactions' or 'orderedTransactions')
             const categoryData = currentData[type] || { count: 0, totalFees: 0, totalAmount: 0 };
             categoryData.count += 1;
             categoryData.totalFees += transaction.fee;
             categoryData.totalAmount = (categoryData.totalAmount || 0) + transaction.amount;
             currentData[type] = categoryData;
+            
+            // If it's an ordered transaction with a customerId, update customer-specific report
+            if (type === 'orderedTransactions' && customerId) {
+                if (!currentData.customers) {
+                    currentData.customers = {};
+                }
+                if (!currentData.customers[customerId]) {
+                    currentData.customers[customerId] = { count: 0, totalFees: 0, totalAmount: 0 };
+                }
+
+                currentData.customers[customerId].count += 1;
+                currentData.customers[customerId].totalFees += transaction.fee;
+                currentData.customers[customerId].totalAmount += transaction.amount;
+            }
             
             return currentData;
         });
@@ -594,7 +610,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
     const date = new Date(); // Use current date for the report
     const paths = getReportPaths(date);
-    const orderValue = Math.abs(orderTotal); // Use absolute value as requested
+    const orderValue = Math.abs(orderTotal);
 
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `customerReports${periodPath}`);
