@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -114,6 +114,28 @@ export default function Header() {
                                 </Link>
                             </AccordionContent>
                         </AccordionItem>
+                        <AccordionItem value="reports" className="border-b-0">
+                            <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                <div className="flex items-center gap-4">
+                                  <BarChart className="h-6 w-6" />
+                                  Reports
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pl-10 space-y-1">
+                                <Link href="/admin" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <LayoutDashboard className="h-5 w-5 text-muted-foreground" /><span>Dashboard</span>
+                                </Link>
+                                <Link href="/admin/reports/sales" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Receipt className="h-5 w-5 text-muted-foreground" /><span>Sales</span>
+                                </Link>
+                                <Link href="/admin/reports/customer" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Users className="h-5 w-5 text-muted-foreground" /><span>Customer</span>
+                                </Link>
+                                <Link href="/admin/reports/cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
+                                </Link>
+                            </AccordionContent>
+                        </AccordionItem>
                     </Accordion>
                   </nav>
                 </SheetContent>
@@ -154,6 +176,18 @@ export default function Header() {
                     <DropdownMenuItem asChild><Link href="/admin/collections" className="flex items-center gap-2 cursor-pointer"><Library className="h-4 w-4" /> Collections</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link href="/admin/activity-logs" className="flex items-center gap-2 cursor-pointer"><History className="h-4 w-4" /> Activity Logs</Link></DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
+                    Reports <ChevronDown className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem asChild><Link href="/admin" className="flex items-center gap-2 cursor-pointer"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/sales" className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Sales</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/customer" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customer</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </nav>
