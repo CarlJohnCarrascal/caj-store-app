@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -122,9 +121,6 @@ export default function Header() {
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pl-10 space-y-1">
-                                <Link href="/admin" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <LayoutDashboard className="h-5 w-5 text-muted-foreground" /><span>Dashboard</span>
-                                </Link>
                                 <Link href="/admin/reports/sales" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Receipt className="h-5 w-5 text-muted-foreground" /><span>Sales</span>
                                 </Link>
@@ -184,7 +180,6 @@ export default function Header() {
                     Reports <ChevronDown className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem asChild><Link href="/admin" className="flex items-center gap-2 cursor-pointer"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/sales" className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Sales</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/customer" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customer</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
