@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { DollarSign, ArrowUp, ArrowDown } from 'lucide-react';
+import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import type { Customer } from '@/lib/types';
@@ -29,6 +29,7 @@ type CustomerCashIOData = {
 };
 
 type ReportEntry = CustomerCashIOData & {
+    totalTransactions: number;
     customers: { [customerId: string]: CustomerCashIOData };
 };
 
@@ -127,7 +128,7 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
 
-    const summary = sortedData[0] || { totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, customers: {} };
+    const summary = sortedData[0] || { totalTransactions: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, customers: {} };
 
     const customerBreakdown = useMemo(() => {
         const aggregatedCustomers: { [id: string]: CustomerCashIOData & { id: string, name: string } } = {};
@@ -150,20 +151,20 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+                        <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{(summary.totalTransactions || 0).toLocaleString()}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Fees</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">₱{summary.totalFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Amount Transacted</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">₱{summary.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </CardContent>
                 </Card>
                 <Card>

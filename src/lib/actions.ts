@@ -170,7 +170,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         details: `New order placed for ${customerName} for ₱${total.toFixed(2)}.`,
         targetId: newOrder.id,
     });
-    
+    console.log("added Order", newOrder)
     await updateSalesReports(newOrder);
 
     // This will now handle both known and unknown customers and pass the total.

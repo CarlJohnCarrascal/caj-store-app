@@ -6,6 +6,7 @@ import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense } from './types';
 import { getISOWeek, format } from 'date-fns';
+import { getCurrentPHTISOString } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -19,22 +20,6 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     });
   }
   return items;
-}
-
-// Helper to format a Date object into 'YYYY-MM-DDTHH:mm:ss+08:00' for the current time
-function getCurrentPHTISOString(): string {
-  const now = new Date();
-  // Create a new date object for PHT (UTC+8) by adding 8 hours
-  const phtTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-
-  const year = phtTime.getUTCFullYear();
-  const month = String(phtTime.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(phtTime.getUTCDate()).padStart(2, '0');
-  const hours = String(phtTime.getUTCHours()).padStart(2, '0');
-  const minutes = String(phtTime.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(phtTime.getUTCSeconds()).padStart(2, '0');
-
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
 }
 
 
@@ -514,10 +499,12 @@ export async function deleteExpense(id: string): Promise<Expense | null> {
 // Reporting Functions
 // ========================
 
-function getReportPaths(date: Date) {
-    console.log("report date", date);
+function getReportPaths(dateStr: string) {
+    const date = new Date(dateStr);
+    
     const year = format(date, 'yyyy');
     const month = format(date, 'MM');
+    // Ensure getISOWeek is used on a valid Date object
     const week = getISOWeek(date);
     const day = format(date, 'yyyy-MM-dd');
     
@@ -531,9 +518,7 @@ function getReportPaths(date: Date) {
 }
 
 export async function updateSalesReports(order: Order) {
-  const date = new Date(order.createdAt);
-  console.log("update sales report date: ", date);
-  const paths = getReportPaths(date);
+  const paths = getReportPaths(order.createdAt);
 
   const salesByService: { [key: string]: number } = {};
   const servicesInOrder = new Set<string>();
@@ -596,9 +581,8 @@ export async function updateSalesReports(order: Order) {
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
     const transactionDate = transaction.dateReceived || transaction.dateSent;
-    const date = transactionDate ? new Date(transactionDate) : new Date(); // Fallback to now if no date
-    console.log("update cashio report date: ", date);
-    const paths = getReportPaths(date);
+    const dateStr = transactionDate ? transactionDate.toISOString() : new Date().toISOString(); // Fallback to now if no date
+    const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
@@ -608,6 +592,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                 currentData = {
                     cashIn: 0,
                     cashOut: 0,
+                    totalTransactions: 0,
                     cashInFee: 0,
                     cashOutFee: 0,
                     cashInTotal: 0,
@@ -620,6 +605,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 
             // This part runs for ALL transactions to update top-level stats
             if (type === 'allTransactions') {
+                currentData.totalTransactions = (currentData.totalTransactions || 0) + 1;
                 currentData.totalAmount = (currentData.totalAmount || 0) + transaction.amount;
                 currentData.totalFee = (currentData.totalFee || 0) + transaction.fee;
 
@@ -675,10 +661,8 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 }
 
 export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
-    const date = new Date(); // Use current date for the report
-    console.log("update customer report date: ", date);
-
-    const paths = getReportPaths(date);
+    const dateStr = getCurrentPHTISOString(); // Use current date for the report
+    const paths = getReportPaths(dateStr);
     const orderValue = Math.abs(orderTotal);
 
     for (const periodPath of Object.values(paths)) {
@@ -712,5 +696,6 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
+
 
 
