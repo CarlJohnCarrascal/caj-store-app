@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import type { Customer, Account } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { getReportPaths } from '@/lib/utils';
 
 // Types for Cash IO Reports
 type CustomerCashIOData = {
@@ -115,6 +116,35 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
         })).reverse();
     }, [sortedData]);
 
+    const summary = useMemo(() => {
+        if (!sortedData || sortedData.length === 0) {
+            return { totalTransactions: 0, cashIn: 0, cashOut: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0 };
+        }
+        
+        if (sortedData.length === 1) {
+            return sortedData[0];
+        }
+    
+        return sortedData.reduce((acc, entry) => {
+            acc.totalTransactions += entry.totalTransactions || 0;
+            acc.totalFee += entry.totalFee || 0;
+            acc.cashInTotal += entry.cashInTotal || 0;
+            acc.cashOutTotal += entry.cashOutTotal || 0;
+            acc.cashIn += entry.cashIn || 0;
+            acc.cashOut += entry.cashOut || 0;
+            acc.totalAmount += (entry.cashInTotal || 0) + (entry.cashOutTotal || 0);
+            return acc;
+        }, {
+            totalTransactions: 0,
+            cashIn: 0,
+            cashOut: 0,
+            totalFee: 0,
+            cashInTotal: 0,
+            cashOutTotal: 0,
+            totalAmount: 0,
+        });
+    }, [sortedData]);
+
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
         try {
@@ -125,7 +155,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             if (periodName === 'Monthly') {
                 return format(new Date(value), 'MMM yyyy');
             }
-            if (periodName === 'Yearly' || periodName === 'Overall') {
+            if (periodName === 'Yearly' || periodName === 'Overall' || periodName === 'Today') {
                 return value;
             }
             return format(new Date(value), 'MMM dd');
@@ -137,8 +167,6 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     if (!data) {
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
-
-    const summary = sortedData[0] || { totalTransactions: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, cashIn: 0, cashOut: 0, customers: {} };
 
     const customerBreakdown = useMemo(() => {
         const aggregatedCustomers: { [id: string]: CustomerCashIOData & { id: string, name: string } } = {};
@@ -377,6 +405,39 @@ export default function CashIOAnalytics() {
         }
     }, []);
 
+    const todayData = useMemo(() => {
+        if (!reports?.daily) return undefined;
+
+        const { daily: todayPath } = getReportPaths(new Date().toISOString());
+        const todayReportKey = todayPath.split('/').pop()!;
+        
+        const todayEntry = reports.daily[todayReportKey];
+        return todayEntry ? { [todayReportKey]: todayEntry } : undefined;
+    }, [reports]);
+
+    const last30DaysData = useMemo(() => {
+        if (!reports?.daily) return undefined;
+
+        const dailyEntries = Object.entries(reports.daily);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setHours(0, 0, 0, 0);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const last30DaysEntries = dailyEntries.filter(([key]) => {
+            try {
+                // 'YYYY-MM-DD' gets parsed as UTC midnight. This is fine for date-level comparison.
+                const entryDate = new Date(key);
+                return entryDate >= thirtyDaysAgo;
+            } catch (e) {
+                return false;
+            }
+        });
+
+        if (last30DaysEntries.length === 0) return undefined;
+
+        return Object.fromEntries(last30DaysEntries);
+    }, [reports]);
+
     if (isLoading) {
         return <div className="space-y-6"><Skeleton className="h-[120px]" /><Skeleton className="h-[300px]" /><Skeleton className="h-[200px]" /></div>;
     }
@@ -386,15 +447,17 @@ export default function CashIOAnalytics() {
     }
 
     return (
-        <Tabs defaultValue="daily" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
-                <TabsTrigger value="daily">Daily</TabsTrigger>
+        <Tabs defaultValue="today" className="w-full">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
+                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="daily">Last 30 Days</TabsTrigger>
                 <TabsTrigger value="weekly">Weekly</TabsTrigger>
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
                 <TabsTrigger value="yearly">Yearly</TabsTrigger>
                 <TabsTrigger value="overall">Overall</TabsTrigger>
             </TabsList>
-            <TabsContent value="daily"><ReportView data={reports.daily} periodName="Daily" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="today"><ReportView data={todayData} periodName="Today" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="daily"><ReportView data={last30DaysData} periodName="Daily" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
             <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
             <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
             <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
@@ -402,7 +465,5 @@ export default function CashIOAnalytics() {
         </Tabs>
     );
 }
-
-    
 
     
