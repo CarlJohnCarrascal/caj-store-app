@@ -12,9 +12,10 @@ import { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addProductAction, updateProductAction } from '@/lib/actions';
-import { Bot } from 'lucide-react';
+import { Bot, ImageIcon } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
+import { generateProductImage } from '@/ai/flows/generate-product-image';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -42,7 +43,8 @@ export default function ProductForm({ product }: ProductFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +101,7 @@ export default function ProductForm({ product }: ProductFormProps) {
           });
           return;
       }
-      setIsGenerating(true);
+      setIsGeneratingDesc(true);
       try {
           const result = await generateProductDescription({ name, group, category, material: material || '', dimensions: dimensions || '' });
           if(result.description) {
@@ -115,7 +117,37 @@ export default function ProductForm({ product }: ProductFormProps) {
               description: 'Could not generate a description. Please try again.',
           });
       } finally {
-          setIsGenerating(false);
+          setIsGeneratingDesc(false);
+      }
+  };
+  
+  const handleGenerateImage = async () => {
+      const name = form.getValues('name');
+      if (!name) {
+          toast({
+              variant: 'destructive',
+              title: 'Product Name Needed',
+              description: 'Please enter a product name to generate an image.',
+          });
+          return;
+      }
+      setIsGeneratingImage(true);
+      try {
+          const result = await generateProductImage({ description: name });
+          if (result.imageUrl) {
+              form.setValue('image', result.imageUrl, { shouldValidate: true });
+              toast({ title: 'Image Generated!', description: 'The AI-powered image has been added.' });
+          } else {
+              throw new Error("AI did not return an image URL.");
+          }
+      } catch (error) {
+          toast({
+              variant: 'destructive',
+              title: 'Image Generation Failed',
+              description: 'Could not generate an image. Please try again.',
+          });
+      } finally {
+          setIsGeneratingImage(false);
       }
   };
 
@@ -171,7 +203,13 @@ export default function ProductForm({ product }: ProductFormProps) {
                  <FormField control={form.control} name="image" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Image URL (Optional)</FormLabel>
-                    <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                    <div className="flex gap-2">
+                        <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                        <Button type="button" variant="outline" size="icon" onClick={handleGenerateImage} disabled={isGeneratingImage || isGeneratingDesc}>
+                            {isGeneratingImage ? "..." : <ImageIcon className="h-4 w-4" />}
+                            <span className="sr-only">Generate Image</span>
+                        </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -249,9 +287,9 @@ export default function ProductForm({ product }: ProductFormProps) {
                   <FormItem>
                     <div className="flex justify-between items-center">
                       <FormLabel>Description</FormLabel>
-                       <Button type="button" variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGenerating}>
+                       <Button type="button" variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc || isGeneratingImage}>
                          <Bot className="mr-2 h-4 w-4" />
-                         {isGenerating ? 'Generating...' : 'Generate with AI'}
+                         {isGeneratingDesc ? 'Generating...' : 'Generate with AI'}
                        </Button>
                     </div>
                     <FormControl><Textarea placeholder="Describe the product..." rows={8} {...field} /></FormControl>
@@ -262,7 +300,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || isGeneratingDesc || isGeneratingImage}>
                 {isPending ? (product ? 'Saving...' : 'Adding...') : (product ? 'Save Changes' : 'Add Product')}
               </Button>
             </div>
