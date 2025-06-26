@@ -1,12 +1,11 @@
-
 {
-  "name": "CajStore",
-  "short_name": "CajStore",
+  "name": "Caj-Store",
+  "short_name": "Caj-Store",
   "description": "An online application for small business stores, offering products and printing services.",
   "start_url": "/admin",
   "display": "standalone",
-  "background_color": "#F5F0FF",
-  "theme_color": "#9466FF",
+  "background_color": "#f9f5ff",
+  "theme_color": "#954dff",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -18,14 +17,5 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "share_target": {
-    "action": "/admin/cashio/new",
-    "method": "GET",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
-    }
-  }
+  ]
 }
