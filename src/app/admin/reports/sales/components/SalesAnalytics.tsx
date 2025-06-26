@@ -5,13 +5,14 @@ import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { DollarSign, Package, Printer, ArrowRightLeft, Smartphone, Wrench, ShoppingCart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
+import { getReportPaths } from '@/lib/utils';
 
 type ServiceData = {
   orders: number;
@@ -115,6 +116,26 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     }
   };
 
+  const summary = useMemo(() => {
+    if (!sortedData || sortedData.length === 0) {
+        return { totalSales: 0, totalOrders: 0 };
+    }
+
+    if (sortedData.length === 1 && periodName !== "Last 30 Days") {
+        return sortedData[0];
+    }
+
+    return sortedData.reduce((acc, entry) => {
+        acc.totalSales += entry.totalSales || 0;
+        acc.totalOrders += entry.totalOrders || 0;
+        return acc;
+    }, { totalSales: 0, totalOrders: 0 });
+  }, [sortedData, periodName]);
+
+  const allServices = useMemo(() => {
+    return Array.from(new Set(sortedData.flatMap(d => d.byService ? Object.keys(d.byService) : [])));
+  }, [sortedData]);
+
 
   if (!data) {
     return (
@@ -123,10 +144,6 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
       </div>
     );
   }
-
-  // Use the first (most recent) entry for summary cards
-  const summary = sortedData[0] || { totalSales: 0, totalOrders: 0, byService: {} };
-  const allServices = Array.from(new Set(sortedData.flatMap(d => Object.keys(d.byService))));
 
   return (
     <div className="space-y-6">
@@ -138,7 +155,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₱{summary.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground">Total revenue for the most recent {periodName.toLowerCase().slice(0, -1)}</p>
+            {periodName === "Last 30 Days" && <p className="text-xs text-muted-foreground">Total for the last 30 days</p>}
           </CardContent>
         </Card>
         <Card>
@@ -148,7 +165,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalOrders.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total orders for the most recent {periodName.toLowerCase().slice(0, -1)}</p>
+            {periodName === "Last 30 Days" && <p className="text-xs text-muted-foreground">Total for the last 30 days</p>}
           </CardContent>
         </Card>
       </div>
@@ -173,6 +190,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
       <Card>
         <CardHeader>
           <CardTitle>Sales Breakdown by Service</CardTitle>
+          <CardDescription>Aggregated sales and order counts for the selected period.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -228,6 +246,33 @@ export default function SalesAnalytics() {
     return () => unsubscribe();
   }, []);
 
+  const todayData = useMemo(() => {
+    if (!reports?.daily) return undefined;
+    const { daily: todayPath } = getReportPaths(new Date().toISOString());
+    const todayReportKey = todayPath.split('/').pop()!;
+    const todayEntry = reports.daily[todayReportKey];
+    return todayEntry ? { [todayReportKey]: todayEntry } : undefined;
+  }, [reports]);
+
+  const last30DaysData = useMemo(() => {
+      if (!reports?.daily) return undefined;
+      const dailyEntries = Object.entries(reports.daily);
+      const thirtyDaysAgo = subDays(new Date(), 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+      const last30DaysEntries = dailyEntries.filter(([key]) => {
+          try {
+              const entryDate = new Date(key);
+              return entryDate >= thirtyDaysAgo;
+          } catch (e) {
+              return false;
+          }
+      });
+
+      if (last30DaysEntries.length === 0) return undefined;
+      return Object.fromEntries(last30DaysEntries);
+  }, [reports]);
+
   if (isLoading) {
     return (
         <div className="space-y-6">
@@ -251,16 +296,20 @@ export default function SalesAnalytics() {
   }
 
   return (
-    <Tabs defaultValue="daily" className="w-full">
-      <TabsList className="grid w-full grid-cols-5 mb-6">
-        <TabsTrigger value="daily">Daily</TabsTrigger>
+    <Tabs defaultValue="today" className="w-full">
+      <TabsList className="grid w-full grid-cols-6 mb-6">
+        <TabsTrigger value="today">Today</TabsTrigger>
+        <TabsTrigger value="daily">Last 30 Days</TabsTrigger>
         <TabsTrigger value="weekly">Weekly</TabsTrigger>
         <TabsTrigger value="monthly">Monthly</TabsTrigger>
         <TabsTrigger value="yearly">Yearly</TabsTrigger>
         <TabsTrigger value="overall">Overall</TabsTrigger>
       </TabsList>
+      <TabsContent value="today">
+        <ReportView data={todayData} periodName="Today" />
+      </TabsContent>
       <TabsContent value="daily">
-        <ReportView data={reports.daily} periodName="Daily" />
+        <ReportView data={last30DaysData} periodName="Last 30 Days" />
       </TabsContent>
       <TabsContent value="weekly">
         <ReportView data={reports.weekly} periodName="Weekly" />

@@ -11,10 +11,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { DollarSign, ShoppingCart, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import type { Customer } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { getReportPaths } from '@/lib/utils';
 
 // Types for Customer Reports
 type ActiveCustomerData = {
@@ -82,6 +83,23 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         })).reverse();
     }, [sortedData]);
 
+    const summary = useMemo(() => {
+        if (!sortedData || sortedData.length === 0) {
+            return { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0 };
+        }
+    
+        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
+            return { ...sortedData[0], totalOrderValue: sortedData[0].totalOrderValue || 0 };
+        }
+    
+        return sortedData.reduce((acc, entry) => {
+            acc.newCustomerCount += entry.newCustomerCount || 0;
+            acc.totalOrders += entry.totalOrders || 0;
+            acc.totalOrderValue += entry.totalOrderValue || 0;
+            return acc;
+        }, { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0 });
+    }, [sortedData, periodName]);
+
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
         try {
@@ -104,8 +122,6 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
     if (!data) {
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
-
-    const summary = sortedData[0] || { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0, activeCustomers: {} };
 
     const allActiveCustomers = useMemo(() => {
         const aggregatedCustomers: { [id: string]: ActiveCustomerData & { id: string, name: string } } = {};
@@ -247,6 +263,33 @@ export default function CustomerAnalytics() {
         }
     }, []);
 
+    const todayData = useMemo(() => {
+        if (!reports?.daily) return undefined;
+        const { daily: todayPath } = getReportPaths(new Date().toISOString());
+        const todayReportKey = todayPath.split('/').pop()!;
+        const todayEntry = reports.daily[todayReportKey];
+        return todayEntry ? { [todayReportKey]: todayEntry } : undefined;
+    }, [reports]);
+
+    const last30DaysData = useMemo(() => {
+        if (!reports?.daily) return undefined;
+        const dailyEntries = Object.entries(reports.daily);
+        const thirtyDaysAgo = subDays(new Date(), 30);
+        thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+        const last30DaysEntries = dailyEntries.filter(([key]) => {
+            try {
+                const entryDate = new Date(key);
+                return entryDate >= thirtyDaysAgo;
+            } catch (e) {
+                return false;
+            }
+        });
+
+        if (last30DaysEntries.length === 0) return undefined;
+        return Object.fromEntries(last30DaysEntries);
+    }, [reports]);
+
     if (isLoading) {
         return <div className="space-y-6"><Skeleton className="h-[120px]" /><Skeleton className="h-[300px]" /><Skeleton className="h-[200px]" /></div>;
     }
@@ -256,15 +299,17 @@ export default function CustomerAnalytics() {
     }
 
     return (
-        <Tabs defaultValue="daily" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
-                <TabsTrigger value="daily">Daily</TabsTrigger>
+        <Tabs defaultValue="today" className="w-full">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
+                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="daily">Last 30 Days</TabsTrigger>
                 <TabsTrigger value="weekly">Weekly</TabsTrigger>
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
                 <TabsTrigger value="yearly">Yearly</TabsTrigger>
                 <TabsTrigger value="overall">Overall</TabsTrigger>
             </TabsList>
-            <TabsContent value="daily"><ReportView data={reports.daily} periodName="Daily" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="today"><ReportView data={todayData} periodName="Today" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="daily"><ReportView data={last30DaysData} periodName="Last 30 Days" customerMap={customerMap} /></TabsContent>
             <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" customerMap={customerMap} /></TabsContent>
             <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" customerMap={customerMap} /></TabsContent>
             <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" customerMap={customerMap} /></TabsContent>
