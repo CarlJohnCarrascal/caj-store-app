@@ -121,7 +121,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             return { totalTransactions: 0, cashIn: 0, cashOut: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0 };
         }
         
-        if (sortedData.length === 1) {
+        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
             return sortedData[0];
         }
     
@@ -143,7 +143,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             cashOutTotal: 0,
             totalAmount: 0,
         });
-    }, [sortedData]);
+    }, [sortedData, periodName]);
 
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
@@ -296,7 +296,8 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                 <TableHead>Account</TableHead>
                                 <TableHead className="text-center">Cash In (Count)</TableHead>
                                 <TableHead className="text-center">Cash Out (Count)</TableHead>
-                                <TableHead className="text-right">Total Amount</TableHead>
+                                <TableHead className="text-right">Cash In Amount</TableHead>
+                                <TableHead className="text-right">Cash Out Amount</TableHead>
                                 <TableHead className="text-right">Total Fees</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -306,7 +307,8 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                     <TableCell className="font-medium">{account.name}</TableCell>
                                     <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-center">{(account.cashOutCount || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">₱{((account.cashInAmount || 0) + (account.cashOutAmount || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     <TableCell className="text-right">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
                             ))}
@@ -327,7 +329,8 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                 <TableHead>Customer</TableHead>
                                 <TableHead className="text-right">Cash In (Count)</TableHead>
                                 <TableHead className="text-right">Cash Out (Count)</TableHead>
-                                <TableHead className="text-right">Total Amount</TableHead>
+                                <TableHead className="text-right">Cash In Amount</TableHead>
+                                <TableHead className="text-right">Cash Out Amount</TableHead>
                                 <TableHead className="text-right">Total Fees</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -347,7 +350,8 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                     </TableCell>
                                     <TableCell className="text-right">{(customer.cashIn || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">{(customer.cashOut || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">₱{(customer.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">₱{(customer.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">₱{(customer.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     <TableCell className="text-right">₱{(customer.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
                             ))}
@@ -457,7 +461,7 @@ export default function CashIOAnalytics() {
                 <TabsTrigger value="overall">Overall</TabsTrigger>
             </TabsList>
             <TabsContent value="today"><ReportView data={todayData} periodName="Today" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
-            <TabsContent value="daily"><ReportView data={last30DaysData} periodName="Daily" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="daily"><ReportView data={last30DaysData} periodName="Last 30 Days" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
             <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
             <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
             <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
@@ -465,5 +469,3 @@ export default function CashIOAnalytics() {
         </Tabs>
     );
 }
-
-    
