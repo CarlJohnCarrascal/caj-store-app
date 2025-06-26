@@ -268,6 +268,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                 <TableHead>Account</TableHead>
                                 <TableHead className="text-center">Cash In (Count)</TableHead>
                                 <TableHead className="text-center">Cash Out (Count)</TableHead>
+                                <TableHead className="text-right">Total Amount</TableHead>
                                 <TableHead className="text-right">Total Fees</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -277,6 +278,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                     <TableCell className="font-medium">{account.name}</TableCell>
                                     <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-center">{(account.cashOutCount || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">₱{((account.cashInAmount || 0) + (account.cashOutAmount || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     <TableCell className="text-right">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
                             ))}
@@ -297,6 +299,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                 <TableHead>Customer</TableHead>
                                 <TableHead className="text-right">Cash In (Count)</TableHead>
                                 <TableHead className="text-right">Cash Out (Count)</TableHead>
+                                <TableHead className="text-right">Total Amount</TableHead>
                                 <TableHead className="text-right">Total Fees</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -316,6 +319,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                                     </TableCell>
                                     <TableCell className="text-right">{(customer.cashIn || 0).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">{(customer.cashOut || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">₱{(customer.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     <TableCell className="text-right">₱{(customer.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
                             ))}
@@ -398,5 +402,7 @@ export default function CashIOAnalytics() {
         </Tabs>
     );
 }
+
+    
 
     
