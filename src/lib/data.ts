@@ -5,7 +5,6 @@
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense } from './types';
-import { getISOWeek, format } from 'date-fns';
 import { getCurrentPHTISOString } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -20,6 +19,51 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     });
   }
   return items;
+}
+
+/**
+ * Calculates the ISO week number and year for a given Date object based on its UTC components.
+ * This is timezone-safe.
+ * @param d The date object.
+ * @returns An object with the week number and the corresponding year for that week.
+ */
+function getUtcIsoWeekAndYear(d: Date): { week: number; year: number } {
+    // Copy date to avoid modifying original
+    const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    
+    // Set to nearest Thursday: current date + 4 - current day number
+    // Make Sunday's day number 7
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay()||7));
+    const year = date.getUTCFullYear();
+
+    // Get first day of year
+    const yearStart = new Date(Date.UTC(year,0,1));
+    // Calculate full weeks to nearest Thursday
+    const weekNo = Math.ceil(( ( (date.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+    
+    return { week: weekNo, year: year };
+}
+
+function getReportPaths(dateStr: string) {
+    const originalDate = new Date(dateStr);
+
+    // PHT is UTC+8. To get the correct date parts for PHT, we add 8 hours to the UTC time
+    // and then use UTC methods to extract the components. This avoids host timezone issues.
+    const phtTime = new Date(originalDate.getTime() + (8 * 60 * 60 * 1000));
+    
+    const { week, year: weekYear } = getUtcIsoWeekAndYear(phtTime);
+
+    const year = phtTime.getUTCFullYear();
+    const month = String(phtTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(phtTime.getUTCDate()).padStart(2, '0');
+    
+    return {
+        daily: `/daily/${year}-${month}-${day}`,
+        weekly: `/weekly/${weekYear}-${String(week).padStart(2, '0')}`,
+        monthly: `/monthly/${year}-${month}`,
+        yearly: `/yearly/${year}`,
+        overall: `/overall/summary`
+    };
 }
 
 
@@ -144,13 +188,13 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
       ...transaction,
       ourAccountName: account ? account.accountName : 'Unknown Account',
       // Firebase stores dates as strings, so convert them back
-      createdAt: new Date(transaction.createdAt),
-      updatedAt: new Date(transaction.updatedAt),
-      ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent) }),
-      ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived) }),
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+      ...(transaction.dateSent && { dateSent: transaction.dateSent }),
+      ...(transaction.dateReceived && { dateReceived: transaction.dateReceived }),
     };
   });
-  return transactionsWithAccountNames.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return transactionsWithAccountNames.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getCashTransactionById(id: string): Promise<CashTransaction | undefined> {
@@ -160,10 +204,10 @@ export async function getCashTransactionById(id: string): Promise<CashTransactio
     const transactionWithDateObjects = {
         ...transaction,
         id,
-        createdAt: new Date(transaction.createdAt),
-        updatedAt: new Date(transaction.updatedAt),
-        ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent as any) }),
-        ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived as any) }),
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt,
+        ...(transaction.dateSent && { dateSent: transaction.dateSent }),
+        ...(transaction.dateReceived && { dateReceived: transaction.dateReceived }),
     };
     return transactionWithDateObjects;
   }
@@ -225,13 +269,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   await set(newTransactionRef, dataToSave);
   
   const result = { ...dataToSave, id: newTransactionRef.key! };
-  return {
-      ...result,
-      createdAt: new Date(result.createdAt),
-      updatedAt: new Date(result.updatedAt),
-      ...(result.dateSent && { dateSent: new Date(result.dateSent) }),
-      ...(result.dateReceived && { dateReceived: new Date(result.dateReceived) }),
-  };
+  return result;
 }
 
 export async function updateCashTransaction(id: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
@@ -298,10 +336,10 @@ export async function updateCashTransactionStatus(id: string, customerId: string
         
         const returnedTransaction = {
              ...updatedTransactionData, 
-             updatedAt: new Date(updatedAt), 
-             createdAt: new Date(transaction.createdAt),
-             ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent) }),
-             ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived) }),
+             updatedAt: updatedAt, 
+             createdAt: transaction.createdAt,
+             ...(transaction.dateSent && { dateSent: transaction.dateSent }),
+             ...(transaction.dateReceived && { dateReceived: transaction.dateReceived }),
         };
         return returnedTransaction as CashTransaction;
     }
@@ -385,15 +423,15 @@ export async function addOrder(orderData: Omit<Order, 'id'>): Promise<Order> {
 export async function getOrders(): Promise<Order[]> {
     const snapshot = await get(ref(db, 'orders'));
     const orders = snapshotToArray<Order>(snapshot);
-    const ordersWithDates = orders.map(order => ({ ...order, createdAt: new Date(order.createdAt) }));
-    return ordersWithDates.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const ordersWithDates = orders.map(order => ({ ...order, createdAt: order.createdAt }));
+    return ordersWithDates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getOrderById(id: string): Promise<Order | undefined> {
     const snapshot = await get(ref(db, `orders/${id}`));
     if (snapshot.exists()) {
         const order = snapshot.val();
-        return { id, ...order, createdAt: new Date(order.createdAt) };
+        return { id, ...order, createdAt: order.createdAt };
     }
     return undefined;
 }
@@ -406,8 +444,8 @@ export async function getOrdersByCustomerId(customerId: string): Promise<Order[]
         return [];
     }
     const orders = snapshotToArray<Order>(snapshot);
-    const ordersWithDates = orders.map(order => ({ ...order, createdAt: new Date(order.createdAt) }));
-    return ordersWithDates.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const ordersWithDates = orders.map(order => ({ ...order, createdAt: order.createdAt }));
+    return ordersWithDates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 
@@ -442,10 +480,10 @@ export async function getExpenses(): Promise<Expense[]> {
   const expenses = snapshotToArray<Expense>(snapshot);
   const expensesWithDates = expenses.map(e => ({
     ...e,
-    date: new Date(e.date),
-    createdAt: new Date(e.createdAt),
+    date: e.date,
+    createdAt: e.createdAt,
   }));
-  return expensesWithDates.sort((a, b) => b.date.getTime() - a.date.getTime());
+  return expensesWithDates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function getExpenseById(id: string): Promise<Expense | undefined> {
@@ -455,8 +493,8 @@ export async function getExpenseById(id: string): Promise<Expense | undefined> {
     const expenseWithDate = {
       ...expense,
       id,
-      date: new Date(expense.date),
-      createdAt: new Date(expense.createdAt),
+      date: expense.date,
+      createdAt: expense.createdAt,
     };
     return expenseWithDate;
   }
@@ -498,24 +536,6 @@ export async function deleteExpense(id: string): Promise<Expense | null> {
 // ========================
 // Reporting Functions
 // ========================
-
-function getReportPaths(dateStr: string) {
-    const date = new Date(dateStr);
-    
-    const year = format(date, 'yyyy');
-    const month = format(date, 'MM');
-    // Ensure getISOWeek is used on a valid Date object
-    const week = getISOWeek(date);
-    const day = format(date, 'yyyy-MM-dd');
-    
-    return {
-        daily: `/daily/${day}`,
-        weekly: `/weekly/${year}-${week}`,
-        monthly: `/monthly/${year}-${month}`,
-        yearly: `/yearly/${year}`,
-        overall: `/overall/summary`
-    };
-}
 
 export async function updateSalesReports(order: Order) {
   const paths = getReportPaths(order.createdAt);
@@ -581,7 +601,7 @@ export async function updateSalesReports(order: Order) {
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
     const transactionDate = transaction.dateReceived || transaction.dateSent;
-    const dateStr = transactionDate ? transactionDate.toISOString() : new Date().toISOString(); // Fallback to now if no date
+    const dateStr = transactionDate ? transactionDate.toString() : new Date().toISOString(); // Fallback to now if no date
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
@@ -696,6 +716,7 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
+
 
 
 
