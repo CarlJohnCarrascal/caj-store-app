@@ -128,7 +128,7 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
 
-    const summary = sortedData[0] || { totalTransactions: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, customers: {} };
+    const summary = sortedData[0] || { totalTransactions: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, cashIn: 0, cashOut: 0, customers: {} };
 
     const customerBreakdown = useMemo(() => {
         const aggregatedCustomers: { [id: string]: CustomerCashIOData & { id: string, name: string } } = {};
@@ -164,25 +164,27 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱{summary.totalFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">₱{(summary.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Cash In (Amount)</CardTitle>
+                        <CardTitle className="text-sm font-medium">Cash In</CardTitle>
                         <ArrowUp className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱{summary.cashInTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">₱{(summary.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <p className="text-xs text-muted-foreground">from {(summary.cashIn || 0).toLocaleString()} transactions</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Cash Out (Amount)</CardTitle>
+                        <CardTitle className="text-sm font-medium">Cash Out</CardTitle>
                         <ArrowDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱{summary.cashOutTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">₱{(summary.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <p className="text-xs text-muted-foreground">from {(summary.cashOut || 0).toLocaleString()} transactions</p>
                     </CardContent>
                 </Card>
             </div>
