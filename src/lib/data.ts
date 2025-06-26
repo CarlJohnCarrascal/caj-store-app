@@ -515,6 +515,7 @@ export async function deleteExpense(id: string): Promise<Expense | null> {
 // ========================
 
 function getReportPaths(date: Date) {
+    console.log("report date", date);
     const year = format(date, 'yyyy');
     const month = format(date, 'MM');
     const week = getISOWeek(date);
@@ -531,6 +532,7 @@ function getReportPaths(date: Date) {
 
 export async function updateSalesReports(order: Order) {
   const date = new Date(order.createdAt);
+  console.log("update sales report date: ", date);
   const paths = getReportPaths(date);
 
   const salesByService: { [key: string]: number } = {};
@@ -595,6 +597,7 @@ export async function updateSalesReports(order: Order) {
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
     const transactionDate = transaction.dateReceived || transaction.dateSent;
     const date = transactionDate ? new Date(transactionDate) : new Date(); // Fallback to now if no date
+    console.log("update cashio report date: ", date);
     const paths = getReportPaths(date);
 
     for (const periodPath of Object.values(paths)) {
@@ -673,6 +676,8 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 
 export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
     const date = new Date(); // Use current date for the report
+    console.log("update customer report date: ", date);
+
     const paths = getReportPaths(date);
     const orderValue = Math.abs(orderTotal);
 

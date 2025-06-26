@@ -58,15 +58,26 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     return items;
 }
 
-const chartConfig = {
+const feeChartConfig = {
   cashInFee: {
     label: 'Cash In Fees',
-    color: 'hsl(var(--chart-1))',
+    color: 'hsl(var(--chart-2))',
   },
   cashOutFee: {
     label: 'Cash Out Fees',
-    color: 'hsl(var(--chart-2))',
+    color: 'hsl(var(--chart-1))',
   }
+} satisfies ChartConfig;
+
+const totalAmountChartConfig = {
+  cashInTotal: {
+    label: 'Cash In Amount',
+    color: 'hsl(var(--chart-2))',
+  },
+  cashOutTotal: {
+    label: 'Cash Out Amount',
+    color: 'hsl(var(--chart-1))',
+  },
 } satisfies ChartConfig;
 
 
@@ -77,11 +88,19 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
-    const chartData = useMemo(() => {
+    const feeChartData = useMemo(() => {
         return sortedData.map(entry => ({
             name: entry.key,
             cashInFee: entry.cashInFee || 0,
             cashOutFee: entry.cashOutFee || 0,
+        })).reverse();
+    }, [sortedData]);
+
+    const totalAmountChartData = useMemo(() => {
+        return sortedData.map(entry => ({
+            name: entry.key,
+            cashInTotal: entry.cashInTotal || 0,
+            cashOutTotal: entry.cashOutTotal || 0,
         })).reverse();
     }, [sortedData]);
 
@@ -170,10 +189,11 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
             <Card>
                 <CardHeader>
                     <CardTitle>Fee Generation Trend</CardTitle>
+                    <CardDescription>Total fees generated from cash in and cash out services.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-                        <BarChart data={chartData} accessibilityLayer>
+                    <ChartContainer config={feeChartConfig} className="min-h-[200px] w-full">
+                        <BarChart data={feeChartData} accessibilityLayer>
                             <CartesianGrid vertical={false} />
                             <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
                             <YAxis tickFormatter={(value) => `₱${value}`} />
@@ -181,6 +201,26 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
                             <Legend />
                             <Bar dataKey="cashInFee" fill="var(--color-cashInFee)" radius={4} stackId="a" />
                             <Bar dataKey="cashOutFee" fill="var(--color-cashOutFee)" radius={4} stackId="a" />
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Total Amount Trend</CardTitle>
+                    <CardDescription>Cash in vs. cash out amounts transacted.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={totalAmountChartConfig} className="min-h-[200px] w-full">
+                        <BarChart data={totalAmountChartData} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+                            <YAxis tickFormatter={(value) => `₱${value}`} />
+                            <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                            <Legend />
+                            <Bar dataKey="cashInTotal" fill="var(--color-cashInTotal)" radius={4} />
+                            <Bar dataKey="cashOutTotal" fill="var(--color-cashOutTotal)" radius={4} />
                         </BarChart>
                     </ChartContainer>
                 </CardContent>
