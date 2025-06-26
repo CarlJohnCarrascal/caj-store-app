@@ -1,5 +1,5 @@
 import { getProductById } from '@/lib/data';
-import ProductForm from '../ProductForm';
+import ProductForm from '../../ProductForm';
 import { notFound } from 'next/navigation';
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
