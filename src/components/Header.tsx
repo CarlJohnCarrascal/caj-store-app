@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
 import { useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Sheet,
   SheetContent,
@@ -19,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Accordion,
@@ -26,11 +28,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 export default function Header() {
   const { cartCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
+  const { user, signOut } = useAuth();
 
   return (
     <>
@@ -198,6 +204,32 @@ export default function Header() {
                 )}
                 <span className="sr-only">Open Order</span>
               </Button>
+              {authEnabled && user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                       <Avatar className="h-8 w-8">
+                         <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+                       </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">Signed In</p>
+                        <p className="text-xs leading-none text-muted-foreground truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => signOut()}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </div>
