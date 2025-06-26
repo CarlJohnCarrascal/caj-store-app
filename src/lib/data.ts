@@ -5,7 +5,7 @@
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense } from './types';
-import { getCurrentPHTISOString } from './utils';
+import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -20,52 +20,6 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   }
   return items;
 }
-
-/**
- * Calculates the ISO week number and year for a given Date object based on its UTC components.
- * This is timezone-safe.
- * @param d The date object.
- * @returns An object with the week number and the corresponding year for that week.
- */
-function getUtcIsoWeekAndYear(d: Date): { week: number; year: number } {
-    // Copy date to avoid modifying original
-    const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    
-    // Set to nearest Thursday: current date + 4 - current day number
-    // Make Sunday's day number 7
-    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay()||7));
-    const year = date.getUTCFullYear();
-
-    // Get first day of year
-    const yearStart = new Date(Date.UTC(year,0,1));
-    // Calculate full weeks to nearest Thursday
-    const weekNo = Math.ceil(( ( (date.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
-    
-    return { week: weekNo, year: year };
-}
-
-function getReportPaths(dateStr: string) {
-    const originalDate = new Date(dateStr);
-
-    // PHT is UTC+8. To get the correct date parts for PHT, we add 8 hours to the UTC time
-    // and then use UTC methods to extract the components. This avoids host timezone issues.
-    const phtTime = new Date(originalDate.getTime() + (8 * 60 * 60 * 1000));
-    
-    const { week, year: weekYear } = getUtcIsoWeekAndYear(phtTime);
-
-    const year = phtTime.getUTCFullYear();
-    const month = String(phtTime.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(phtTime.getUTCDate()).padStart(2, '0');
-    
-    return {
-        daily: `/daily/${year}-${month}-${day}`,
-        weekly: `/weekly/${weekYear}-${String(week).padStart(2, '0')}`,
-        monthly: `/monthly/${year}-${month}`,
-        yearly: `/yearly/${year}`,
-        overall: `/overall/summary`
-    };
-}
-
 
 // ==================
 // Product Functions
@@ -601,7 +555,7 @@ export async function updateSalesReports(order: Order) {
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
     const transactionDate = transaction.dateReceived || transaction.dateSent;
-    const dateStr = transactionDate ? transactionDate.toString() : new Date().toISOString(); // Fallback to now if no date
+    const dateStr = transactionDate ? transactionDate.toString() : new Date().toISOString();
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
@@ -620,27 +574,50 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                     totalAmount: 0,
                     totalFee: 0,
                     customers: {},
+                    byAccount: {},
                 };
             }
 
-            // This part runs for ALL transactions to update top-level stats
             if (type === 'allTransactions') {
                 currentData.totalTransactions = (currentData.totalTransactions || 0) + 1;
                 currentData.totalAmount = (currentData.totalAmount || 0) + transaction.amount;
                 currentData.totalFee = (currentData.totalFee || 0) + transaction.fee;
 
+                if (!currentData.byAccount) {
+                    currentData.byAccount = {};
+                }
+                const accountId = transaction.accountUsedId;
+                if (!currentData.byAccount[accountId]) {
+                    currentData.byAccount[accountId] = {
+                        cashInCount: 0,
+                        cashInAmount: 0,
+                        cashInFee: 0,
+                        cashOutCount: 0,
+                        cashOutAmount: 0,
+                        cashOutFee: 0,
+                    };
+                }
+                const accountReport = currentData.byAccount[accountId];
+
                 if (transaction.transactionType === 'Cash In') {
                     currentData.cashIn = (currentData.cashIn || 0) + 1;
                     currentData.cashInFee = (currentData.cashInFee || 0) + transaction.fee;
                     currentData.cashInTotal = (currentData.cashInTotal || 0) + transaction.amount;
+                    
+                    accountReport.cashInCount = (accountReport.cashInCount || 0) + 1;
+                    accountReport.cashInAmount = (accountReport.cashInAmount || 0) + transaction.amount;
+                    accountReport.cashInFee = (accountReport.cashInFee || 0) + transaction.fee;
                 } else { // Cash Out
                     currentData.cashOut = (currentData.cashOut || 0) + 1;
                     currentData.cashOutFee = (currentData.cashOutFee || 0) + transaction.fee;
                     currentData.cashOutTotal = (currentData.cashOutTotal || 0) + transaction.amount;
+
+                    accountReport.cashOutCount = (accountReport.cashOutCount || 0) + 1;
+                    accountReport.cashOutAmount = (accountReport.cashOutAmount || 0) + transaction.amount;
+                    accountReport.cashOutFee = (accountReport.cashOutFee || 0) + transaction.fee;
                 }
             }
             
-            // This part runs ONLY for ordered transactions to update the customer breakdown
             if (type === 'orderedTransactions') {
                 const finalCustomerId = customerId || 'unknown';
                 
@@ -716,6 +693,7 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
+
 
 
 

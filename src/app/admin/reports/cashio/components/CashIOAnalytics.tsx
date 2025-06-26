@@ -12,7 +12,7 @@ import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/u
 import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import type { Customer } from '@/lib/types';
+import type { Customer, Account } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -28,9 +28,19 @@ type CustomerCashIOData = {
     totalFee: number;
 };
 
+type AccountCashIOData = {
+    cashInCount: number;
+    cashInAmount: number;
+    cashInFee: number;
+    cashOutCount: number;
+    cashOutAmount: number;
+    cashOutFee: number;
+};
+
 type ReportEntry = CustomerCashIOData & {
     totalTransactions: number;
     customers: { [customerId: string]: CustomerCashIOData };
+    byAccount?: { [accountId: string]: AccountCashIOData };
 };
 
 type ReportPeriodData = {
@@ -82,7 +92,7 @@ const totalAmountChartConfig = {
 } satisfies ChartConfig;
 
 
-const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string> }) => {
+const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string>; accountMap: Map<string, string> }) => {
     const sortedData = useMemo(() => {
         if (!data) return [];
         const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
@@ -145,6 +155,23 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         });
         return Object.values(aggregatedCustomers).sort((a, b) => b.totalFee - a.totalFee);
     }, [sortedData, customerMap]);
+
+    const accountBreakdown = useMemo(() => {
+        if (!data) return [];
+        const aggregatedAccounts: { [id: string]: AccountCashIOData & { id: string, name: string } } = {};
+        Object.values(data).forEach(period => {
+            Object.entries(period.byAccount || {}).forEach(([id, stats]) => {
+                if (!aggregatedAccounts[id]) {
+                    aggregatedAccounts[id] = { ...stats, id, name: accountMap.get(id) || 'Unknown Account' };
+                } else {
+                    Object.keys(stats).forEach(key => {
+                        (aggregatedAccounts[id] as any)[key] = ((aggregatedAccounts[id] as any)[key] || 0) + (stats as any)[key];
+                    });
+                }
+            });
+        });
+        return Object.values(aggregatedAccounts).sort((a, b) => (b.cashInFee + b.cashOutFee) - (a.cashInFee + a.cashOutFee));
+    }, [data, accountMap]);
 
     return (
         <div className="space-y-6">
@@ -228,6 +255,35 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
                     </ChartContainer>
                 </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Cash IO by Account</CardTitle>
+                    <CardDescription>Breakdown of transactions by your business accounts.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Account</TableHead>
+                                <TableHead className="text-center">Cash In (Count)</TableHead>
+                                <TableHead className="text-center">Cash Out (Count)</TableHead>
+                                <TableHead className="text-right">Total Fees</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {accountBreakdown.map(account => (
+                                <TableRow key={account.id}>
+                                    <TableCell className="font-medium">{account.name}</TableCell>
+                                    <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="text-center">{(account.cashOutCount || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
             
             <Card>
                 <CardHeader>
@@ -274,16 +330,19 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
 export default function CashIOAnalytics() {
     const [reports, setReports] = useState<AllReports | null>(null);
     const [customers, setCustomers] = useState<Customer[]>([]);
+    const [accounts, setAccounts] = useState<Account[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
+    const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.accountName])), [accounts]);
 
     useEffect(() => {
         let reportsLoaded = false;
         let customersLoaded = false;
+        let accountsLoaded = false;
 
         const checkLoading = () => {
-            if(reportsLoaded && customersLoaded) setIsLoading(false);
+            if(reportsLoaded && customersLoaded && accountsLoaded) setIsLoading(false);
         }
 
         const reportsRef = ref(db, 'cashIOReports');
@@ -300,9 +359,17 @@ export default function CashIOAnalytics() {
             checkLoading();
         });
 
+        const accountsRef = ref(db, 'accounts');
+        const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
+            setAccounts(snapshotToArray<Account>(snapshot));
+            accountsLoaded = true;
+            checkLoading();
+        });
+
         return () => {
             unsubscribeReports();
             unsubscribeCustomers();
+            unsubscribeAccounts();
         }
     }, []);
 
@@ -323,11 +390,11 @@ export default function CashIOAnalytics() {
                 <TabsTrigger value="yearly">Yearly</TabsTrigger>
                 <TabsTrigger value="overall">Overall</TabsTrigger>
             </TabsList>
-            <TabsContent value="daily"><ReportView data={reports.daily} periodName="Daily" customerMap={customerMap} /></TabsContent>
-            <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" customerMap={customerMap} /></TabsContent>
-            <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" customerMap={customerMap} /></TabsContent>
-            <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" customerMap={customerMap} /></TabsContent>
-            <TabsContent value="overall"><ReportView data={reports.overall} periodName="Overall" customerMap={customerMap} /></TabsContent>
+            <TabsContent value="daily"><ReportView data={reports.daily} periodName="Daily" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
+            <TabsContent value="overall"><ReportView data={reports.overall} periodName="Overall" customerMap={customerMap} accountMap={accountMap} /></TabsContent>
         </Tabs>
     );
 }
