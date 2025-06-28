@@ -59,8 +59,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   const signIn = async (email: string) => {
+    const isDev = process.env.NODE_ENV === 'development';
+    const continueUrl = isDev 
+        ? 'http://localhost:3000/auth/action' 
+        : `${window.location.origin}/auth/action`;
+        
     const actionCodeSettings = {
-      url: `${window.location.origin}/auth/action`,
+      url: continueUrl,
       handleCodeInApp: true,
     };
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
