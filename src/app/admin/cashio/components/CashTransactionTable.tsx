@@ -41,7 +41,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/use-cart';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, query, orderByChild, startAt, endAt, get, equalTo } from 'firebase/database';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -61,13 +61,27 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   return items;
 }
 
+const useDebouncedValue = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = React.useState(value);
+    React.useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
+};
+
+
 export default function CashTransactionTable() {
   const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isFetching, setIsFetching] = React.useState(false);
 
   const [search, setSearch] = React.useState('');
+  const debouncedSearch = useDebouncedValue(search, 500);
   const [page, setPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [sort, setSort] = React.useState<{key: string, order: 'asc' | 'desc'}>({ key: 'transactionDate', order: 'desc' });
@@ -77,10 +91,8 @@ export default function CashTransactionTable() {
   const { toast } = useToast();
   const { addToCart, setCartCustomer } = useCart();
 
-
-  // Filtering state
   const [date, setDate] = React.useState<DateRange | undefined>({
-    from: subDays(new Date(), 4),
+    from: subDays(new Date(), 30),
     to: new Date(),
   });
   const [type, setType] = React.useState('all');
@@ -88,33 +100,52 @@ export default function CashTransactionTable() {
   const [accountUsed, setAccountUsed] = React.useState('all');
   const [status, setStatus] = React.useState('all');
 
+  const fetchTransactionsByDate = React.useCallback(async (dateRange: DateRange | undefined) => {
+    if (!dateRange?.from) return;
+    setIsFetching(true);
+    try {
+        const transactionsRef = ref(db, 'cashTransactions');
+        const fromDate = new Date(dateRange.from);
+        const toDate = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
+        
+        fromDate.setHours(0, 0, 0, 0);
+        toDate.setHours(23, 59, 59, 999);
+
+        const q = query(
+            transactionsRef,
+            orderByChild('createdAt'),
+            startAt(fromDate.toISOString()),
+            endAt(toDate.toISOString())
+        );
+
+        const snapshot = await get(q);
+        const transactionList = snapshotToArray<CashTransaction>(snapshot);
+        const transactionsWithDates = transactionList.map(t => ({
+            ...t,
+            createdAt: new Date(t.createdAt),
+            updatedAt: new Date(t.updatedAt),
+            ...(t.dateSent && { dateSent: new Date(t.dateSent as any) }),
+            ...(t.dateReceived && { dateReceived: new Date(t.dateReceived as any) }),
+        }));
+        setTransactions(transactionsWithDates);
+    } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch transactions.' });
+    } finally {
+        setIsFetching(false);
+    }
+  }, [toast]);
+
   React.useEffect(() => {
     setIsMounted(true);
-
-    let transactionsLoaded = false;
     let accountsLoaded = false;
     let customersLoaded = false;
 
     const checkLoading = () => {
-      if (transactionsLoaded && accountsLoaded && customersLoaded) {
+      if (accountsLoaded && customersLoaded) {
         setIsLoading(false);
       }
     };
-
-    const transactionsRef = ref(db, 'cashTransactions');
-    const unsubscribeTransactions = onValue(transactionsRef, (snapshot) => {
-      const transactionList = snapshotToArray<CashTransaction>(snapshot);
-      const transactionsWithDates = transactionList.map(t => ({
-          ...t,
-          createdAt: new Date(t.createdAt),
-          updatedAt: new Date(t.updatedAt),
-          ...(t.dateSent && { dateSent: new Date(t.dateSent as any) }),
-          ...(t.dateReceived && { dateReceived: new Date(t.dateReceived as any) }),
-      }));
-      setTransactions(transactionsWithDates);
-      transactionsLoaded = true;
-      checkLoading();
-    });
 
     const accountsRef = ref(db, 'accounts');
     const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
@@ -131,11 +162,60 @@ export default function CashTransactionTable() {
     });
 
     return () => {
-      unsubscribeTransactions();
       unsubscribeAccounts();
       unsubscribeCustomers();
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!isLoading) {
+        fetchTransactionsByDate(date);
+    }
+  }, [date, isLoading, fetchTransactionsByDate]);
+
+  React.useEffect(() => {
+    if (!debouncedSearch || debouncedSearch.length < 5) return;
+
+    const searchOnlineByReference = async () => {
+        const isAlreadyFetched = transactions.some(t => t.reference === debouncedSearch);
+        if (isAlreadyFetched) return;
+        
+        setIsFetching(true);
+        try {
+            const transactionsRef = ref(db, 'cashTransactions');
+            const q = query(transactionsRef, orderByChild('reference'), equalTo(debouncedSearch));
+            const snapshot = await get(q);
+            if (snapshot.exists()) {
+                const fetchedList = snapshotToArray<CashTransaction>(snapshot);
+                const fetchedWithDates = fetchedList.map(t => ({
+                    ...t,
+                    createdAt: new Date(t.createdAt),
+                    updatedAt: new Date(t.updatedAt),
+                    ...(t.dateSent && { dateSent: new Date(t.dateSent as any) }),
+                    ...(t.dateReceived && { dateReceived: new Date(t.dateReceived as any) }),
+                }));
+                setTransactions(prev => {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const newTransactions = fetchedWithDates.filter(t => !existingIds.has(t.id));
+                    if (newTransactions.length > 0) {
+                        toast({ title: 'Found transaction', description: 'Added transaction from outside the current date range.' });
+                        return [...newTransactions, ...prev];
+                    }
+                    return prev;
+                });
+            } else {
+                 toast({ variant: 'default', title: 'Not Found', description: 'No transaction with that reference number was found.' });
+            }
+        } catch (error) {
+            console.error("Failed to search by reference:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to search by reference.' });
+        } finally {
+            setIsFetching(false);
+        }
+    };
+    
+    searchOnlineByReference();
+  }, [debouncedSearch, transactions, toast]);
 
   const handleAddToCart = (transaction: any) => {
     const finalPrice = transaction.transactionType === 'Cash In'
@@ -186,6 +266,7 @@ export default function CashTransactionTable() {
     return transactionsWithNames
       .filter(t => {
         const searchLower = search.toLowerCase();
+        if (!searchLower) return true;
         return (
           t.reference.toLowerCase().includes(searchLower) ||
           t.customerName.toLowerCase().includes(searchLower) ||
@@ -195,14 +276,9 @@ export default function CashTransactionTable() {
       .filter(t => type === 'all' || t.transactionType === type)
       .filter(t => method === 'all' || t.paymentMethod === method)
       .filter(t => accountUsed === 'all' || t.accountUsedId === accountUsed)
-      .filter(t => status === 'all' || t.status === status)
-      .filter(t => {
-        if (!date?.from || !t.transactionDate) return true;
-        const from = date.from;
-        const to = date.to || from; // If no 'to' date, use 'from' for single day
-        return t.transactionDate >= from && t.transactionDate <= new Date(to.getTime() + 86400000); // include the whole 'to' day
-      });
-  }, [search, transactionsWithNames, date, type, method, accountUsed, status]);
+      .filter(t => status === 'all' || t.status === status);
+      // Date filtering is now done at fetch time
+  }, [search, transactionsWithNames, type, method, accountUsed, status]);
 
   const summary = React.useMemo(() => {
     const totalIn = filteredTransactions
@@ -295,6 +371,7 @@ export default function CashTransactionTable() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
+            disabled={isFetching}
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         </div>
@@ -315,6 +392,7 @@ export default function CashTransactionTable() {
                   <Button
                     id="date"
                     variant={"outline"}
+                    disabled={isFetching}
                     className={cn(
                       "justify-start text-left font-normal w-full col-span-2 md:col-span-1",
                       !date && "text-muted-foreground"
@@ -401,7 +479,11 @@ export default function CashTransactionTable() {
 
 
       <Card>
-        {viewMode === 'grid' ? (
+        {isFetching ? (
+            <div className="space-y-2 p-4">
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+            </div>
+        ) : viewMode === 'grid' ? (
            <div>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map(t => {
