@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
@@ -62,6 +63,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   const [extractionResult, setExtractionResult] = useState<string | null>(null);
   const { addToCart, setCartCustomer } = useCart();
   const hasProcessedSharedText = useRef(false);
+  const { user } = useAuth();
 
   const transactionDate = transaction?.dateSent || transaction?.dateReceived;
   const formattedDate = transactionDate ? new Date(transactionDate.getTime() - (transactionDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
@@ -190,6 +192,10 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
 
 
   const onSave = (data: CashTransactionFormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -197,6 +203,9 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
         Object.entries(dataToSubmit).forEach(([key, value]) => {
             formData.append(key, String(value));
         });
+
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         await addCashTransactionAction(formData);
 
@@ -214,6 +223,10 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   };
   
   const onAddToOrder = (data: CashTransactionFormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
@@ -225,6 +238,9 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             formData.append(key, String(value));
           }
         });
+
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         const newTransaction = await addCashTransactionAction(formData);
 
@@ -263,6 +279,10 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
 
   const onUpdate = (data: CashTransactionFormValues) => {
     if (!transaction) return;
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
         try {
             const formData = new FormData();
@@ -272,6 +292,10 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
                     formData.append(key, String(value));
                 }
             });
+            
+            formData.append('userId', user.uid);
+            formData.append('userName', user.displayName || user.email!);
+
             await updateCashTransactionAction(transaction.id, formData);
             toast({ title: 'Success', description: 'Transaction updated successfully.' });
             router.push('/admin/cashio');
