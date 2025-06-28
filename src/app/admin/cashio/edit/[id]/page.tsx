@@ -71,7 +71,7 @@ export default function EditCashTransactionPage() {
       <Card className="mt-4 border-destructive">
         <CardHeader>
           <CardTitle className="text-destructive">An Error Occurred</CardTitle>
-        </Header>
+        </CardHeader>
         <CardContent>
           <p>{error}</p>
         </CardContent>
