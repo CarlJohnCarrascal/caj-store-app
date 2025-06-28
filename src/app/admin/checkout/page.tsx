@@ -36,6 +36,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -54,6 +55,7 @@ export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart, cartCustomer, setCartCustomer } = useCart();
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('unknown');
@@ -126,6 +128,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to process an order.' });
+        return;
+    }
+
     const isUnknownCustomer = selectedCustomerId === 'unknown';
     const customerForAction = isUnknownCustomer
       ? { id: 'unknown', name: 'Unknown Customer', balance: 0 }
@@ -149,6 +156,8 @@ export default function CheckoutPage() {
           applyCustomerBalance: isUnknownCustomer ? false : applyBalance,
           initialCustomerBalance: customerForAction.balance,
           settlementType,
+          userId: user.uid,
+          userName: user.displayName || user.email!,
         });
 
         toast({
