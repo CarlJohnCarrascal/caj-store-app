@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { updateUserRoleAction } from '@/lib/actions';
+import { updateUserAuthorizationAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -46,7 +46,7 @@ export default function UserList() {
     return () => unsubscribe();
   }, []);
 
-  const handleRoleChange = (userId: string, newRole: 'admin' | 'user') => {
+  const handleAuthorizationChange = (userId: string, authorized: boolean) => {
     if (!appUser) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not identify the current user.' });
         return;
@@ -54,10 +54,10 @@ export default function UserList() {
 
     startTransition(async () => {
         try {
-            await updateUserRoleAction(userId, newRole, { userId: appUser.id, userName: appUser.name });
-            toast({ title: 'Success', description: 'User role updated successfully.' });
+            await updateUserAuthorizationAction(userId, authorized, { userId: appUser.id, userName: appUser.name });
+            toast({ title: 'Success', description: 'User authorization updated successfully.' });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update role.' });
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update authorization.' });
         }
     });
   };
@@ -113,7 +113,7 @@ export default function UserList() {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,24 +130,24 @@ export default function UserList() {
                 </TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role}</Badge>
+                    <Badge variant={user.authorized ? 'default' : 'secondary'}>{user.authorized ? 'Authorized' : 'Pending'}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
                     {user.id === appUser?.id ? (
                         <Badge variant="outline">This is you</Badge>
-                    ) : user.role === 'admin' ? (
+                    ) : user.authorized ? (
                         <Button
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
-                            onClick={() => handleRoleChange(user.id, 'user')}
+                            onClick={() => handleAuthorizationChange(user.id, false)}
                             disabled={isPending}
                         >
-                            Revoke Admin
+                            Revoke Access
                         </Button>
                     ) : (
                         <Button
                             size="sm"
-                            onClick={() => handleRoleChange(user.id, 'admin')}
+                            onClick={() => handleAuthorizationChange(user.id, true)}
                             disabled={isPending}
                         >
                             Authorize

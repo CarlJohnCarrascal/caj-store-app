@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, updateUserRole, getUserById } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 
 const productSchema = z.object({
@@ -94,6 +94,49 @@ export async function deleteProductAction(id: string, user: { userId: string; us
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
   revalidatePath('/admin/activity-logs');
+}
+
+export async function createUserProfileAction(userData: Omit<AppUser, 'authorized'>) {
+    await createUserProfile(userData);
+    await logActivity({
+        type: 'User',
+        action: 'Created',
+        details: `New user account created for ${userData.name} (${userData.email}).`,
+        targetId: userData.id,
+        userId: userData.id, // The user created themselves
+        userName: userData.name
+    });
+    revalidatePath('/admin/users');
+    revalidatePath('/admin/activity-logs');
+}
+
+
+export async function updateUserAuthorizationAction(userId: string, authorized: boolean, updatedBy: { userId: string, userName: string }) {
+    // Security check: ensure the user performing the action is an admin.
+    const actor = await getUserById(updatedBy.userId);
+    if (!actor || !actor.authorized) {
+        throw new Error('Unauthorized: Only authorized users can change user status.');
+    }
+
+    // Prevent an admin from de-authorizing themselves
+    if (userId === updatedBy.userId && !authorized) {
+        throw new Error('Admins cannot revoke their own access.');
+    }
+
+    await updateUserAuthorization(userId, authorized, updatedBy);
+
+    const targetUser = await getUserById(userId);
+
+    await logActivity({
+        type: 'User',
+        action: 'Authorization',
+        details: `Access for ${targetUser?.name || 'user'} was ${authorized ? 'granted' : 'revoked'}.`,
+        targetId: userId,
+        ...updatedBy,
+    });
+    
+    revalidatePath('/admin/users');
+    revalidatePath('/admin/activity-logs');
 }
 
 const processOrderSchema = z.object({
@@ -272,35 +315,6 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
     revalidatePath('/admin/customers');
     revalidatePath('/admin/activity-logs');
 }
-
-export async function updateUserRoleAction(userId: string, role: 'admin' | 'user', updatedBy: { userId: string, userName: string }) {
-    // Security check: ensure the user performing the action is an admin.
-    const actor = await getUserById(updatedBy.userId);
-    if (!actor || actor.role !== 'admin') {
-        throw new Error('Unauthorized: Only admins can change user roles.');
-    }
-
-    // Prevent an admin from demoting themselves
-    if (userId === updatedBy.userId && role === 'user') {
-        throw new Error('Admins cannot demote themselves.');
-    }
-
-    await updateUserRole(userId, role, updatedBy);
-
-    const targetUser = await getUserById(userId);
-
-    await logActivity({
-        type: 'User',
-        action: 'Updated',
-        details: `Role for ${targetUser?.name || 'user'} was changed to "${role}".`,
-        targetId: userId,
-        ...updatedBy,
-    });
-    
-    revalidatePath('/admin/users');
-    revalidatePath('/admin/activity-logs');
-}
-
 
 const accountSchema = z.object({
   accountName: z.string().min(1, 'Account name is required'),

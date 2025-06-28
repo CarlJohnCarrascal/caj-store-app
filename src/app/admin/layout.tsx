@@ -14,7 +14,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
-  const { user, appUser, loading } = useAuth();
+  const { user, appUser, loading, isAuthorized } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -24,16 +24,15 @@ export default function AdminLayout({
       } else if (!appUser) {
         // Logged in with Firebase Auth, but no profile in DB yet
         router.push('/auth/complete-profile');
-      } else if (appUser.role !== 'admin') {
+      } else if (!isAuthorized) {
         router.push('/unauthorized');
       }
     }
-  }, [authEnabled, loading, user, appUser, router]);
+  }, [authEnabled, loading, user, appUser, isAuthorized, router]);
 
   const firebaseConfigMissing = !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-  // The content is only shown if authorized, otherwise a skeleton is shown while redirecting.
-  const showContent = !authEnabled || (!loading && user && appUser && appUser.role === 'admin');
+  const showContent = !authEnabled || (!loading && user && isAuthorized);
 
   return (
     <div className="min-h-screen flex flex-col min-w-[450px]">

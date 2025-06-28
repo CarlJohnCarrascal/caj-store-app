@@ -12,7 +12,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  isUserAdmin: boolean;
+  isAuthorized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,10 +52,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAppUser(null);
   };
 
-  const isUserAdmin = !!appUser && appUser.role === 'admin';
+  const isAuthorized = !!appUser?.authorized;
 
   return (
-    <AuthContext.Provider value={{ user, appUser, loading, signIn, signOut, isUserAdmin }}>
+    <AuthContext.Provider value={{ user, appUser, loading, signIn, signOut, isAuthorized }}>
       {children}
     </AuthContext.Provider>
   );

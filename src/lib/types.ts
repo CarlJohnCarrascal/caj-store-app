@@ -10,7 +10,7 @@ export interface AppUser {
   id: string; // Firebase UID
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  authorized: boolean;
   updatedBy?: ChangeTracker;
 }
 
@@ -112,7 +112,7 @@ export interface Order {
 export interface ActivityLog {
   id: string;
   type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User';
-  action: 'Created' | 'Updated' | 'Deleted';
+  action: 'Created' | 'Updated' | 'Deleted' | 'Authorization';
   timestamp: Date;
   details: string;
   targetId: string;

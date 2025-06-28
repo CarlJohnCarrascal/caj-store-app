@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { createUserProfile } from '@/lib/data';
+import { createUserProfileAction } from '@/lib/actions';
 import { updateProfile } from 'firebase/auth';
 
 export default function CompleteProfileForm() {
@@ -26,7 +26,7 @@ export default function CompleteProfileForm() {
         router.replace('/signin');
       } else if (appUser) {
         // User profile already exists, redirect to their destination
-        router.replace(appUser.role === 'admin' ? '/admin' : '/unauthorized');
+        router.replace(appUser.authorized ? '/admin' : '/unauthorized');
       }
     }
   }, [user, appUser, loading, router]);
@@ -48,7 +48,7 @@ export default function CompleteProfileForm() {
         // Update Firebase Auth profile
         await updateProfile(user, { displayName: name });
         // Create our own app user profile in the database
-        await createUserProfile({
+        await createUserProfileAction({
             id: user.uid,
             name: name,
             email: user.email!,
