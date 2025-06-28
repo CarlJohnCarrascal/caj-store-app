@@ -18,6 +18,7 @@ import { generateProductDescription } from '@/ai/flows/generate-product-descript
 import { generateProductImage } from '@/ai/flows/generate-product-image';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -42,6 +43,7 @@ interface ProductFormProps {
 export default function ProductForm({ product }: ProductFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -66,6 +68,10 @@ export default function ProductForm({ product }: ProductFormProps) {
   });
 
   const onSubmit = (data: ProductFormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -74,6 +80,9 @@ export default function ProductForm({ product }: ProductFormProps) {
             formData.append(key, String(value));
           }
         });
+        
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         if (product) {
           await updateProductAction(product.id, formData);

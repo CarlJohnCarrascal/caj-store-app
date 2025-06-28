@@ -111,6 +111,9 @@ export default function Header() {
                                 <Link href="/admin/customers" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Users className="h-5 w-5 text-muted-foreground" /><span>Customers</span>
                                 </Link>
+                                <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <UserIcon className="h-5 w-5 text-muted-foreground" /><span>Users</span>
+                                </Link>
                                 <Link href="/admin/collections" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Library className="h-5 w-5 text-muted-foreground" /><span>Collections</span>
                                 </Link>
@@ -175,6 +178,7 @@ export default function Header() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/users" className="flex items-center gap-2 cursor-pointer"><UserIcon className="h-4 w-4" /> Users</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/collections" className="flex items-center gap-2 cursor-pointer"><Library className="h-4 w-4" /> Collections</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link href="/admin/activity-logs" className="flex items-center gap-2 cursor-pointer"><History className="h-4 w-4" /> Activity Logs</Link></DropdownMenuItem>
@@ -209,14 +213,14 @@ export default function Header() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                        <Avatar className="h-8 w-8">
-                         <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+                         <AvatarFallback>{user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.[0].toUpperCase()}</AvatarFallback>
                        </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">Signed In</p>
+                        <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
                         <p className="text-xs leading-none text-muted-foreground truncate">
                           {user.email}
                         </p>

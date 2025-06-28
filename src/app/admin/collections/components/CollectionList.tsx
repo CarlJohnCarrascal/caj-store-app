@@ -25,6 +25,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -47,6 +48,7 @@ export default function CollectionList() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('all');
+  const { user } = useAuth();
 
   useEffect(() => {
     const collectionsRef = ref(db, 'collections');
@@ -109,9 +111,13 @@ export default function CollectionList() {
   };
 
   const handleDelete = (id: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete collections.' });
+        return;
+    }
     startTransition(async () => {
       try {
-        await deleteCollectionAction(id);
+        await deleteCollectionAction(id, { userId: user.uid, userName: user.displayName || user.email! });
         toast({ title: 'Success', description: 'Collection deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete collection.' });

@@ -32,6 +32,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/use-auth';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -55,6 +56,7 @@ export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [date, setDate] = useState<DateRange | undefined>();
+  const { user } = useAuth();
   
   useEffect(() => {
     const expensesRef = ref(db, 'expenses');
@@ -62,7 +64,7 @@ export default function ExpenseList() {
       const expenseList = snapshotToArray<Expense>(snapshot).map(e => ({
         ...e,
         date: new Date(e.date),
-        createdAt: new Date(e.createdAt),
+        createdAt: e.createdAt,
       }));
       setExpenses(expenseList);
       setIsLoading(false);
@@ -97,9 +99,13 @@ export default function ExpenseList() {
   }, [filteredExpenses]);
 
   const handleDelete = (id: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete expenses.' });
+        return;
+    }
     startTransition(async () => {
       try {
-        await deleteExpenseAction(id);
+        await deleteExpenseAction(id, { userId: user.uid, userName: user.displayName || user.email! });
         toast({ title: 'Success', description: 'Expense deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete expense.' });

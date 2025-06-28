@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +17,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -37,6 +37,7 @@ interface CollectionFormProps {
 export default function CollectionForm({ collection, customers: initialCustomers, collectionNames }: CollectionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
@@ -56,6 +57,10 @@ export default function CollectionForm({ collection, customers: initialCustomers
   });
 
   const onSubmit = (data: CollectionFormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -64,6 +69,9 @@ export default function CollectionForm({ collection, customers: initialCustomers
             formData.append(key, String(value));
           }
         });
+
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         if (collection) {
           await updateCollectionAction(collection.id, formData);

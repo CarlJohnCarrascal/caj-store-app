@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -50,6 +51,7 @@ export default function ProductTable() {
   const [isPending, startTransition] = useTransition();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const productsRef = ref(db, 'products');
@@ -63,9 +65,13 @@ export default function ProductTable() {
   }, []);
 
   const handleDelete = (id: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete products.' });
+        return;
+    }
     startTransition(async () => {
       try {
-        await deleteProductAction(id);
+        await deleteProductAction(id, { userId: user.uid, userName: user.displayName || user.email! });
         toast({ title: 'Success', description: 'Product deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete product.' });

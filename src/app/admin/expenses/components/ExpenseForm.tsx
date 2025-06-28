@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -38,6 +39,7 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { user } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -56,6 +58,10 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
   });
 
   const onSubmit = (data: FormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -64,6 +70,9 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
             formData.append(key, String(value));
           }
         });
+
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         if (expense) {
           await updateExpenseAction(expense.id, formData);

@@ -22,6 +22,7 @@ import { deleteAccountAction } from '@/lib/actions';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -41,6 +42,7 @@ export default function AccountList() {
   const [isPending, startTransition] = useTransition();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   
   useEffect(() => {
     const accountsRef = ref(db, 'accounts');
@@ -54,9 +56,13 @@ export default function AccountList() {
   }, []);
 
   const handleDelete = (id: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete accounts.' });
+        return;
+    }
     startTransition(async () => {
       try {
-        await deleteAccountAction(id);
+        await deleteAccountAction(id, { userId: user.uid, userName: user.displayName || user.email! });
         toast({ title: 'Success', description: 'Account deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete account.' });

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addCustomerAction } from '@/lib/actions';
 import { useTransition } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -34,6 +34,7 @@ interface CustomerFormProps {
 export default function CustomerForm({ customer, onSuccess, onCancel }: CustomerFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<CustomerFormValues>({
@@ -49,6 +50,10 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
   });
 
   const onSubmit = (data: CustomerFormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -57,6 +62,9 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
             formData.append(key, String(value));
           }
         });
+        
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         if (customer) {
           // TODO: Implement update customer action

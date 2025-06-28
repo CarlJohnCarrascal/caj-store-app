@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addAccountAction } from '@/lib/actions';
 import { useTransition } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   accountName: z.string().min(1, 'Account name is required'),
@@ -29,6 +30,7 @@ interface AccountFormProps {
 export default function AccountForm({ account }: AccountFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<AccountFormValues>({
@@ -42,12 +44,19 @@ export default function AccountForm({ account }: AccountFormProps) {
   });
 
   const onSubmit = (data: AccountFormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
         Object.entries(data).forEach(([key, value]) => {
             formData.append(key, String(value));
         });
+        
+        formData.append('userId', user.uid);
+        formData.append('userName', user.displayName || user.email!);
 
         if (account) {
           // TODO: Implement update account action

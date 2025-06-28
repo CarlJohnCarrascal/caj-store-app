@@ -1,5 +1,16 @@
-
 'use server';
+
+export interface ChangeTracker {
+  userId: string;
+  userName: string;
+  timestamp: string; // ISO string
+}
+
+export interface AppUser {
+  id: string; // Firebase UID
+  name: string;
+  email: string;
+}
 
 export interface Product {
   id: string;
@@ -15,6 +26,8 @@ export interface Product {
   image?: string;
   unit: 'each' | 'kg';
   originalTransactionId?: string;
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
 }
 
 export interface CartItem extends Product {
@@ -22,11 +35,13 @@ export interface CartItem extends Product {
 }
 
 export interface Account {
-  id:string;
+  id: string;
   accountName: string;
   accountNumber: string;
   bankName: string;
   balance: number;
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
 }
 
 export interface Customer {
@@ -37,6 +52,8 @@ export interface Customer {
   address: string;
   location: string;
   balance: number;
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
 }
 
 export interface CashTransaction {
@@ -58,6 +75,8 @@ export interface CashTransaction {
   status: 'Delivered' | 'Available' | 'Claimed';
   createdAt: Date;
   updatedAt: Date;
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
 }
 
 export interface Collection {
@@ -67,6 +86,8 @@ export interface Collection {
   customerId: string;
   customerName?: string; // For display
   note?: string;
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
 }
 
 export interface Order {
@@ -83,15 +104,18 @@ export interface Order {
   initialCustomerBalance?: number;
   newCustomerBalance?: number;
   applyCustomerBalance?: boolean;
+  createdBy?: ChangeTracker;
 }
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User';
   action: 'Created' | 'Updated' | 'Deleted';
   timestamp: Date;
   details: string;
   targetId: string;
+  userId: string;
+  userName: string;
 }
 
 export interface Expense {
@@ -102,4 +126,6 @@ export interface Expense {
   date: string; // ISO string
   notes?: string;
   createdAt: string; // ISO string
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
 }
