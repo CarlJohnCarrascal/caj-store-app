@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
@@ -7,8 +8,14 @@ import { ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function UnauthorizedPage() {
-    const { signOut, user } = useAuth();
+    const { signOut, user, isAuthorized } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (isAuthorized) {
+            router.push('/admin');
+        }
+    }, [isAuthorized, router]);
 
     const handleSignOut = async () => {
         await signOut();

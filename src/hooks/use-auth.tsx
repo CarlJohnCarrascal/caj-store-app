@@ -2,9 +2,9 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { User, onAuthStateChanged, sendSignInLinkToEmail, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { AppUser } from '@/lib/types';
-import { getUserById } from '@/lib/data';
 
 interface AuthContextType {
   user: User | null;
@@ -23,19 +23,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let appUserUnsubscribe: Unsubscribe | null = null;
+
+    const authStateUnsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (appUserUnsubscribe) {
+        appUserUnsubscribe();
+        appUserUnsubscribe = null;
+      }
+      
       if (user) {
         setUser(user);
-        const profile = await getUserById(user.uid);
-        setAppUser(profile);
+        const userRef = ref(db, `users/${user.uid}`);
+        appUserUnsubscribe = onValue(userRef, (snapshot) => {
+          if (snapshot.exists()) {
+            setAppUser({ id: user.uid, ...snapshot.val() });
+          } else {
+            setAppUser(null);
+          }
+          setLoading(false);
+        });
       } else {
         setUser(null);
         setAppUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      authStateUnsubscribe();
+      if (appUserUnsubscribe) {
+        appUserUnsubscribe();
+      }
+    };
   }, []);
   
   const signIn = async (email: string) => {
