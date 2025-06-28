@@ -46,6 +46,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -90,6 +91,7 @@ export default function CashTransactionTable() {
   const [selectedTransaction, setSelectedTransaction] = React.useState<any | null>(null);
   const { toast } = useToast();
   const { addToCart, setCartCustomer } = useCart();
+  const { user, loading: authLoading } = useAuth();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
@@ -168,10 +170,10 @@ export default function CashTransactionTable() {
   }, []);
 
   React.useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !authLoading && user) {
         fetchTransactionsByDate(date);
     }
-  }, [date, isLoading, fetchTransactionsByDate]);
+  }, [date, isLoading, fetchTransactionsByDate, authLoading, user]);
 
   React.useEffect(() => {
     if (!debouncedSearch || debouncedSearch.length < 5) return;
@@ -331,7 +333,9 @@ export default function CashTransactionTable() {
     setPage(1);
   }, [itemsPerPage, search, date, type, method, accountUsed, status]);
 
-  if (isLoading) {
+  const overallLoading = authLoading || isLoading;
+
+  if (overallLoading) {
     return (
        <div className="space-y-4">
           <Skeleton className="h-16 w-full" />
