@@ -11,9 +11,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { updateUserAuthorizationAction } from '@/lib/actions';
+import { updateUserAuthorizationAction, updateUserRoleAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { cn } from '@/lib/utils';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -61,6 +62,22 @@ export default function UserList() {
         }
     });
   };
+  
+  const handleRoleChange = (userId: string, role: 'admin' | 'user') => {
+    if (!appUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not identify the current user.' });
+        return;
+    }
+
+    startTransition(async () => {
+        try {
+            await updateUserRoleAction(userId, role, { userId: appUser.id, userName: appUser.name });
+            toast({ title: 'Success', description: 'User role updated successfully.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update role.' });
+        }
+    });
+  };
 
   if (isLoading) {
     return (
@@ -71,6 +88,8 @@ export default function UserList() {
                         <TableRow>
                             <TableHead><Skeleton className="h-5 w-48" /></TableHead>
                             <TableHead><Skeleton className="h-5 w-64" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-24" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-24" /></TableHead>
                             <TableHead className="text-right"><Skeleton className="h-5 w-24" /></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -86,6 +105,8 @@ export default function UserList() {
                                     </div>
                                 </TableCell>
                                 <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                                 <TableCell><Skeleton className="h-9 w-28 ml-auto" /></TableCell>
                            </TableRow>
                         ))}
@@ -114,6 +135,7 @@ export default function UserList() {
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Role</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -132,26 +154,52 @@ export default function UserList() {
                 <TableCell>
                     <Badge variant={user.authorized ? 'default' : 'secondary'}>{user.authorized ? 'Authorized' : 'Pending'}</Badge>
                 </TableCell>
+                <TableCell>
+                    <Badge variant="outline" className={cn(user.role === 'admin' && 'border-primary text-primary')}>{user.role}</Badge>
+                </TableCell>
                 <TableCell className="text-right">
                     {user.id === appUser?.id ? (
                         <Badge variant="outline">This is you</Badge>
-                    ) : user.authorized ? (
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleAuthorizationChange(user.id, false)}
-                            disabled={isPending}
-                        >
-                            Revoke Access
-                        </Button>
                     ) : (
-                        <Button
-                            size="sm"
-                            onClick={() => handleAuthorizationChange(user.id, true)}
-                            disabled={isPending}
-                        >
-                            Authorize
-                        </Button>
+                        <div className="flex gap-2 justify-end">
+                            {user.authorized ? (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleAuthorizationChange(user.id, false)}
+                                    disabled={isPending}
+                                >
+                                    Revoke Access
+                                </Button>
+                            ) : (
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleAuthorizationChange(user.id, true)}
+                                    disabled={isPending}
+                                >
+                                    Authorize
+                                </Button>
+                            )}
+                             {user.role === 'admin' ? (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleRoleChange(user.id, 'user')}
+                                    disabled={isPending}
+                                >
+                                    Make User
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleRoleChange(user.id, 'admin')}
+                                    disabled={isPending}
+                                >
+                                    Make Admin
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </TableCell>
               </TableRow>

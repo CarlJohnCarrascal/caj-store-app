@@ -23,12 +23,13 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 // ==================
 // User Functions
 // ==================
-export async function createUserProfile(user: Omit<AppUser, 'authorized'>): Promise<void> {
+export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role'>): Promise<void> {
   const userRef = ref(db, `users/${user.id}`);
   await set(userRef, {
     name: user.name,
     email: user.email,
     authorized: false, // New users are not authorized by default
+    role: 'user', // New users are assigned 'user' role by default
   });
 }
 
@@ -46,6 +47,19 @@ export async function updateUserAuthorization(userId: string, authorized: boolea
     if (snapshot.exists()) {
         await update(userRef, {
             authorized: authorized,
+            updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+        });
+    } else {
+        throw new Error('User not found');
+    }
+}
+
+export async function updateUserRole(userId: string, role: 'admin' | 'user', updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
+    const userRef = ref(db, `users/${userId}`);
+    const snapshot = await get(userRef);
+    if (snapshot.exists()) {
+        await update(userRef, {
+            role: role,
             updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
         });
     } else {

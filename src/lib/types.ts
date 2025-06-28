@@ -11,6 +11,7 @@ export interface AppUser {
   name: string;
   email: string;
   authorized: boolean;
+  role: 'admin' | 'user';
   updatedBy?: ChangeTracker;
 }
 
@@ -112,7 +113,7 @@ export interface Order {
 export interface ActivityLog {
   id: string;
   type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User';
-  action: 'Created' | 'Updated' | 'Deleted' | 'Authorization';
+  action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange';
   timestamp: Date;
   details: string;
   targetId: string;

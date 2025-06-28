@@ -36,7 +36,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
-  const { user, signOut, isAuthorized } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
 
   return (
     <>
@@ -111,7 +111,7 @@ export default function Header() {
                                 <Link href="/admin/customers" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Users className="h-5 w-5 text-muted-foreground" /><span>Customers</span>
                                 </Link>
-                                {isAuthorized && (
+                                {isAdmin && (
                                     <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                         <UserIcon className="h-5 w-5 text-muted-foreground" /><span>Users</span>
                                     </Link>
@@ -180,7 +180,7 @@ export default function Header() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
-                    {isAuthorized && (
+                    {isAdmin && (
                         <DropdownMenuItem asChild><Link href="/admin/users" className="flex items-center gap-2 cursor-pointer"><UserIcon className="h-4 w-4" /> Users</Link></DropdownMenuItem>
                     )}
                     <DropdownMenuItem asChild><Link href="/admin/collections" className="flex items-center gap-2 cursor-pointer"><Library className="h-4 w-4" /> Collections</Link></DropdownMenuItem>

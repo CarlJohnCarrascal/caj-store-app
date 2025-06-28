@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 
 const productSchema = z.object({
@@ -62,7 +62,7 @@ export async function updateProductAction(id: string, data: FormData) {
     throw new Error('Invalid product data.');
   }
 
-  const product: Product = { id, ...validatedFields.data };
+  const product: Product = { id, ...validatedFields.data, role: 'user' }; // role is required but not on form
   await updateProduct(product, user);
 
   await logActivity({
@@ -96,7 +96,7 @@ export async function deleteProductAction(id: string, user: { userId: string; us
   revalidatePath('/admin/activity-logs');
 }
 
-export async function createUserProfileAction(userData: Omit<AppUser, 'authorized'>) {
+export async function createUserProfileAction(userData: Omit<AppUser, 'authorized' | 'role'>) {
     await createUserProfile(userData);
     await logActivity({
         type: 'User',
@@ -114,13 +114,8 @@ export async function createUserProfileAction(userData: Omit<AppUser, 'authorize
 export async function updateUserAuthorizationAction(userId: string, authorized: boolean, updatedBy: { userId: string, userName: string }) {
     // Security check: ensure the user performing the action is an admin.
     const actor = await getUserById(updatedBy.userId);
-    if (!actor || !actor.authorized) {
-        throw new Error('Unauthorized: Only authorized users can change user status.');
-    }
-
-    // Prevent an admin from de-authorizing themselves
-    if (userId === updatedBy.userId && !authorized) {
-        throw new Error('Admins cannot revoke their own access.');
+    if (!actor || actor.role !== 'admin') {
+        throw new Error('Unauthorized: Only admins can change user authorization.');
     }
 
     await updateUserAuthorization(userId, authorized, updatedBy);
@@ -138,6 +133,33 @@ export async function updateUserAuthorizationAction(userId: string, authorized: 
     revalidatePath('/admin/users');
     revalidatePath('/admin/activity-logs');
 }
+
+export async function updateUserRoleAction(userId: string, role: 'admin' | 'user', updatedBy: { userId: string, userName: string }) {
+    const actor = await getUserById(updatedBy.userId);
+    if (!actor || actor.role !== 'admin') {
+        throw new Error('Unauthorized: Only admins can change user roles.');
+    }
+
+    if (userId === updatedBy.userId && role !== 'admin') {
+        throw new Error('Admins cannot change their own role.');
+    }
+
+    await updateUserRole(userId, role, updatedBy);
+
+    const targetUser = await getUserById(userId);
+
+    await logActivity({
+        type: 'User',
+        action: 'RoleChange',
+        details: `${targetUser?.name || 'user'} was assigned the role: ${role}.`,
+        targetId: userId,
+        ...updatedBy,
+    });
+
+    revalidatePath('/admin/users');
+    revalidatePath('/admin/activity-logs');
+}
+
 
 const processOrderSchema = z.object({
     customerId: z.string(),
