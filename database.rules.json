@@ -1,0 +1,27 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "products": {
+      ".indexOn": ["category", "group"]
+    },
+    "orders": {
+      ".indexOn": "customerId"
+    },
+    "cashTransactions": {
+      ".indexOn": ["createdAt", "reference"]
+    },
+    "expenses": {
+      ".indexOn": "date"
+    },
+    "collections": {
+      ".indexOn": "customerId"
+    },
+    "activityLogs": {
+      ".indexOn": "timestamp"
+    },
+    "users": {
+        ".indexOn": ["role"]
+    }
+  }
+}
