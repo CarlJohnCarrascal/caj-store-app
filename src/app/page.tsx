@@ -22,7 +22,7 @@ export default function WelcomePage() {
                 </p>
                 <Button asChild size="lg">
                     <Link href="/admin">
-                    Go to Dashboard <MoveRight className="ml-2 h-5 w-5" />
+                    Go To Admin <MoveRight className="ml-2 h-5 w-5" />
                     </Link>
                 </Button>
                 </CardContent>
