@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -8,7 +9,8 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { updateUserRoleAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -69,7 +71,7 @@ export default function UserList() {
                         <TableRow>
                             <TableHead><Skeleton className="h-5 w-48" /></TableHead>
                             <TableHead><Skeleton className="h-5 w-64" /></TableHead>
-                            <TableHead><Skeleton className="h-5 w-24" /></TableHead>
+                            <TableHead className="text-right"><Skeleton className="h-5 w-24" /></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -84,7 +86,7 @@ export default function UserList() {
                                     </div>
                                 </TableCell>
                                 <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                                <TableCell><Skeleton className="h-9 w-28" /></TableCell>
+                                <TableCell><Skeleton className="h-9 w-28 ml-auto" /></TableCell>
                            </TableRow>
                         ))}
                     </TableBody>
@@ -112,6 +114,7 @@ export default function UserList() {
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -127,19 +130,29 @@ export default function UserList() {
                 </TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                    <Select
-                        defaultValue={user.role}
-                        onValueChange={(newRole: 'admin' | 'user') => handleRoleChange(user.id, newRole)}
-                        disabled={user.id === appUser?.id || isPending}
-                    >
-                        <SelectTrigger className="w-[120px]">
-                            <SelectValue placeholder="Set role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="user">User</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role}</Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                    {user.id === appUser?.id ? (
+                        <Badge variant="outline">This is you</Badge>
+                    ) : user.role === 'admin' ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRoleChange(user.id, 'user')}
+                            disabled={isPending}
+                        >
+                            Revoke Admin
+                        </Button>
+                    ) : (
+                        <Button
+                            size="sm"
+                            onClick={() => handleRoleChange(user.id, 'admin')}
+                            disabled={isPending}
+                        >
+                            Authorize
+                        </Button>
+                    )}
                 </TableCell>
               </TableRow>
             ))}
