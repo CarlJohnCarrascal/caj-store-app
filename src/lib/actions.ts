@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports } from './data';
-import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order } from './types';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -20,20 +20,32 @@ const productSchema = z.object({
   unit: z.enum(['each', 'kg']),
 });
 
-export async function addProductAction(data: FormData) {
-  const validatedFields = productSchema.safeParse(Object.fromEntries(data.entries()));
+function getUserFromFormData(data: FormData) {
+    const userId = data.get('userId') as string;
+    const userName = data.get('userName') as string;
+    if (!userId || !userName) {
+        throw new Error('User information is missing. You must be logged in.');
+    }
+    return { userId, userName };
+}
 
+export async function addProductAction(data: FormData) {
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
+  
+  const validatedFields = productSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid product data.');
   }
 
-  const newProduct = await addProduct(validatedFields.data);
+  const newProduct = await addProduct(validatedFields.data, user);
   
   await logActivity({
     type: 'Product',
     action: 'Created',
     details: `Product "${newProduct.name}" was created.`,
     targetId: newProduct.id,
+    ...user,
   });
 
   revalidatePath('/admin/products');
@@ -42,20 +54,23 @@ export async function addProductAction(data: FormData) {
 }
 
 export async function updateProductAction(id: string, data: FormData) {
-  const validatedFields = productSchema.safeParse(Object.fromEntries(data.entries()));
-
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
+  
+  const validatedFields = productSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid product data.');
   }
 
   const product: Product = { id, ...validatedFields.data };
-  await updateProduct(product);
+  await updateProduct(product, user);
 
   await logActivity({
       type: 'Product',
       action: 'Updated',
       details: `Product "${product.name}" was updated.`,
       targetId: product.id,
+      ...user,
   });
 
   revalidatePath('/admin/products');
@@ -64,7 +79,7 @@ export async function updateProductAction(id: string, data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteProductAction(id: string) {
+export async function deleteProductAction(id: string, user: { userId: string; userName: string }) {
   const deletedProduct = await deleteProduct(id);
   if (deletedProduct) {
     await logActivity({
@@ -72,6 +87,7 @@ export async function deleteProductAction(id: string) {
         action: 'Deleted',
         details: `Product "${deletedProduct.name}" was deleted.`,
         targetId: id,
+        ...user,
     });
   }
 
@@ -91,6 +107,8 @@ const processOrderSchema = z.object({
     applyCustomerBalance: z.boolean(),
     initialCustomerBalance: z.number(),
     settlementType: z.enum(['pay_order', 'add_to_balance']),
+    userId: z.string(),
+    userName: z.string(),
 });
 
 export async function processOrderAction(orderData: z.infer<typeof processOrderSchema>) {
@@ -111,7 +129,11 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         applyCustomerBalance,
         initialCustomerBalance,
         settlementType,
+        userId,
+        userName,
     } = validatedOrder.data;
+
+    const user = { userId, userName };
 
     for (const item of items) {
         if (item.category === 'CashIO' && item.originalTransactionId) {
@@ -122,6 +144,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                     action: 'Updated',
                     details: `Transaction for "${customerName}" was marked as ${updatedTransaction.status} via checkout.`,
                     targetId: item.originalTransactionId,
+                    ...user
                 });
                 await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
             }
@@ -129,16 +152,8 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     }
 
     const isUnknownCustomer = customerId === 'unknown';
-    
-    // Correctly calculate the total change to the customer's balance.
-    // 1. Balance Used: If applyCustomerBalance is true, this is how much of their credit is used.
     const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
-    
-    // 2. Change to Balance: If settling to balance, this is the amount tendered minus the total. Can be positive (change) or negative (debt).
-    // If just paying, this is 0.
     const changeToBalance = settlementType === 'add_to_balance' ? (amountTendered - total) : 0;
-    
-    // 3. Total Balance Update: The net effect on the customer's balance.
     const totalBalanceUpdate = changeToBalance - balanceUsed;
     
     const orderPayload: Omit<Order, 'id'> = {
@@ -160,33 +175,29 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         orderPayload.newCustomerBalance = newCustomerBalance;
     }
 
+    const newOrder = await addOrder(orderPayload, user);
 
-    const newOrder = await addOrder(orderPayload);
-
-    // Log the order creation
     await logActivity({
         type: 'Order',
         action: 'Created',
         details: `New order placed for ${customerName} for ₱${total.toFixed(2)}.`,
         targetId: newOrder.id,
+        ...user,
     });
-    console.log("added Order", newOrder)
+    
     await updateSalesReports(newOrder);
-
-    // This will now handle both known and unknown customers and pass the total.
     const orderValueForReport = Math.abs(total);
     await updateCustomerReports('order', customerId, orderValueForReport);
 
-    if (!isUnknownCustomer) {
-        if (totalBalanceUpdate !== 0) {
-            await updateCustomerBalance(customerId, totalBalanceUpdate);
-            await logActivity({
-                type: 'Customer',
-                action: 'Updated',
-                details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
-                targetId: customerId,
-            });
-        }
+    if (!isUnknownCustomer && totalBalanceUpdate !== 0) {
+        await updateCustomerBalance(customerId, totalBalanceUpdate);
+        await logActivity({
+            type: 'Customer',
+            action: 'Updated',
+            details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
+            targetId: customerId,
+            ...user,
+        });
     }
     
     revalidatePath('/admin/activity-logs');
@@ -208,18 +219,22 @@ const customerSchema = z.object({
 
 
 export async function addCustomerAction(data: FormData): Promise<Customer> {
-  const validatedFields = customerSchema.safeParse(Object.fromEntries(data.entries()));
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
+
+  const validatedFields = customerSchema.safeParse(rawData);
 
   if (!validatedFields.success) {
     throw new Error('Invalid customer data.');
   }
 
-  const newCustomer = await addCustomer(validatedFields.data as Omit<Customer, 'id'>);
+  const newCustomer = await addCustomer(validatedFields.data as Omit<Customer, 'id'>, user);
   await logActivity({
     type: 'Customer',
     action: 'Created',
     details: `Customer "${newCustomer.name}" was added.`,
     targetId: newCustomer.id,
+    ...user,
   });
   
   await updateCustomerReports('new_customer', newCustomer.id);
@@ -229,17 +244,15 @@ export async function addCustomerAction(data: FormData): Promise<Customer> {
   return newCustomer;
 }
 
-export async function updateCustomerBalanceAction(customerId: string, amount: number) {
+export async function updateCustomerBalanceAction(customerId: string, amount: number, user: { userId: string, userName: string }) {
     if (!customerId || customerId === 'unknown') {
         throw new Error('Cannot update balance for an unknown customer.');
     }
-    
     if (typeof amount !== 'number' || isNaN(amount) || amount === 0) {
         throw new Error('Invalid amount provided.');
     }
 
     const updatedCustomer = await updateCustomerBalance(customerId, amount);
-
     if (!updatedCustomer) {
         throw new Error('Customer not found.');
     }
@@ -252,6 +265,7 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
         action: 'Updated',
         details: `₱${absAmount} was ${actionType} ${updatedCustomer.name}'s balance.`,
         targetId: customerId,
+        ...user,
     });
 
     revalidatePath(`/admin/customers/${customerId}`);
@@ -267,18 +281,21 @@ const accountSchema = z.object({
 });
 
 export async function addAccountAction(data: FormData) {
-  const validatedFields = accountSchema.safeParse(Object.fromEntries(data.entries()));
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
 
+  const validatedFields = accountSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid account data.');
   }
 
-  const newAccount = await addAccount(validatedFields.data as Omit<Account, 'id'>);
+  const newAccount = await addAccount(validatedFields.data as Omit<Account, 'id'>, user);
   await logActivity({
       type: 'Account',
       action: 'Created',
       details: `Account "${newAccount.accountName}" was created.`,
       targetId: newAccount.id,
+      ...user,
   });
 
   revalidatePath('/admin/accounts');
@@ -286,7 +303,7 @@ export async function addAccountAction(data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteAccountAction(id: string) {
+export async function deleteAccountAction(id: string, user: { userId: string, userName: string }) {
     const deletedAccount = await deleteAccount(id);
     if(deletedAccount) {
         await logActivity({
@@ -294,6 +311,7 @@ export async function deleteAccountAction(id: string) {
             action: 'Deleted',
             details: `Account "${deletedAccount.accountName}" was deleted.`,
             targetId: id,
+            ...user,
         });
     }
 
@@ -317,8 +335,10 @@ const cashTransactionSchema = z.object({
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
-  const validatedFields = cashTransactionSchema.safeParse(Object.fromEntries(data.entries()));
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
 
+  const validatedFields = cashTransactionSchema.safeParse(rawData);
   if (!validatedFields.success) {
     console.error(validatedFields.error.flatten().fieldErrors);
     throw new Error('Invalid cash transaction data.');
@@ -329,13 +349,14 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
     throw new Error('DUPLICATE_REFERENCE');
   }
 
-  const newTransaction = await addCashTransaction(validatedFields.data);
+  const newTransaction = await addCashTransaction(validatedFields.data, user);
 
   await logActivity({
     type: 'CashIO',
     action: 'Created',
     details: `${newTransaction.transactionType} of ₱${newTransaction.amount.toFixed(2)} for "${validatedFields.data.accountName}" was recorded.`,
     targetId: newTransaction.id,
+    ...user,
   });
   
   await updateCashIOReport(newTransaction, 'allTransactions');
@@ -348,20 +369,23 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
 }
 
 export async function updateCashTransactionAction(id: string, data: FormData) {
-  const validatedFields = cashTransactionSchema.safeParse(Object.fromEntries(data.entries()));
-
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
+  
+  const validatedFields = cashTransactionSchema.safeParse(rawData);
   if (!validatedFields.success) {
     console.error(validatedFields.error.flatten().fieldErrors);
     throw new Error('Invalid cash transaction data.');
   }
 
-  const updatedTransaction = await updateCashTransaction(id, validatedFields.data);
+  const updatedTransaction = await updateCashTransaction(id, validatedFields.data, user);
 
   await logActivity({
     type: 'CashIO',
     action: 'Updated',
     details: `Transaction for "${updatedTransaction.accountName}" was updated.`,
     targetId: updatedTransaction.id,
+    ...user,
   });
 
   revalidatePath('/admin/cashio');
@@ -377,18 +401,21 @@ const collectionSchema = z.object({
 });
 
 export async function addCollectionAction(data: FormData) {
-    const validatedFields = collectionSchema.safeParse(Object.fromEntries(data.entries()));
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
 
+    const validatedFields = collectionSchema.safeParse(rawData);
     if (!validatedFields.success) {
         throw new Error('Invalid collection data.');
     }
 
-    const newCollection = await addCollection(validatedFields.data);
+    const newCollection = await addCollection(validatedFields.data, user);
     await logActivity({
         type: 'Collection',
         action: 'Created',
         details: `Collection "${newCollection.name}" was created.`,
         targetId: newCollection.id,
+        ...user,
     });
     
     revalidatePath('/admin/collections');
@@ -396,18 +423,21 @@ export async function addCollectionAction(data: FormData) {
 }
 
 export async function updateCollectionAction(id: string, data: FormData) {
-    const validatedFields = collectionSchema.safeParse(Object.fromEntries(data.entries()));
-
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
+    
+    const validatedFields = collectionSchema.safeParse(rawData);
     if (!validatedFields.success) {
         throw new Error('Invalid collection data.');
     }
 
-    await updateCollection({ id, ...validatedFields.data });
+    await updateCollection({ id, ...validatedFields.data }, user);
     await logActivity({
         type: 'Collection',
         action: 'Updated',
         details: `Collection "${validatedFields.data.name}" was updated.`,
         targetId: id,
+        ...user,
     });
 
     revalidatePath('/admin/collections');
@@ -415,7 +445,7 @@ export async function updateCollectionAction(id: string, data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteCollectionAction(id: string) {
+export async function deleteCollectionAction(id: string, user: { userId: string, userName: string }) {
     const deletedCollection = await deleteCollection(id);
     if (deletedCollection) {
         await logActivity({
@@ -423,6 +453,7 @@ export async function deleteCollectionAction(id: string) {
             action: 'Deleted',
             details: `Collection "${deletedCollection.name}" was deleted.`,
             targetId: id,
+            ...user,
         });
     }
 
@@ -439,19 +470,22 @@ const expenseSchema = z.object({
 });
 
 export async function addExpenseAction(data: FormData) {
-  const validatedFields = expenseSchema.safeParse(Object.fromEntries(data.entries()));
-
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
+  
+  const validatedFields = expenseSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid expense data.');
   }
 
-  const newExpense = await addExpense(validatedFields.data);
+  const newExpense = await addExpense(validatedFields.data, user);
 
   await logActivity({
     type: 'Expense',
     action: 'Created',
     details: `Expense "${newExpense.description}" for ₱${newExpense.amount.toFixed(2)} was recorded.`,
     targetId: newExpense.id,
+    ...user,
   });
 
   revalidatePath('/admin/expenses');
@@ -459,19 +493,22 @@ export async function addExpenseAction(data: FormData) {
 }
 
 export async function updateExpenseAction(id: string, data: FormData) {
-  const validatedFields = expenseSchema.safeParse(Object.fromEntries(data.entries()));
+  const user = getUserFromFormData(data);
+  const rawData = Object.fromEntries(data.entries());
 
+  const validatedFields = expenseSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid expense data.');
   }
 
-  await updateExpense(id, validatedFields.data);
+  await updateExpense(id, validatedFields.data, user);
 
   await logActivity({
     type: 'Expense',
     action: 'Updated',
     details: `Expense "${validatedFields.data.description}" was updated.`,
     targetId: id,
+    ...user,
   });
 
   revalidatePath('/admin/expenses');
@@ -479,7 +516,7 @@ export async function updateExpenseAction(id: string, data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteExpenseAction(id: string) {
+export async function deleteExpenseAction(id: string, user: { userId: string, userName: string }) {
     const deletedExpense = await deleteExpense(id);
     if (deletedExpense) {
         await logActivity({
@@ -487,12 +524,10 @@ export async function deleteExpenseAction(id: string) {
             action: 'Deleted',
             details: `Expense "${deletedExpense.description}" was deleted.`,
             targetId: id,
+            ...user,
         });
     }
 
     revalidatePath('/admin/expenses');
     revalidatePath('/admin/activity-logs');
 }
-    
-
-    

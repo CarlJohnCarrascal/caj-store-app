@@ -1,10 +1,9 @@
 
-
 'use server';
 
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -38,17 +37,31 @@ export async function getProductById(id: string): Promise<Product | undefined> {
   return undefined;
 }
 
-export async function addProduct(product: Omit<Product, 'id'>): Promise<Product> {
+export async function addProduct(product: Omit<Product, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product> {
   const newProductRef = push(ref(db, 'products'));
-  const newProduct = { ...product, id: newProductRef.key! };
-  await set(newProductRef, product);
-  return newProduct;
+  const dataToSave = {
+    ...product,
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+  };
+  await set(newProductRef, dataToSave);
+  return { ...dataToSave, id: newProductRef.key! };
 }
 
-export async function updateProduct(updatedProduct: Product): Promise<Product | null> {
+export async function updateProduct(updatedProduct: Product, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product | null> {
   const { id, ...data } = updatedProduct;
-  await update(ref(db), { [`/products/${id}`]: data });
-  return updatedProduct;
+  const productRef = ref(db, `products/${id}`);
+  const snapshot = await get(productRef);
+  if (snapshot.exists()) {
+    const existingData = snapshot.val();
+    const dataToSave = {
+      ...existingData,
+      ...data,
+      updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+    };
+    await set(productRef, dataToSave);
+    return { ...dataToSave, id };
+  }
+  return null;
 }
 
 export async function deleteProduct(id: string): Promise<Product | null> {
@@ -71,11 +84,14 @@ export async function getAccounts(): Promise<Account[]> {
   return snapshotToArray<Account>(snapshot);
 }
 
-export async function addAccount(account: Omit<Account, 'id'>): Promise<Account> {
+export async function addAccount(account: Omit<Account, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Account> {
   const newAccountRef = push(ref(db, 'accounts'));
-  const newAccount = { ...account, id: newAccountRef.key! };
-  await set(newAccountRef, account);
-  return newAccount;
+  const dataToSave = {
+    ...account,
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+  };
+  await set(newAccountRef, dataToSave);
+  return { ...dataToSave, id: newAccountRef.key! };
 }
 
 export async function deleteAccount(id: string): Promise<Account | null> {
@@ -106,11 +122,14 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
   return undefined;
 }
 
-export async function addCustomer(customer: Omit<Customer, 'id'>): Promise<Customer> {
+export async function addCustomer(customer: Omit<Customer, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Customer> {
   const newCustomerRef = push(ref(db, 'customers'));
-  const newCustomer = { ...customer, id: newCustomerRef.key! };
-  await set(newCustomerRef, customer);
-  return newCustomer;
+  const dataToSave = {
+    ...customer,
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+  };
+  await set(newCustomerRef, dataToSave);
+  return { ...dataToSave, id: newCustomerRef.key! };
 }
 
 export async function updateCustomerBalance(customerId: string, amount: number): Promise<Customer | null> {
@@ -124,6 +143,24 @@ export async function updateCustomerBalance(customerId: string, amount: number):
     }
     return null;
 }
+
+// ==================
+// User Functions
+// ==================
+
+export async function createUserProfile(user: AppUser): Promise<void> {
+  const userRef = ref(db, `users/${user.id}`);
+  await set(userRef, {
+    name: user.name,
+    email: user.email,
+  });
+}
+
+export async function getUsers(): Promise<AppUser[]> {
+  const snapshot = await get(ref(db, 'users'));
+  return snapshotToArray<AppUser>(snapshot);
+}
+
 
 // =======================
 // CashTransaction Functions
@@ -141,7 +178,6 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
     return {
       ...transaction,
       ourAccountName: account ? account.accountName : 'Unknown Account',
-      // Firebase stores dates as strings, so convert them back
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
       ...(transaction.dateSent && { dateSent: transaction.dateSent }),
@@ -176,7 +212,7 @@ export async function isReferenceNumberDuplicate(reference: string): Promise<boo
   return snapshot.exists();
 }
 
-export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
+export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
   const accountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
   const accountSnapshot = await get(accountRef);
   if (!accountSnapshot.exists()) {
@@ -196,10 +232,8 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   
   let transactionDateString: string;
   if (transactionData.datetime && transactionData.datetime.length > 0) {
-    // Input is like 'YYYY-MM-DDTHH:mm', assume it's PHT. Append seconds and timezone.
     transactionDateString = `${transactionData.datetime}:00+08:00`;
   } else {
-    // If no datetime provided, use current time in PHT
     transactionDateString = nowPHTString;
   }
   
@@ -210,6 +244,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
     newBalance,
     createdAt: nowPHTString,
     updatedAt: nowPHTString,
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
   };
 
   if (transactionData.transactionType === 'Cash In') {
@@ -226,7 +261,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   return result;
 }
 
-export async function updateCashTransaction(id: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }): Promise<CashTransaction> {
+export async function updateCashTransaction(id: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
     const transactionRef = ref(db, `cashTransactions/${id}`);
     const oldTransactionSnapshot = await get(transactionRef);
     if (!oldTransactionSnapshot.exists()) {
@@ -234,27 +269,25 @@ export async function updateCashTransaction(id: string, transactionData: Omit<Ca
     }
     const oldTransaction = oldTransactionSnapshot.val();
 
-    // Note: This simplified update does NOT adjust account balances. 
-    // Balance adjustments should be handled separately to avoid race conditions.
-
     const nowPHTString = getCurrentPHTISOString();
     let transactionDateString: string;
     if (transactionData.datetime && transactionData.datetime.length > 0) {
         transactionDateString = `${transactionData.datetime}:00+08:00`;
     } else {
-        transactionDateString = oldTransaction.dateSent || oldTransaction.dateReceived || nowPHTString; // Fallback to existing date
+        transactionDateString = oldTransaction.dateSent || oldTransaction.dateReceived || nowPHTString;
     }
 
     const dataToSave: any = {
-        ...oldTransaction, // preserve fields not in form like createdAt, newBalance
+        ...oldTransaction,
         ...transactionData,
         updatedAt: nowPHTString,
+        updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
     };
     
     if (transactionData.transactionType === 'Cash In') {
       dataToSave.dateSent = transactionDateString;
       dataToSave.dateReceived = null;
-    } else { // Cash Out
+    } else { 
       dataToSave.dateReceived = transactionDateString;
       dataToSave.dateSent = null;
     }
@@ -272,8 +305,6 @@ export async function updateCashTransactionStatus(id: string, customerId: string
 
     if (snapshot.exists()) {
         const transaction = snapshot.val();
-
-        // This transaction has already been processed in an order. Return null to prevent re-running reports.
         if (transaction.customerId) {
             return null;
         }
@@ -339,17 +370,31 @@ export async function getCollectionById(id: string): Promise<Collection | undefi
     return undefined;
 }
 
-export async function addCollection(collection: Omit<Collection, 'id' | 'customerName'>): Promise<Collection> {
+export async function addCollection(collection: Omit<Collection, 'id' | 'customerName'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Collection> {
     const newCollectionRef = push(ref(db, 'collections'));
-    const newCollection = { ...collection, id: newCollectionRef.key! };
-    await set(newCollectionRef, collection);
-    return newCollection;
+    const dataToSave = {
+      ...collection,
+      createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+    };
+    await set(newCollectionRef, dataToSave);
+    return { ...dataToSave, id: newCollectionRef.key! };
 }
 
-export async function updateCollection(updatedCollection: Omit<Collection, 'customerName'>): Promise<Collection | null> {
+export async function updateCollection(updatedCollection: Omit<Collection, 'customerName'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Collection | null> {
     const { id, ...data } = updatedCollection;
-    await update(ref(db), { [`/collections/${id}`]: data });
-    return updatedCollection as Collection;
+    const collectionRef = ref(db, `collections/${id}`);
+    const snapshot = await get(collectionRef);
+    if(snapshot.exists()) {
+      const existingData = snapshot.val();
+      const dataToSave = {
+        ...existingData,
+        ...data,
+        updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() }
+      }
+      await set(collectionRef, dataToSave);
+      return { ...dataToSave, id } as Collection;
+    }
+    return null;
 }
 
 export async function deleteCollection(id: string): Promise<Collection | null> {
@@ -367,9 +412,13 @@ export async function deleteCollection(id: string): Promise<Collection | null> {
 // Order Functions
 // ==================
 
-export async function addOrder(orderData: Omit<Order, 'id'>): Promise<Order> {
+export async function addOrder(orderData: Omit<Order, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Order> {
     const newOrderRef = push(ref(db, 'orders'));
-    const dataToSave = { ...orderData, createdAt: getCurrentPHTISOString() };
+    const dataToSave = { 
+      ...orderData, 
+      createdAt: getCurrentPHTISOString(),
+      createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+    };
     await set(newOrderRef, dataToSave);
     return { ...dataToSave, id: newOrderRef.key! };
 }
@@ -410,7 +459,6 @@ export async function getOrdersByCustomerId(customerId: string): Promise<Order[]
 export async function getActivities(): Promise<ActivityLog[]> {
     const snapshot = await get(ref(db, 'activityLogs'));
     const logs = snapshotToArray<ActivityLog>(snapshot);
-    // Convert timestamp strings back to Date objects
     const logsWithDates = logs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
     return logsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 }
@@ -455,25 +503,33 @@ export async function getExpenseById(id: string): Promise<Expense | undefined> {
   return undefined;
 }
 
-export async function addExpense(expenseData: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+export async function addExpense(expenseData: Omit<Expense, 'id' | 'createdAt'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Expense> {
   const newExpenseRef = push(ref(db, 'expenses'));
   const dataToSave = {
     ...expenseData,
     date: new Date(expenseData.date).toISOString(),
     createdAt: getCurrentPHTISOString(),
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
   };
   await set(newExpenseRef, dataToSave);
   return { ...dataToSave, id: newExpenseRef.key! };
 }
 
-export async function updateExpense(id: string, expenseData: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+export async function updateExpense(id: string, expenseData: Omit<Expense, 'id' | 'createdAt'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Expense> {
     const expenseRef = ref(db, `expenses/${id}`);
-    const dataToSave = {
-        ...expenseData,
-        date: new Date(expenseData.date).toISOString(),
-    };
-    await update(expenseRef, dataToSave);
-    return { ...dataToSave, id, createdAt: '' }; // createdAt is not updated
+    const snapshot = await get(expenseRef);
+    if(snapshot.exists()){
+      const existingData = snapshot.val();
+      const dataToSave = {
+          ...existingData,
+          ...expenseData,
+          date: new Date(expenseData.date).toISOString(),
+          updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+      };
+      await set(expenseRef, dataToSave);
+      return { ...dataToSave, id, createdAt: existingData.createdAt };
+    }
+    throw new Error("Expense not found");
 }
 
 export async function deleteExpense(id: string): Promise<Expense | null> {
@@ -508,10 +564,8 @@ export async function updateSalesReports(order: Order) {
     let saleValue = 0;
     if (category === 'CashIO' && item.originalTransactionId) {
       const cashTx = await getCashTransactionById(item.originalTransactionId);
-      // The sale/revenue from a CashIO transaction is its fee. This is always positive.
       saleValue = cashTx ? cashTx.fee : 0;
     } else {
-      // For regular products and other services, the sale is the price.
       saleValue = item.price * item.quantity;
     }
 
@@ -519,8 +573,6 @@ export async function updateSalesReports(order: Order) {
     reportableSubtotal += saleValue;
   }
 
-  // The final reportable sale is the sum of revenue from all items, minus the discount.
-  // This correctly ignores any customer balance applied.
   const finalReportableSale = reportableSubtotal - order.discount;
 
   for (const periodPath of Object.values(paths)) {
@@ -543,7 +595,6 @@ export async function updateSalesReports(order: Order) {
       }
       
       for (const [service, sales] of Object.entries(salesByService)) {
-        // This check is needed in case a service exists in the report but not in the current order.
         if (currentData.byService[service]) {
           currentData.byService[service].sales = (currentData.byService[service].sales || 0) + sales;
         }
@@ -658,7 +709,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 }
 
 export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
-    const dateStr = getCurrentPHTISOString(); // Use current date for the report
+    const dateStr = getCurrentPHTISOString();
     const paths = getReportPaths(dateStr);
     const orderValue = Math.abs(orderTotal);
 
@@ -673,11 +724,9 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
             if (type === 'new_customer') {
                 currentData.newCustomerCount = (currentData.newCustomerCount || 0) + 1;
             } else if (type === 'order') {
-                // Update overall stats
                 currentData.totalOrders = (currentData.totalOrders || 0) + 1;
                 currentData.totalOrderValue = (currentData.totalOrderValue || 0) + orderValue;
 
-                // Update specific customer stats (including 'unknown')
                 if (!currentData.activeCustomers) {
                     currentData.activeCustomers = {};
                 }
@@ -693,8 +742,3 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
         });
     }
 }
-
-
-
-
-
