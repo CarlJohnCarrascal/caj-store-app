@@ -10,6 +10,8 @@ export interface AppUser {
   id: string; // Firebase UID
   name: string;
   email: string;
+  role: 'admin' | 'user';
+  updatedBy?: ChangeTracker;
 }
 
 export interface Product {

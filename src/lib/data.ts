@@ -148,13 +148,36 @@ export async function updateCustomerBalance(customerId: string, amount: number):
 // User Functions
 // ==================
 
-export async function createUserProfile(user: AppUser): Promise<void> {
+export async function createUserProfile(user: Omit<AppUser, 'role'>): Promise<void> {
   const userRef = ref(db, `users/${user.id}`);
   await set(userRef, {
     name: user.name,
     email: user.email,
+    role: 'user',
   });
 }
+
+export async function getUserById(id: string): Promise<AppUser | null> {
+    const snapshot = await get(ref(db, `users/${id}`));
+    if (snapshot.exists()) {
+        return { id, ...snapshot.val() };
+    }
+    return null;
+}
+
+export async function updateUserRole(userId: string, role: 'admin' | 'user', updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
+    const userRef = ref(db, `users/${userId}`);
+    const snapshot = await get(userRef);
+    if (snapshot.exists()) {
+        await update(userRef, {
+            role: role,
+            updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+        });
+    } else {
+        throw new Error('User not found');
+    }
+}
+
 
 export async function getUsers(): Promise<AppUser[]> {
   const snapshot = await get(ref(db, 'users'));

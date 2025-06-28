@@ -3,23 +3,35 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { User, onAuthStateChanged, sendSignInLinkToEmail, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { AppUser } from '@/lib/types';
+import { getUserById } from '@/lib/data';
 
 interface AuthContextType {
   user: User | null;
+  appUser: AppUser | null;
   loading: boolean;
   signIn: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
+  isUserAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUser(user);
+        const profile = await getUserById(user.uid);
+        setAppUser(profile);
+      } else {
+        setUser(null);
+        setAppUser(null);
+      }
       setLoading(false);
     });
 
@@ -37,10 +49,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+    setAppUser(null);
   };
 
+  const isUserAdmin = !!appUser && appUser.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, appUser, loading, signIn, signOut, isUserAdmin }}>
       {children}
     </AuthContext.Provider>
   );

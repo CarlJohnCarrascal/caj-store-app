@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createUserProfile } from '@/lib/data';
-import { User, updateProfile } from 'firebase/auth';
+import { updateProfile } from 'firebase/auth';
 
 export default function CompleteProfileForm() {
-  const { user, loading } = useAuth();
+  const { user, appUser, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -20,15 +20,17 @@ export default function CompleteProfileForm() {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    // If user is loaded and already has a display name, they shouldn't be here.
-    if (!loading && user && user.displayName) {
-      router.replace('/admin');
-    }
-    // If user is loaded and is null, they should sign in.
-    if (!loading && !user) {
+    if (!loading) {
+      if (!user) {
+        // Not logged in at all, go to sign in page
         router.replace('/signin');
+      } else if (appUser) {
+        // User profile already exists, redirect to their destination
+        router.replace(appUser.role === 'admin' ? '/admin' : '/unauthorized');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, appUser, loading, router]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,24 +45,23 @@ export default function CompleteProfileForm() {
 
     startTransition(async () => {
       try {
+        // Update Firebase Auth profile
         await updateProfile(user, { displayName: name });
+        // Create our own app user profile in the database
         await createUserProfile({
             id: user.uid,
             name: name,
             email: user.email!,
         });
-        toast({ title: 'Profile Created!', description: 'Welcome! You will now be redirected.' });
-        router.push('/admin');
-        // Manually trigger a reload of the user state in the auth hook
-        // This is a workaround to ensure displayName is picked up everywhere.
-        router.refresh(); 
+        toast({ title: 'Profile Created!', description: "Welcome! Your account is pending admin approval." });
+        router.push('/unauthorized'); 
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Setup Failed', description: error.message });
       }
     });
   };
 
-  if (loading || !user) {
+  if (loading || !user || appUser) {
     return <div>Loading...</div>;
   }
 
@@ -86,7 +87,7 @@ export default function CompleteProfileForm() {
             />
           </div>
           <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? 'Saving...' : 'Continue to Dashboard'}
+            {isPending ? 'Saving...' : 'Complete Profile'}
           </Button>
         </form>
       </CardContent>

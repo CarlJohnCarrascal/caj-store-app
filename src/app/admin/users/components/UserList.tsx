@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { AppUser } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,7 +8,10 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { AtSign, User } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { updateUserRoleAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -26,6 +29,9 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 export default function UserList() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const { appUser } = useAuth();
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const usersRef = ref(db, 'users');
@@ -38,6 +44,22 @@ export default function UserList() {
     return () => unsubscribe();
   }, []);
 
+  const handleRoleChange = (userId: string, newRole: 'admin' | 'user') => {
+    if (!appUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not identify the current user.' });
+        return;
+    }
+
+    startTransition(async () => {
+        try {
+            await updateUserRoleAction(userId, newRole, { userId: appUser.id, userName: appUser.name });
+            toast({ title: 'Success', description: 'User role updated successfully.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update role.' });
+        }
+    });
+  };
+
   if (isLoading) {
     return (
        <Card>
@@ -47,6 +69,7 @@ export default function UserList() {
                         <TableRow>
                             <TableHead><Skeleton className="h-5 w-48" /></TableHead>
                             <TableHead><Skeleton className="h-5 w-64" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-24" /></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -61,6 +84,7 @@ export default function UserList() {
                                     </div>
                                 </TableCell>
                                 <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                                <TableCell><Skeleton className="h-9 w-28" /></TableCell>
                            </TableRow>
                         ))}
                     </TableBody>
@@ -87,6 +111,7 @@ export default function UserList() {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -95,12 +120,27 @@ export default function UserList() {
                 <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                         <Avatar>
-                            <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback>{user.name?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                         </Avatar>
                         <span>{user.name}</span>
                     </div>
                 </TableCell>
                 <TableCell>{user.email}</TableCell>
+                <TableCell>
+                    <Select
+                        defaultValue={user.role}
+                        onValueChange={(newRole: 'admin' | 'user') => handleRoleChange(user.id, newRole)}
+                        disabled={user.id === appUser?.id || isPending}
+                    >
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Set role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
