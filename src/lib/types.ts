@@ -1,3 +1,4 @@
+
 'use server';
 
 export interface ChangeTracker {
@@ -74,6 +75,7 @@ export interface CashTransaction {
   newBalance: number;
   dateSent?: Date;
   dateReceived?: Date;
+  transactionDate?: string;
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
   createdAt: Date;

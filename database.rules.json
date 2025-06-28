@@ -9,7 +9,7 @@
       ".indexOn": "customerId"
     },
     "cashTransactions": {
-      ".indexOn": ["createdAt", "reference"]
+      ".indexOn": ["createdAt", "reference", "transactionDate"]
     },
     "expenses": {
       ".indexOn": "date"

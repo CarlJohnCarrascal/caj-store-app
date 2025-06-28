@@ -115,7 +115,7 @@ export default function CashTransactionTable() {
 
         const q = query(
             transactionsRef,
-            orderByChild('createdAt'),
+            orderByChild('transactionDate'),
             startAt(fromDate.toISOString()),
             endAt(toDate.toISOString())
         );

@@ -276,6 +276,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   const dataToSave: any = {
     ...transactionData,
     newBalance,
+    transactionDate: transactionDateString,
     createdAt: nowPHTString,
     updatedAt: nowPHTString,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -314,6 +315,7 @@ export async function updateCashTransaction(id: string, transactionData: Omit<Ca
     const dataToSave: any = {
         ...oldTransaction,
         ...transactionData,
+        transactionDate: transactionDateString,
         updatedAt: nowPHTString,
         updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
     };
