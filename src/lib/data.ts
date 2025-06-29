@@ -296,43 +296,82 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   return result;
 }
 
-export async function updateCashTransaction(id: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
+export async function updateCashTransaction(
+  id: string,
+  transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string },
+  updatedBy: Omit<ChangeTracker, 'timestamp'>
+): Promise<{ oldTransaction: CashTransaction, newTransaction: CashTransaction }> {
     const transactionRef = ref(db, `cashTransactions/${id}`);
     const oldTransactionSnapshot = await get(transactionRef);
     if (!oldTransactionSnapshot.exists()) {
         throw new Error("Transaction to update not found");
     }
-    const oldTransaction = oldTransactionSnapshot.val();
+    const oldTransactionData = oldTransactionSnapshot.val();
+    const oldTransaction = { id, ...oldTransactionData };
 
+    // --- Reverse old transaction on account balance ---
+    const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
+    const oldAccountSnapshot = await get(oldAccountRef);
+    if (oldAccountSnapshot.exists()) {
+        const oldAccount = oldAccountSnapshot.val();
+        let balanceReversal = 0;
+        if (oldTransaction.transactionType === 'Cash In') {
+            balanceReversal = -oldTransaction.amount + oldTransaction.fee;
+        } else { // Cash Out
+            balanceReversal = oldTransaction.amount + oldTransaction.fee;
+        }
+        await update(oldAccountRef, { balance: oldAccount.balance + balanceReversal });
+    }
+
+    // --- Apply new transaction on account balance ---
+    const newAccountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
+    const newAccountSnapshot = await get(newAccountRef);
+    if (!newAccountSnapshot.exists()) {
+        throw new Error("New account not found");
+    }
+    const newAccount = newAccountSnapshot.val();
+    let newEffect = 0;
+    if (transactionData.transactionType === 'Cash In') {
+        newEffect = transactionData.amount - transactionData.fee;
+    } else { // Cash Out
+        newEffect = -transactionData.amount - transactionData.fee;
+    }
+    const finalNewBalanceForAccount = newAccount.balance + newEffect;
+    await update(newAccountRef, { balance: finalNewBalanceForAccount });
+
+    // --- Prepare and save the updated transaction ---
     const nowPHTString = getCurrentPHTISOString();
     let transactionDateString: string;
     if (transactionData.datetime && transactionData.datetime.length > 0) {
-        transactionDateString = `${transactionData.datetime}:00+08:00`;
+        transactionDateString = new Date(`${transactionData.datetime}:00+08:00`).toISOString();
     } else {
-        transactionDateString = oldTransaction.dateSent || oldTransaction.dateReceived || nowPHTString;
+        transactionDateString = oldTransaction.transactionDate || nowPHTString;
     }
 
     const dataToSave: any = {
-        ...oldTransaction,
+        ...oldTransactionData,
         ...transactionData,
+        newBalance: finalNewBalanceForAccount,
         transactionDate: transactionDateString,
         updatedAt: nowPHTString,
-        updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+        updatedBy: { ...updatedBy, timestamp: nowPHTString },
     };
     
     if (transactionData.transactionType === 'Cash In') {
       dataToSave.dateSent = transactionDateString;
-      dataToSave.dateReceived = null;
+      delete dataToSave.dateReceived;
     } else { 
       dataToSave.dateReceived = transactionDateString;
-      dataToSave.dateSent = null;
+      delete dataToSave.dateSent;
     }
     
     delete dataToSave.datetime;
 
-    await update(transactionRef, dataToSave);
+    await set(transactionRef, dataToSave);
 
-    return { ...dataToSave, id };
+    const newTransaction = { ...dataToSave, id };
+    
+    return { oldTransaction, newTransaction };
 }
 
 export async function updateCashTransactionStatus(id: string, customerId: string): Promise<CashTransaction | null> {
@@ -640,7 +679,7 @@ export async function updateSalesReports(order: Order) {
   }
 }
 
-export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string) {
+export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
     const transactionDate = transaction.dateReceived || transaction.dateSent;
     const dateStr = transactionDate ? transactionDate.toString() : new Date().toISOString();
     const paths = getReportPaths(dateStr);
@@ -650,92 +689,70 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         
         await runTransaction(reportRef, (currentData: any) => {
             if (currentData === null) {
+                if (factor === -1) return; // Cannot subtract from nothing
                 currentData = {
-                    cashIn: 0,
-                    cashOut: 0,
-                    totalTransactions: 0,
-                    cashInFee: 0,
-                    cashOutFee: 0,
-                    cashInTotal: 0,
-                    cashOutTotal: 0,
-                    totalAmount: 0,
-                    totalFee: 0,
-                    customers: {},
-                    byAccount: {},
+                    cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
+                    cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
+                    customers: {}, byAccount: {},
                 };
             }
 
             if (type === 'allTransactions') {
-                currentData.totalTransactions = (currentData.totalTransactions || 0) + 1;
-                currentData.totalAmount = (currentData.totalAmount || 0) + transaction.amount;
-                currentData.totalFee = (currentData.totalFee || 0) + transaction.fee;
+                currentData.totalTransactions = (currentData.totalTransactions || 0) + (1 * factor);
+                currentData.totalAmount = (currentData.totalAmount || 0) + (transaction.amount * factor);
+                currentData.totalFee = (currentData.totalFee || 0) + (transaction.fee * factor);
 
-                if (!currentData.byAccount) {
-                    currentData.byAccount = {};
-                }
+                if (!currentData.byAccount) currentData.byAccount = {};
                 const accountId = transaction.accountUsedId;
                 if (!currentData.byAccount[accountId]) {
                     currentData.byAccount[accountId] = {
-                        cashInCount: 0,
-                        cashInAmount: 0,
-                        cashInFee: 0,
-                        cashOutCount: 0,
-                        cashOutAmount: 0,
-                        cashOutFee: 0,
+                        cashInCount: 0, cashInAmount: 0, cashInFee: 0,
+                        cashOutCount: 0, cashOutAmount: 0, cashOutFee: 0,
                     };
                 }
                 const accountReport = currentData.byAccount[accountId];
 
                 if (transaction.transactionType === 'Cash In') {
-                    currentData.cashIn = (currentData.cashIn || 0) + 1;
-                    currentData.cashInFee = (currentData.cashInFee || 0) + transaction.fee;
-                    currentData.cashInTotal = (currentData.cashInTotal || 0) + transaction.amount;
-                    
-                    accountReport.cashInCount = (accountReport.cashInCount || 0) + 1;
-                    accountReport.cashInAmount = (accountReport.cashInAmount || 0) + transaction.amount;
-                    accountReport.cashInFee = (accountReport.cashInFee || 0) + transaction.fee;
+                    currentData.cashIn = (currentData.cashIn || 0) + (1 * factor);
+                    currentData.cashInFee = (currentData.cashInFee || 0) + (transaction.fee * factor);
+                    currentData.cashInTotal = (currentData.cashInTotal || 0) + (transaction.amount * factor);
+                    accountReport.cashInCount += factor;
+                    accountReport.cashInAmount += (transaction.amount * factor);
+                    accountReport.cashInFee += (transaction.fee * factor);
                 } else { // Cash Out
-                    currentData.cashOut = (currentData.cashOut || 0) + 1;
-                    currentData.cashOutFee = (currentData.cashOutFee || 0) + transaction.fee;
-                    currentData.cashOutTotal = (currentData.cashOutTotal || 0) + transaction.amount;
-
-                    accountReport.cashOutCount = (accountReport.cashOutCount || 0) + 1;
-                    accountReport.cashOutAmount = (accountReport.cashOutAmount || 0) + transaction.amount;
-                    accountReport.cashOutFee = (accountReport.cashOutFee || 0) + transaction.fee;
+                    currentData.cashOut = (currentData.cashOut || 0) + (1 * factor);
+                    currentData.cashOutFee = (currentData.cashOutFee || 0) + (transaction.fee * factor);
+                    currentData.cashOutTotal = (currentData.cashOutTotal || 0) + (transaction.amount * factor);
+                    accountReport.cashOutCount += factor;
+                    accountReport.cashOutAmount += (transaction.amount * factor);
+                    accountReport.cashOutFee += (transaction.fee * factor);
                 }
             }
             
             if (type === 'orderedTransactions') {
                 const finalCustomerId = customerId || 'unknown';
                 
-                if (!currentData.customers) {
-                    currentData.customers = {};
-                }
+                if (!currentData.customers) currentData.customers = {};
                 if (!currentData.customers[finalCustomerId]) {
+                     if (factor === -1) return;
                     currentData.customers[finalCustomerId] = {
-                        cashIn: 0,
-                        cashOut: 0,
-                        cashInFee: 0,
-                        cashOutFee: 0,
-                        cashInTotal: 0,
-                        cashOutTotal: 0,
-                        totalAmount: 0,
-                        totalFee: 0,
+                        cashIn: 0, cashOut: 0, cashInFee: 0, cashOutFee: 0,
+                        cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
                     };
                 }
                 
                 const customerReport = currentData.customers[finalCustomerId];
-                customerReport.totalAmount = (customerReport.totalAmount || 0) + transaction.amount;
-                customerReport.totalFee = (customerReport.totalFee || 0) + transaction.fee;
+                customerReport.totalAmount += (transaction.amount * factor);
+                customerReport.totalFee += (transaction.fee * factor);
 
                 if (transaction.transactionType === 'Cash In') {
-                    customerReport.cashIn = (customerReport.cashIn || 0) + 1;
-                    customerReport.cashInFee = (customerReport.cashInFee || 0) + transaction.fee;
-                    customerReport.cashInTotal = (customerReport.cashInTotal || 0) + transaction.amount;
+                    customerReport.cashIn += factor;
+                    customerReport.cashInFee += (transaction.fee * factor);
+                    customerReport.cashInTotal += (transaction.amount * factor);
                 } else { // Cash Out
-                    customerReport.cashOut = (customerReport.cashOut || 0) + 1;
-                    customerReport.cashOutFee = (customerReport.cashOutFee || 0) + transaction.fee;
-                    customerReport.cashOutTotal = (customerReport.cashOutTotal || 0) + transaction.amount;
+                    customerReport.cashOut += factor;
+                    customerReport.cashOutFee += (transaction.fee * factor);
+                    customerReport.cashOutTotal += (transaction.amount * factor);
                 }
             }
             

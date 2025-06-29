@@ -443,19 +443,33 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
     throw new Error('Invalid cash transaction data.');
   }
 
-  const updatedTransaction = await updateCashTransaction(id, validatedFields.data, user);
+  const { oldTransaction, newTransaction } = await updateCashTransaction(id, validatedFields.data, user);
+
+  // Reverse old transaction from reports
+  await updateCashIOReport(oldTransaction, 'allTransactions', undefined, -1);
+  if (oldTransaction.customerId) {
+      await updateCashIOReport(oldTransaction, 'orderedTransactions', oldTransaction.customerId, -1);
+  }
+
+  // Add new transaction to reports
+  await updateCashIOReport(newTransaction, 'allTransactions');
+  if (newTransaction.customerId) {
+      await updateCashIOReport(newTransaction, 'orderedTransactions', newTransaction.customerId);
+  }
 
   await logActivity({
     type: 'CashIO',
     action: 'Updated',
-    details: `Transaction for "${updatedTransaction.accountName}" was updated.`,
-    targetId: updatedTransaction.id,
+    details: `Transaction for "${newTransaction.accountName}" was updated.`,
+    targetId: newTransaction.id,
     ...user,
   });
 
   revalidatePath('/admin/cashio');
   revalidatePath(`/admin/cashio/edit/${id}`);
   revalidatePath('/admin/activity-logs');
+  revalidatePath('/admin/reports/cashio');
+  revalidatePath('/admin/accounts');
 }
 
 const collectionSchema = z.object({
