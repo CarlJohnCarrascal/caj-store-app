@@ -789,7 +789,8 @@ const defaultFeeThresholds: Omit<FeeThreshold, 'id' | 'createdBy'>[] = [
     { from: 111, to: 599, fee: 10, type: 'fixed', notes: 'Base fee tier 2' },
     { from: 600, to: 920, fee: 15, type: 'fixed', notes: 'Base fee tier 3' },
     { from: 921, to: 1100, fee: 20, type: 'fixed', notes: 'Base fee tier 4' },
-    { from: 1101, to: 50000, fee: 20, type: 'per_thousand_flat', notes: 'Fee for amounts over 1100' },
+    { from: 1101, to: 10000, fee: 20, type: 'per_thousand_flat', notes: 'Fee for amounts from 1101 to 10000' },
+    { from: 10001, to: 100000, fee: 10, type: 'per_thousand_flat', notes: 'Fee for amounts over 10000' },
 ];
 
 export async function getFeeThresholds(): Promise<FeeThreshold[]> {

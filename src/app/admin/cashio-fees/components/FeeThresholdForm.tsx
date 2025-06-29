@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FeeThreshold } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -32,9 +31,10 @@ type FormValues = z.infer<typeof formSchema>;
 interface FeeThresholdFormProps {
   threshold?: FeeThreshold;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export default function FeeThresholdForm({ threshold, onSuccess }: FeeThresholdFormProps) {
+export default function FeeThresholdForm({ threshold, onSuccess, onCancel }: FeeThresholdFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
@@ -87,77 +87,69 @@ export default function FeeThresholdForm({ threshold, onSuccess }: FeeThresholdF
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{threshold ? 'Edit Fee Threshold' : 'Create Fee Threshold'}</CardTitle>
-        <CardDescription>Define a rule for calculating transaction fees.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <FormField control={form.control} name="from" render={({ field }) => (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+        <div className="grid md:grid-cols-2 gap-6">
+          <FormField control={form.control} name="from" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amount From (₱)</FormLabel>
+              <FormControl><Input type="number" step="1" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="to" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amount To (₱)</FormLabel>
+              <FormControl><Input type="number" step="1" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+             <FormField control={form.control} name="fee" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount From (₱)</FormLabel>
-                  <FormControl><Input type="number" step="1" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="to" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount To (₱)</FormLabel>
-                  <FormControl><Input type="number" step="1" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-                 <FormField control={form.control} name="fee" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Fee (₱)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Calculation Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a type" />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            <SelectItem value="fixed">Fixed Fee</SelectItem>
-                            <SelectItem value="per_thousand_flat">Per 1000 of Amount</SelectItem>
-                        </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            </div>
-            <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem>
-                <FormLabel>Notes (Optional)</FormLabel>
-                <FormControl><Textarea placeholder="Add any relevant notes here..." {...field} /></FormControl>
-                <FormMessage />
+                    <FormLabel>Fee (₱)</FormLabel>
+                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                    <FormMessage />
                 </FormItem>
             )} />
+            <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Calculation Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a type" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="fixed">Fixed Fee</SelectItem>
+                        <SelectItem value="per_thousand_flat">Per 1000 of Amount</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        </div>
+        <FormField control={form.control} name="notes" render={({ field }) => (
+            <FormItem>
+            <FormLabel>Notes (Optional)</FormLabel>
+            <FormControl><Textarea placeholder="Add any relevant notes here..." {...field} /></FormControl>
+            <FormMessage />
+            </FormItem>
+        )} />
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? (threshold ? 'Saving...' : 'Adding...') : (threshold ? 'Save Changes' : 'Add Threshold')}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? (threshold ? 'Saving...' : 'Adding...') : (threshold ? 'Save Changes' : 'Add Threshold')}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import FeeThresholdForm from './FeeThresholdForm';
 
 export default function FeeThresholdList({ thresholds }: { thresholds: FeeThreshold[] }) {
@@ -147,7 +147,15 @@ export default function FeeThresholdList({ thresholds }: { thresholds: FeeThresh
     
     <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent>
-            <FeeThresholdForm threshold={editingThreshold} onSuccess={onFormSuccess}/>
+            <DialogHeader>
+                <DialogTitle>{editingThreshold ? 'Edit Fee Threshold' : 'Create Fee Threshold'}</DialogTitle>
+                <DialogDescription>Define a rule for calculating transaction fees.</DialogDescription>
+            </DialogHeader>
+            <FeeThresholdForm 
+                threshold={editingThreshold} 
+                onSuccess={onFormSuccess} 
+                onCancel={() => setIsFormOpen(false)}
+            />
         </DialogContent>
     </Dialog>
     </>
