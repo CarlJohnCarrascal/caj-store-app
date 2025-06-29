@@ -91,6 +91,17 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
 
   const transactionType = form.watch('transactionType');
 
+  // Set the last used account from localStorage
+  useEffect(() => {
+    if (!transaction && accounts.length > 0) { // Only for new transactions and when accounts are loaded
+      const lastUsedAccountId = localStorage.getItem('lastUsedAccountId');
+      if (lastUsedAccountId && accounts.some(acc => acc.id === lastUsedAccountId)) {
+        form.setValue('accountUsedId', lastUsedAccountId, { shouldValidate: true });
+      }
+    }
+  }, [accounts, transaction, form]);
+
+
   const handlePaste = async () => {
     try {
       if (!navigator.clipboard?.readText) {
@@ -230,6 +241,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     }
     startTransition(async () => {
       try {
+        localStorage.setItem('lastUsedAccountId', data.accountUsedId);
         const formData = new FormData();
         const dataToSubmit = { ...data, status: 'Available' as const };
         Object.entries(dataToSubmit).forEach(([key, value]) => {
@@ -261,6 +273,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     }
     startTransition(async () => {
       try {
+        localStorage.setItem('lastUsedAccountId', data.accountUsedId);
         const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
         
         const formData = new FormData();
@@ -317,6 +330,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     }
     startTransition(async () => {
         try {
+            localStorage.setItem('lastUsedAccountId', data.accountUsedId);
             const formData = new FormData();
             const dataToSubmit = { ...data };
             Object.entries(dataToSubmit).forEach(([key, value]) => {
@@ -436,7 +450,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Our Account Used</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select an account" />
