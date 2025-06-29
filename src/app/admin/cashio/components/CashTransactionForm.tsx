@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,7 +23,7 @@ import { addCashTransactionAction, updateCashTransactionAction } from '@/lib/act
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowDown, ArrowUp, Bot } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bot, ClipboardPaste } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { extractTransactionDetails } from '@/ai/flows/extract-transaction-details';
 import { cn } from '@/lib/utils';
@@ -92,6 +90,40 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   });
 
   const transactionType = form.watch('transactionType');
+
+  const handlePaste = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        toast({
+          variant: 'destructive',
+          title: 'Paste Not Supported',
+          description: 'Pasting from clipboard is not supported or not allowed by your browser.',
+        });
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        form.setValue('message', text, { shouldValidate: true });
+        toast({
+          title: 'Pasted!',
+          description: 'Message pasted from clipboard.',
+        });
+      } else {
+        toast({
+          variant: 'default',
+          title: 'Clipboard Empty',
+          description: 'There was no text on your clipboard to paste.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to read clipboard contents: ', error);
+      toast({
+        variant: 'destructive',
+        title: 'Paste Failed',
+        description: 'Could not read from clipboard. You may need to grant permission in your browser settings.',
+      });
+    }
+  };
 
   const handleExtractDetails = async (messageToExtract?: string) => {
     const message = messageToExtract || form.getValues('message');
@@ -323,11 +355,17 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
                 <FormField control={form.control} name="message" render={({ field }) => (
                     <FormItem>
                         <div className="flex justify-between items-center">
-                        <FormLabel>Transaction Message (Optional)</FormLabel>
-                        <Button type="button" variant="outline" size="sm" onClick={() => handleExtractDetails()} disabled={isGenerating}>
-                            <Bot className="mr-2 h-4 w-4" />
-                            {isGenerating ? 'Extracting...' : 'Extract Details with AI'}
-                        </Button>
+                          <FormLabel>Transaction Message (Optional)</FormLabel>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={handlePaste} disabled={isGenerating}>
+                                <ClipboardPaste className="mr-2 h-4 w-4" />
+                                Paste
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => handleExtractDetails()} disabled={isGenerating}>
+                                <Bot className="mr-2 h-4 w-4" />
+                                {isGenerating ? 'Extracting...' : 'Extract with AI'}
+                            </Button>
+                          </div>
                         </div>
                         <FormControl><Textarea placeholder="Paste transaction message here to auto-fill details..." {...field} rows={4} /></FormControl>
                         <FormMessage />
