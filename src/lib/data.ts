@@ -3,7 +3,7 @@
 
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -777,4 +777,68 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
             return currentData;
         });
     }
+}
+
+
+// ========================
+// Fee Threshold Functions
+// ========================
+
+const defaultFeeThresholds: Omit<FeeThreshold, 'id' | 'createdBy'>[] = [
+    { from: 1, to: 110, fee: 5, type: 'fixed', notes: 'Base fee tier 1' },
+    { from: 111, to: 599, fee: 10, type: 'fixed', notes: 'Base fee tier 2' },
+    { from: 600, to: 920, fee: 15, type: 'fixed', notes: 'Base fee tier 3' },
+    { from: 921, to: 1100, fee: 20, type: 'fixed', notes: 'Base fee tier 4' },
+    { from: 1101, to: 50000, fee: 20, type: 'per_thousand_flat', notes: 'Fee for amounts over 1100' },
+];
+
+export async function getFeeThresholds(): Promise<FeeThreshold[]> {
+  const thresholdsRef = ref(db, 'feeThresholds');
+  let snapshot = await get(thresholdsRef);
+
+  if (!snapshot.exists()) {
+    // Seed data if it doesn't exist
+    const updates: { [key: string]: any } = {};
+    const defaultUser = { userId: 'system', userName: 'System' };
+    defaultFeeThresholds.forEach(threshold => {
+      const newThresholdRef = push(thresholdsRef);
+      updates[newThresholdRef.key!] = {
+        ...threshold,
+        createdBy: { ...defaultUser, timestamp: getCurrentPHTISOString() },
+      };
+    });
+    await update(thresholdsRef, updates);
+    snapshot = await get(thresholdsRef); // Re-fetch after seeding
+  }
+  return snapshotToArray<FeeThreshold>(snapshot);
+}
+
+export async function addFeeThreshold(threshold: Omit<FeeThreshold, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<FeeThreshold> {
+  const newThresholdRef = push(ref(db, 'feeThresholds'));
+  const dataToSave = {
+    ...threshold,
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+  };
+  await set(newThresholdRef, dataToSave);
+  return { ...dataToSave, id: newThresholdRef.key! };
+}
+
+export async function updateFeeThreshold(id: string, thresholdData: Omit<FeeThreshold, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
+  const thresholdRef = ref(db, `feeThresholds/${id}`);
+  const snapshot = await get(thresholdRef);
+  if (snapshot.exists()) {
+    const dataToSave = {
+      ...snapshot.val(),
+      ...thresholdData,
+      updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+    };
+    await set(thresholdRef, dataToSave);
+  } else {
+    throw new Error('Fee threshold not found');
+  }
+}
+
+export async function deleteFeeThreshold(id: string): Promise<void> {
+  const thresholdRef = ref(db, `feeThresholds/${id}`);
+  await remove(thresholdRef);
 }

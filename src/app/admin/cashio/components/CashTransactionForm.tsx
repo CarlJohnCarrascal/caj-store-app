@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Account, Product, CashTransaction } from '@/lib/types';
+import { Account, Product, CashTransaction, FeeThreshold } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addCashTransactionAction, updateCashTransactionAction } from '@/lib/actions';
@@ -29,6 +29,9 @@ import { extractTransactionDetails } from '@/ai/flows/extract-transaction-detail
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
+import { getFeeThresholds } from '@/lib/data';
+import { calculateFee } from '@/lib/utils';
+
 
 const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
@@ -62,6 +65,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   const { addToCart, setCartCustomer } = useCart();
   const hasProcessedSharedText = useRef(false);
   const { user } = useAuth();
+  const [feeThresholds, setFeeThresholds] = useState<FeeThreshold[]>([]);
 
   const transactionDate = transaction?.dateSent || transaction?.dateReceived;
   const formattedDate = transactionDate ? new Date(transactionDate.getTime() - (transactionDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
@@ -90,6 +94,24 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   });
 
   const transactionType = form.watch('transactionType');
+  const amount = form.watch('amount');
+
+  // Fetch fee thresholds on mount
+  useEffect(() => {
+    async function fetchThresholds() {
+      const thresholds = await getFeeThresholds();
+      setFeeThresholds(thresholds);
+    }
+    fetchThresholds();
+  }, []);
+
+  // Calculate fee automatically when amount changes
+  useEffect(() => {
+    if (amount > 0 && feeThresholds.length > 0) {
+      const calculatedFee = calculateFee(amount, feeThresholds);
+      form.setValue('fee', calculatedFee, { shouldValidate: true });
+    }
+  }, [amount, feeThresholds, form]);
 
   // Set the last used account from localStorage
   useEffect(() => {

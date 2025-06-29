@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 
 const productSchema = z.object({
@@ -594,5 +594,72 @@ export async function deleteExpenseAction(id: string, user: { userId: string, us
     }
 
     revalidatePath('/admin/expenses');
+    revalidatePath('/admin/activity-logs');
+}
+
+
+const feeThresholdSchema = z.object({
+  from: z.coerce.number().min(0),
+  to: z.coerce.number().min(0),
+  fee: z.coerce.number().min(0),
+  type: z.enum(['fixed', 'per_thousand_flat']),
+  notes: z.string().optional(),
+});
+
+export async function addFeeThresholdAction(data: FormData) {
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
+
+    const validatedFields = feeThresholdSchema.safeParse(rawData);
+    if (!validatedFields.success) {
+        throw new Error('Invalid fee threshold data.');
+    }
+
+    const newThreshold = await addFeeThreshold(validatedFields.data, user);
+    await logActivity({
+        type: 'FeeThreshold',
+        action: 'Created',
+        details: `Fee threshold from ₱${newThreshold.from} to ₱${newThreshold.to} was created.`,
+        targetId: newThreshold.id,
+        ...user,
+    });
+    
+    revalidatePath('/admin/cashio-fees');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function updateFeeThresholdAction(id: string, data: FormData) {
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
+    
+    const validatedFields = feeThresholdSchema.safeParse(rawData);
+    if (!validatedFields.success) {
+        throw new Error('Invalid fee threshold data.');
+    }
+
+    await updateFeeThreshold(id, validatedFields.data, user);
+    await logActivity({
+        type: 'FeeThreshold',
+        action: 'Updated',
+        details: `Fee threshold was updated for range ₱${validatedFields.data.from} to ₱${validatedFields.data.to}.`,
+        targetId: id,
+        ...user,
+    });
+
+    revalidatePath('/admin/cashio-fees');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function deleteFeeThresholdAction(id: string, user: { userId: string, userName: string }) {
+    await deleteFeeThreshold(id);
+    await logActivity({
+        type: 'FeeThreshold',
+        action: 'Deleted',
+        details: 'A fee threshold was deleted.',
+        targetId: id,
+        ...user,
+    });
+
+    revalidatePath('/admin/cashio-fees');
     revalidatePath('/admin/activity-logs');
 }

@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { FeeThreshold } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -52,4 +53,27 @@ export function getReportPaths(dateString: string) {
       yearly: `/yearly/${year}`,
       overall: `/overall/all-time`,
     };
+}
+
+export function calculateFee(amount: number, thresholds: FeeThreshold[]): number {
+  if (amount <= 0 || !thresholds || thresholds.length === 0) {
+    return 0;
+  }
+
+  // Sort by the 'from' value to ensure we check in the correct order
+  const sortedThresholds = [...thresholds].sort((a, b) => a.from - b.from);
+  
+  const applicableThreshold = sortedThresholds.find(t => amount >= t.from && amount <= t.to);
+
+  if (applicableThreshold) {
+    if (applicableThreshold.type === 'per_thousand_flat') {
+      // For every 1000, charge the fee.
+      // Example: amount=2500, fee=20 -> floor(2500/1000) * 20 = 2 * 20 = 40
+      return Math.floor(amount / 1000) * applicableThreshold.fee;
+    }
+    // Default is 'fixed'
+    return applicableThreshold.fee;
+  }
+  
+  return 0; // Return 0 if no threshold matches
 }

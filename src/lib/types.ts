@@ -114,7 +114,7 @@ export interface Order {
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold';
   action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange';
   timestamp: Date;
   details: string;
@@ -131,6 +131,17 @@ export interface Expense {
   date: string; // ISO string
   notes?: string;
   createdAt: string; // ISO string
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
+}
+
+export interface FeeThreshold {
+  id: string;
+  from: number;
+  to: number;
+  fee: number;
+  type: 'fixed' | 'per_thousand_flat';
+  notes?: string;
   createdBy?: ChangeTracker;
   updatedBy?: ChangeTracker;
 }
