@@ -67,9 +67,9 @@ export function calculateFee(amount: number, thresholds: FeeThreshold[]): number
 
   if (applicableThreshold) {
     if (applicableThreshold.type === 'per_thousand_flat') {
-      // For every 1000, charge the fee.
-      // Example: amount=2500, fee=20 -> floor(2500/1000) * 20 = 2 * 20 = 40
-      return Math.floor(amount / 1000) * applicableThreshold.fee;
+      // This calculates the fee proportionally based on the amount.
+      // E.g., amount=2500, fee=20 per 1000 -> (2500 / 1000) * 20 = 50
+      return (amount / 1000) * applicableThreshold.fee;
     }
     // Default is 'fixed'
     return applicableThreshold.fee;
