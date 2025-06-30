@@ -307,7 +307,14 @@ export async function updateCashTransaction(
         throw new Error("Transaction to update not found");
     }
     const oldTransactionData = oldTransactionSnapshot.val();
-    const oldTransaction = { id, ...oldTransactionData };
+    const oldTransaction: CashTransaction = {
+      id,
+      ...oldTransactionData,
+      createdAt: new Date(oldTransactionData.createdAt),
+      updatedAt: new Date(oldTransactionData.updatedAt),
+      ...(oldTransactionData.dateSent && { dateSent: new Date(oldTransactionData.dateSent) }),
+      ...(oldTransactionData.dateReceived && { dateReceived: new Date(oldTransactionData.dateReceived) }),
+    };
 
     // --- Reverse old transaction on account balance ---
     const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
@@ -369,7 +376,14 @@ export async function updateCashTransaction(
 
     await set(transactionRef, dataToSave);
 
-    const newTransaction = { ...dataToSave, id };
+    const newTransaction: CashTransaction = {
+      id,
+      ...dataToSave,
+      createdAt: new Date(dataToSave.createdAt),
+      updatedAt: new Date(dataToSave.updatedAt),
+      ...(dataToSave.dateSent && { dateSent: new Date(dataToSave.dateSent) }),
+      ...(dataToSave.dateReceived && { dateReceived: new Date(dataToSave.dateReceived) }),
+    };
     
     return { oldTransaction, newTransaction };
 }
@@ -681,9 +695,19 @@ export async function updateSalesReports(order: Order) {
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
     const dateForReport = transaction.transactionDate || transaction.dateReceived || transaction.dateSent;
-    // Use transactionDate as the primary source, falling back to others, then to the current time.
-    // This ensures that even if the date is changed, we use the correct date from the object.
-    const dateStr = dateForReport ? dateForReport.toString() : getCurrentPHTISOString();
+    
+    let dateStr: string;
+    if (dateForReport) {
+        if (dateForReport instanceof Date) {
+            dateStr = dateForReport.toISOString();
+        } else {
+            // It's likely a string, which is what getReportPaths expects
+            dateStr = dateForReport as string;
+        }
+    } else {
+        dateStr = getCurrentPHTISOString();
+    }
+    
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
