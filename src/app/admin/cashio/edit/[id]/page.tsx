@@ -36,7 +36,15 @@ export default function EditCashTransactionPage() {
           return;
         }
         
-        setTransaction(transactionData);
+        const transactionWithDates = {
+            ...transactionData,
+            createdAt: new Date(transactionData.createdAt),
+            updatedAt: new Date(transactionData.updatedAt),
+            ...(transactionData.dateSent && { dateSent: new Date(transactionData.dateSent as any) }),
+            ...(transactionData.dateReceived && { dateReceived: new Date(transactionData.dateReceived as any) }),
+        } as CashTransaction;
+
+        setTransaction(transactionWithDates);
         setAccounts(accountsData);
       } catch (err: any) {
         console.error("Error fetching data:", err);
