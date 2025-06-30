@@ -94,7 +94,6 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   });
 
   const transactionType = form.watch('transactionType');
-  const amount = form.watch('amount');
 
   // Fetch fee thresholds on mount
   useEffect(() => {
@@ -104,14 +103,6 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     }
     fetchThresholds();
   }, []);
-
-  // Calculate fee automatically when amount changes
-  useEffect(() => {
-    if (amount > 0 && feeThresholds.length > 0) {
-      const calculatedFee = calculateFee(amount, feeThresholds);
-      form.setValue('fee', calculatedFee, { shouldValidate: true });
-    }
-  }, [amount, feeThresholds, form]);
 
   // Set the last used account from localStorage
   useEffect(() => {
@@ -210,6 +201,11 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             if (data.amount) {
                 form.setValue('amount', data.amount, { shouldValidate: true });
                 populatedFields.push('amount');
+                if (feeThresholds.length > 0) {
+                    const calculatedFee = calculateFee(data.amount, feeThresholds);
+                    form.setValue('fee', calculatedFee, { shouldValidate: true });
+                    populatedFields.push('fee');
+                }
             }
             
             if (data.accountName) {
@@ -559,7 +555,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
                           <FormField control={form.control} name="fee" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Fee</FormLabel>
-                                <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} /></FormControl>
+                                <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} className={cn(highlightedFields.includes('fee') && 'ring-2 ring-primary ring-offset-2 transition-all')} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                           )} />
