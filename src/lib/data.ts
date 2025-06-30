@@ -228,10 +228,10 @@ export async function getCashTransactionById(id: string): Promise<CashTransactio
     const transactionWithDateObjects = {
         ...transaction,
         id,
-        createdAt: transaction.createdAt,
-        updatedAt: transaction.updatedAt,
-        ...(transaction.dateSent && { dateSent: transaction.dateSent }),
-        ...(transaction.dateReceived && { dateReceived: transaction.dateReceived }),
+        createdAt: new Date(transaction.createdAt),
+        updatedAt: new Date(transaction.updatedAt),
+        ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent as any) }),
+        ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived as any) }),
     };
     return transactionWithDateObjects;
   }
@@ -680,8 +680,10 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    const transactionDate = transaction.dateReceived || transaction.dateSent;
-    const dateStr = transactionDate ? transactionDate.toString() : new Date().toISOString();
+    const dateForReport = transaction.transactionDate || transaction.dateReceived || transaction.dateSent;
+    // Use transactionDate as the primary source, falling back to others, then to the current time.
+    // This ensures that even if the date is changed, we use the correct date from the object.
+    const dateStr = dateForReport ? dateForReport.toString() : getCurrentPHTISOString();
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
