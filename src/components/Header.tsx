@@ -29,6 +29,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { ScrollArea } from './ui/scroll-area';
 
 export default function Header() {
   const { cartCount } = useCart();
@@ -52,8 +53,8 @@ export default function Header() {
                     <span className="sr-only">Open menu</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm">
-                  <SheetHeader>
+                <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm flex flex-col p-0">
+                  <SheetHeader className="p-6 pb-2">
                      <SheetTitle className="text-left">
                         <Link href="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
                             <LayoutDashboard />
@@ -61,93 +62,95 @@ export default function Header() {
                         </Link>
                      </SheetTitle>
                   </SheetHeader>
-                  <nav className="flex flex-col space-y-1 mt-4">
-                    <Accordion type="multiple" className="w-full">
-                        <AccordionItem value="pos" className="border-b-0">
-                            <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
-                                <div className="flex items-center gap-4">
-                                  <Store className="h-6 w-6" />
-                                  Point of Sale
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pl-10 space-y-1">
-                                <Link href="/admin/store" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Store className="h-5 w-5 text-muted-foreground" /><span>Store</span>
-                                </Link>
-                                <Link href="/admin/cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
-                                </Link>
-                                <Link href="/admin/printing" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Printer className="h-5 w-5 text-muted-foreground" /><span>Printing</span>
-                                </Link>
-                                <Link href="/admin/e-loading" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Smartphone className="h-5 w-5 text-muted-foreground" /><span>E-loading</span>
-                                </Link>
-                                <Link href="/admin/other-services" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Wrench className="h-5 w-5 text-muted-foreground" /><span>Other Services</span>
-                                </Link>
-                                <Link href="/admin/expenses" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Receipt className="h-5 w-5 text-muted-foreground" /><span>Expenses</span>
-                                </Link>
-                            </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="management" className="border-b-0">
-                            <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
-                                <div className="flex items-center gap-4">
-                                  <Package className="h-6 w-6" />
-                                  Management
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pl-10 space-y-1">
-                                <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
-                                </Link>
-                                <Link href="/admin/orders" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <ShoppingCart className="h-5 w-5 text-muted-foreground" /><span>Orders</span>
-                                </Link>
-                                <Link href="/admin/cashio-fees" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <DollarSign className="h-5 w-5 text-muted-foreground" /><span>CashIO Fees</span>
-                                </Link>
-                                <Link href="/admin/accounts" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Landmark className="h-5 w-5 text-muted-foreground" /><span>Accounts</span>
-                                </Link>
-                                <Link href="/admin/customers" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Users className="h-5 w-5 text-muted-foreground" /><span>Customers</span>
-                                </Link>
-                                {isAdmin && (
-                                    <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                        <UserIcon className="h-5 w-5 text-muted-foreground" /><span>Users</span>
-                                    </Link>
-                                )}
-                                <Link href="/admin/collections" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Library className="h-5 w-5 text-muted-foreground" /><span>Collections</span>
-                                </Link>
-                                <Link href="/admin/activity-logs" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <History className="h-5 w-5 text-muted-foreground" /><span>Activity Logs</span>
-                                </Link>
-                            </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="reports" className="border-b-0">
-                            <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
-                                <div className="flex items-center gap-4">
-                                  <BarChart className="h-6 w-6" />
-                                  Reports
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pl-10 space-y-1">
-                                <Link href="/admin/reports/sales" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Receipt className="h-5 w-5 text-muted-foreground" /><span>Sales</span>
-                                </Link>
-                                <Link href="/admin/reports/customer" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <Users className="h-5 w-5 text-muted-foreground" /><span>Customer</span>
-                                </Link>
-                                <Link href="/admin/reports/cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
-                                </Link>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  </nav>
+                  <ScrollArea className="flex-1">
+                    <nav className="flex flex-col space-y-1 p-6 pt-2">
+                      <Accordion type="multiple" className="w-full">
+                          <AccordionItem value="pos" className="border-b-0">
+                              <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                  <div className="flex items-center gap-4">
+                                    <Store className="h-6 w-6" />
+                                    Point of Sale
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pl-10 space-y-1">
+                                  <Link href="/admin/store" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Store className="h-5 w-5 text-muted-foreground" /><span>Store</span>
+                                  </Link>
+                                  <Link href="/admin/cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
+                                  </Link>
+                                  <Link href="/admin/printing" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Printer className="h-5 w-5 text-muted-foreground" /><span>Printing</span>
+                                  </Link>
+                                  <Link href="/admin/e-loading" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Smartphone className="h-5 w-5 text-muted-foreground" /><span>E-loading</span>
+                                  </Link>
+                                  <Link href="/admin/other-services" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Wrench className="h-5 w-5 text-muted-foreground" /><span>Other Services</span>
+                                  </Link>
+                                  <Link href="/admin/expenses" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Receipt className="h-5 w-5 text-muted-foreground" /><span>Expenses</span>
+                                  </Link>
+                              </AccordionContent>
+                          </AccordionItem>
+                          <AccordionItem value="management" className="border-b-0">
+                              <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                  <div className="flex items-center gap-4">
+                                    <Package className="h-6 w-6" />
+                                    Management
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pl-10 space-y-1">
+                                  <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
+                                  </Link>
+                                  <Link href="/admin/orders" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <ShoppingCart className="h-5 w-5 text-muted-foreground" /><span>Orders</span>
+                                  </Link>
+                                  <Link href="/admin/cashio-fees" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <DollarSign className="h-5 w-5 text-muted-foreground" /><span>CashIO Fees</span>
+                                  </Link>
+                                  <Link href="/admin/accounts" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Landmark className="h-5 w-5 text-muted-foreground" /><span>Accounts</span>
+                                  </Link>
+                                  <Link href="/admin/customers" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Users className="h-5 w-5 text-muted-foreground" /><span>Customers</span>
+                                  </Link>
+                                  {isAdmin && (
+                                      <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                          <UserIcon className="h-5 w-5 text-muted-foreground" /><span>Users</span>
+                                      </Link>
+                                  )}
+                                  <Link href="/admin/collections" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Library className="h-5 w-5 text-muted-foreground" /><span>Collections</span>
+                                  </Link>
+                                  <Link href="/admin/activity-logs" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <History className="h-5 w-5 text-muted-foreground" /><span>Activity Logs</span>
+                                  </Link>
+                              </AccordionContent>
+                          </AccordionItem>
+                          <AccordionItem value="reports" className="border-b-0">
+                              <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                  <div className="flex items-center gap-4">
+                                    <BarChart className="h-6 w-6" />
+                                    Reports
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pl-10 space-y-1">
+                                  <Link href="/admin/reports/sales" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Receipt className="h-5 w-5 text-muted-foreground" /><span>Sales</span>
+                                  </Link>
+                                  <Link href="/admin/reports/customer" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Users className="h-5 w-5 text-muted-foreground" /><span>Customer</span>
+                                  </Link>
+                                  <Link href="/admin/reports/cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
+                                  </Link>
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
+                    </nav>
+                  </ScrollArea>
                 </SheetContent>
               </Sheet>
 
