@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -140,6 +141,9 @@ export default function Header() {
                                   <Link href="/admin/reports/sales" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <Receipt className="h-5 w-5 text-muted-foreground" /><span>Sales</span>
                                   </Link>
+                                  <Link href="/admin/reports/product" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Package className="h-5 w-5 text-muted-foreground" /><span>Product</span>
+                                  </Link>
                                   <Link href="/admin/reports/customer" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <Users className="h-5 w-5 text-muted-foreground" /><span>Customer</span>
                                   </Link>
@@ -202,6 +206,7 @@ export default function Header() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem asChild><Link href="/admin/reports/sales" className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Sales</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/product" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Product</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/customer" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customer</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
                   </DropdownMenuContent>
