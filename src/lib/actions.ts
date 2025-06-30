@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 
 const productSchema = z.object({
@@ -40,6 +40,8 @@ export async function addProductAction(data: FormData) {
 
   const newProduct = await addProduct(validatedFields.data, user);
   
+  await initializeProductReport(newProduct.id);
+
   await logActivity({
     type: 'Product',
     action: 'Created',
@@ -213,6 +215,11 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                 });
                 await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
             }
+        }
+        
+        const serviceGroups = ['Financial', 'Services'];
+        if (!serviceGroups.includes(item.group)) {
+          await updateProductReports(item.id, item.quantity, item.price * item.quantity);
         }
     }
 

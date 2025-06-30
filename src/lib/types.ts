@@ -145,3 +145,9 @@ export interface FeeThreshold {
   createdBy?: ChangeTracker;
   updatedBy?: ChangeTracker;
 }
+
+export interface ProductReportData {
+  totalQuantity: number;
+  totalSales: number;
+  totalOrders: number;
+}

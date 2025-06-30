@@ -694,7 +694,7 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    const dateForReport = transaction.transactionDate || transaction.dateReceived || transaction.dateSent;
+    const dateForReport = transaction.transactionDate || (transaction.transactionType === 'Cash In' ? transaction.dateSent : transaction.dateReceived);
     
     let dateStr: string;
     if (dateForReport) {
@@ -828,12 +828,12 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
 // ========================
 
 const defaultFeeThresholds: Omit<FeeThreshold, 'id' | 'createdBy'>[] = [
-    { from: 1, to: 110, fee: 5, type: 'fixed', notes: 'Base fee tier 1' },
-    { from: 111, to: 599, fee: 10, type: 'fixed', notes: 'Base fee tier 2' },
-    { from: 600, to: 920, fee: 15, type: 'fixed', notes: 'Base fee tier 3' },
-    { from: 921, to: 1100, fee: 20, type: 'fixed', notes: 'Base fee tier 4' },
-    { from: 1101, to: 10000, fee: 20, type: 'per_thousand_flat', notes: 'Fee for amounts from 1101 to 10000' },
-    { from: 10001, to: 100000, fee: 10, type: 'per_thousand_flat', notes: 'Fee for amounts over 10000' },
+  { from: 1, to: 110, fee: 5, type: 'fixed', notes: 'Base fee tier 1' },
+  { from: 111, to: 599, fee: 10, type: 'fixed', notes: 'Base fee tier 2' },
+  { from: 600, to: 920, fee: 15, type: 'fixed', notes: 'Base fee tier 3' },
+  { from: 921, to: 1100, fee: 20, type: 'fixed', notes: 'Base fee tier 4' },
+  { from: 1101, to: 10000, fee: 20, type: 'per_thousand_flat', notes: 'Fee for amounts from 1101 to 10000' },
+  { from: 10001, to: 100000, fee: 10, type: 'per_thousand_flat', notes: 'Fee for amounts over 10000' },
 ];
 
 export async function getFeeThresholds(): Promise<FeeThreshold[]> {
@@ -885,4 +885,38 @@ export async function updateFeeThreshold(id: string, thresholdData: Omit<FeeThre
 export async function deleteFeeThreshold(id: string): Promise<void> {
   const thresholdRef = ref(db, `feeThresholds/${id}`);
   await remove(thresholdRef);
+}
+
+// ========================
+// Product Reporting Functions
+// ========================
+
+export async function initializeProductReport(productId: string) {
+  const { overall: overallPath } = getReportPaths(getCurrentPHTISOString());
+  const reportRef = ref(db, `productReports${overallPath}/${productId}`);
+  await set(reportRef, {
+    totalQuantity: 0,
+    totalSales: 0,
+    totalOrders: 0,
+  });
+}
+
+export async function updateProductReports(productId: string, quantity: number, sales: number) {
+  const dateStr = getCurrentPHTISOString();
+  const paths = getReportPaths(dateStr);
+
+  for (const periodPath of Object.values(paths)) {
+    const reportRef = ref(db, `productReports${periodPath}/${productId}`);
+    await runTransaction(reportRef, (currentData: any) => {
+      if (currentData === null) {
+        currentData = { totalQuantity: 0, totalSales: 0, totalOrders: 0 };
+      }
+
+      currentData.totalQuantity = (currentData.totalQuantity || 0) + quantity;
+      currentData.totalSales = (currentData.totalSales || 0) + sales;
+      currentData.totalOrders = (currentData.totalOrders || 0) + 1;
+      
+      return currentData;
+    });
+  }
 }
