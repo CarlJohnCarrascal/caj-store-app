@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, KeyRound } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function SignInPage() {
-  const { signInWithLink, signInWithPassword } = useAuth();
+  const { signInWithLink, signInWithPassword, appUser, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState<'link' | 'pin' | null>(null);
@@ -24,6 +26,16 @@ export default function SignInPage() {
       setOrigin(window.location.origin);
     }
   }, []);
+  
+  useEffect(() => {
+    if (!authLoading && appUser) {
+        if (appUser.authorized) {
+            router.push('/admin');
+        } else {
+            router.push('/unauthorized');
+        }
+    }
+  }, [appUser, authLoading, router]);
 
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +46,7 @@ export default function SignInPage() {
     setLoading('pin');
     try {
       await signInWithPassword(email, pin);
-      // Successful sign in will be handled by the AuthProvider
+      // Let the useEffect handle the redirect
     } catch (error: any) {
       let description = 'An unknown error occurred.';
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-password') {
@@ -64,6 +76,14 @@ export default function SignInPage() {
       setLoading(null);
     }
   };
+  
+  if (authLoading || appUser) {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <p>Loading...</p>
+        </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
