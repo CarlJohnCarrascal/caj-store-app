@@ -201,20 +201,21 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     } = validatedOrder.data;
 
     const user = { userId, userName };
-
+    let updatedTransaction: CashTransaction | null = null;
+    
     for (const item of items) {
         if (item.category === 'CashIO' && item.originalTransactionId) {
-            const updatedTransaction = await updateCashTransactionStatus(item.originalTransactionId, customerId);
-            if (updatedTransaction) {
+             const cashTx = await getCashTransactionById(item.originalTransactionId);
+             if (cashTx) {
+                 updatedTransaction = await updateCashTransactionStatus(cashTx.id, customerId);
                  await logActivity({
                     type: 'CashIO',
                     action: 'Updated',
-                    details: `Transaction for "${customerName}" was marked as ${updatedTransaction.status} via checkout.`,
+                    details: `Transaction for "${customerName}" was marked as ${updatedTransaction?.status} via checkout.`,
                     targetId: item.originalTransactionId,
                     ...user
                 });
-                await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
-            }
+             }
         }
         
         const serviceGroups = ['Financial', 'Services'];
@@ -248,6 +249,11 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     }
 
     const newOrder = await addOrder(orderPayload, user);
+    
+    // Pass the fetched/updated transaction directly to avoid another DB call
+    if (updatedTransaction) {
+        await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
+    }
 
     await logActivity({
         type: 'Order',

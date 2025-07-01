@@ -225,15 +225,10 @@ export async function getCashTransactionById(id: string): Promise<CashTransactio
   const snapshot = await get(ref(db, `cashTransactions/${id}`));
   if (snapshot.exists()) {
     const transaction = snapshot.val();
-    const transactionWithDateObjects = {
-        ...transaction,
-        id,
-        createdAt: new Date(transaction.createdAt),
-        updatedAt: new Date(transaction.updatedAt),
-        ...(transaction.dateSent && { dateSent: new Date(transaction.dateSent as any) }),
-        ...(transaction.dateReceived && { dateReceived: new Date(transaction.dateReceived as any) }),
+    return {
+      id,
+      ...transaction
     };
-    return transactionWithDateObjects;
   }
   return undefined;
 }
@@ -266,7 +261,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   
   let transactionDateString: string;
   if (transactionData.datetime && transactionData.datetime.length > 0) {
-    transactionDateString = `${transactionData.datetime}:00+08:00`;
+    transactionDateString = new Date(`${transactionData.datetime}:00+08:00`).toISOString();
   } else {
     transactionDateString = nowPHTString;
   }
@@ -395,7 +390,7 @@ export async function updateCashTransactionStatus(id: string, customerId: string
     if (snapshot.exists()) {
         const transaction = snapshot.val();
         if (transaction.customerId) {
-            return null;
+            return { id, ...transaction }; // Return existing transaction if already processed
         }
 
         const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
@@ -406,16 +401,7 @@ export async function updateCashTransactionStatus(id: string, customerId: string
             customerId,
         };
         await update(transactionRef, updates);
-        const updatedTransactionData = { ...transaction, ...updates, id };
-        
-        const returnedTransaction = {
-             ...updatedTransactionData, 
-             updatedAt: updatedAt, 
-             createdAt: transaction.createdAt,
-             ...(transaction.dateSent && { dateSent: transaction.dateSent }),
-             ...(transaction.dateReceived && { dateReceived: transaction.dateReceived }),
-        };
-        return returnedTransaction as CashTransaction;
+        return { ...transaction, ...updates, id };
     }
     return null;
 }
@@ -694,16 +680,11 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    const dateForReport = transaction.transactionDate || (transaction.transactionType === 'Cash In' ? transaction.dateSent : transaction.dateReceived);
+    const dateForReport = transaction.transactionDate;
     
     let dateStr: string;
     if (dateForReport) {
-        if (dateForReport instanceof Date) {
-            dateStr = dateForReport.toISOString();
-        } else {
-            // It's likely a string, which is what getReportPaths expects
-            dateStr = dateForReport as string;
-        }
+        dateStr = dateForReport;
     } else {
         dateStr = getCurrentPHTISOString();
     }
