@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,13 @@ export default function SignInPage() {
   const [loading, setLoading] = useState<'link' | 'pin' | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
 
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +70,7 @@ export default function SignInPage() {
       <div className="w-full max-w-md space-y-4">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">Caj-Store</h1>
-          <p className="text-muted-foreground">Admin Portal</p>
+          <p className="text-muted-foreground">{origin || 'Admin Portal'}</p>
         </div>
         <Card>
           <CardHeader>
