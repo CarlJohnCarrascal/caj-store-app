@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged, sendSignInLinkToEmail, signOut as firebaseSignOut } from 'firebase/auth';
+import { User, onAuthStateChanged, sendSignInLinkToEmail, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { AppUser } from '@/lib/types';
@@ -11,6 +11,7 @@ interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
   signIn: (email: string) => Promise<void>;
+  signInWithPin: (pin: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAuthorized: boolean;
   isAdmin: boolean;
@@ -64,16 +65,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ? 'http://localhost:3000/auth/action' 
         : `${window.location.origin}/auth/action`;
 
-    // const actionCodeSettings = {
-    //   url: continueUrl,
-    //   handleCodeInApp: true,
-    // };
     const actionCodeSettings = {
       url: `${window.location.origin}/auth/action`,
       handleCodeInApp: true,
     };
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
     window.localStorage.setItem('emailForSignIn', email);
+  };
+  
+  const signInWithPin = async (pin: string) => {
+    const email = process.env.NEXT_PUBLIC_PIN_AUTH_EMAIL;
+    const prefix = process.env.NEXT_PUBLIC_PIN_AUTH_PASSWORD_PREFIX;
+    const suffix = process.env.NEXT_PUBLIC_PIN_AUTH_PASSWORD_SUFFIX;
+
+    if (!email || prefix === undefined || suffix === undefined) {
+      throw new Error('PIN authentication is not configured. Please set environment variables.');
+    }
+    
+    const password = `${prefix}${pin}${suffix}`;
+
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
   const signOut = async () => {
@@ -85,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAdmin = appUser?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, appUser, loading, signIn, signOut, isAuthorized, isAdmin }}>
+    <AuthContext.Provider value={{ user, appUser, loading, signIn, signInWithPin, signOut, isAuthorized, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );
