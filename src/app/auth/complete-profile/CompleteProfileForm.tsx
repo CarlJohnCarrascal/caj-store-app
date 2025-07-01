@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createUserProfileAction } from '@/lib/actions';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, updatePassword } from 'firebase/auth';
 
 export default function CompleteProfileForm() {
   const { user, appUser, loading } = useAuth();
@@ -17,6 +17,8 @@ export default function CompleteProfileForm() {
   const { toast } = useToast();
   
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -38,6 +40,14 @@ export default function CompleteProfileForm() {
       toast({ variant: 'destructive', title: 'Name is required' });
       return;
     }
+    if (password.length < 6) {
+      toast({ variant: 'destructive', title: 'PIN too short', description: 'PIN must be at least 6 characters.' });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({ variant: 'destructive', title: 'PINs do not match' });
+      return;
+    }
     if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'No authenticated user found.' });
         return;
@@ -47,6 +57,8 @@ export default function CompleteProfileForm() {
       try {
         // Update Firebase Auth profile
         await updateProfile(user, { displayName: name });
+        // Set the user's password
+        await updatePassword(user, password);
         // Create our own app user profile in the database
         await createUserProfileAction({
             id: user.uid,
@@ -70,7 +82,7 @@ export default function CompleteProfileForm() {
       <CardHeader>
         <CardTitle>Welcome! Let's set up your profile.</CardTitle>
         <CardDescription>
-          Please enter your full name. This will be used to track your activity within the application.
+          Please enter your full name and a 6-digit PIN for future sign-ins.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -84,6 +96,28 @@ export default function CompleteProfileForm() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">6-Digit PIN</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value.replace(/\D/g, ''))}
+              required
+              maxLength={6}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm PIN</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, ''))}
+              required
+              maxLength={6}
             />
           </div>
           <Button type="submit" disabled={isPending} className="w-full">
