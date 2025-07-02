@@ -73,13 +73,11 @@ export interface CashTransaction {
   amount: number;
   fee: number;
   newBalance: number;
-  dateSent?: Date;
-  dateReceived?: Date;
-  transactionDate?: string;
+  transactionDate: string; // ISO string with timezone
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
   createdBy?: ChangeTracker;
   updatedBy?: ChangeTracker;
 }

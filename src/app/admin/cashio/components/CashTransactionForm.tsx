@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,8 +68,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   const { user } = useAuth();
   const [feeThresholds, setFeeThresholds] = useState<FeeThreshold[]>([]);
 
-  const transactionDate = transaction?.dateSent || transaction?.dateReceived;
-  const formattedDate = transactionDate ? new Date(transactionDate.getTime() - (transactionDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+  const formattedDate = transaction?.transactionDate ? transaction.transactionDate.slice(0, 16) : '';
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -193,9 +193,13 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             }
             
             if (data.datetime) {
-                const localDateTime = new Date(data.datetime).toISOString().slice(0, 16);
-                form.setValue('datetime', localDateTime, { shouldValidate: true });
-                populatedFields.push('datetime');
+                try {
+                  const localDateTime = new Date(data.datetime).toISOString().slice(0, 16);
+                  form.setValue('datetime', localDateTime, { shouldValidate: true });
+                  populatedFields.push('datetime');
+                } catch (e) {
+                  console.warn("Could not parse AI-extracted date:", data.datetime);
+                }
             }
             
             if (data.amount) {

@@ -122,14 +122,7 @@ export default function CashTransactionTable() {
 
         const snapshot = await get(q);
         const transactionList = snapshotToArray<CashTransaction>(snapshot);
-        const transactionsWithDates = transactionList.map(t => ({
-            ...t,
-            createdAt: new Date(t.createdAt),
-            updatedAt: new Date(t.updatedAt),
-            ...(t.dateSent && { dateSent: new Date(t.dateSent as any) }),
-            ...(t.dateReceived && { dateReceived: new Date(t.dateReceived as any) }),
-        }));
-        setTransactions(transactionsWithDates);
+        setTransactions(transactionList);
     } catch (error) {
         console.error("Failed to fetch transactions:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch transactions.' });
@@ -189,16 +182,9 @@ export default function CashTransactionTable() {
             const snapshot = await get(q);
             if (snapshot.exists()) {
                 const fetchedList = snapshotToArray<CashTransaction>(snapshot);
-                const fetchedWithDates = fetchedList.map(t => ({
-                    ...t,
-                    createdAt: new Date(t.createdAt),
-                    updatedAt: new Date(t.updatedAt),
-                    ...(t.dateSent && { dateSent: new Date(t.dateSent as any) }),
-                    ...(t.dateReceived && { dateReceived: new Date(t.dateReceived as any) }),
-                }));
                 setTransactions(prev => {
                     const existingIds = new Set(prev.map(p => p.id));
-                    const newTransactions = fetchedWithDates.filter(t => !existingIds.has(t.id));
+                    const newTransactions = fetchedList.filter(t => !existingIds.has(t.id));
                     if (newTransactions.length > 0) {
                         toast({ title: 'Found transaction', description: 'Added transaction from outside the current date range.' });
                         return [...newTransactions, ...prev];
@@ -258,7 +244,6 @@ export default function CashTransactionTable() {
       return {
         ...t,
         ourAccountName: accountMap.get(t.accountUsedId) || 'Unknown Account',
-        transactionDate: t.transactionType === 'Cash In' ? t.dateSent : t.dateReceived,
         customerName,
       };
     });
@@ -304,8 +289,6 @@ export default function CashTransactionTable() {
       let comparison = 0;
       if (typeof aVal === 'number' && typeof bVal === 'number') {
         comparison = aVal - bVal;
-      } else if (aVal instanceof Date && bVal instanceof Date) {
-        comparison = aVal.getTime() - bVal.getTime();
       } else {
         comparison = String(aVal).localeCompare(String(bVal));
       }
@@ -524,7 +507,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && displayDate ? format(displayDate, 'PPp') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && displayDate ? format(new Date(displayDate), 'PPp') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -574,7 +557,7 @@ export default function CashTransactionTable() {
                   return (
                     <TableRow key={t.id} onClick={() => setSelectedTransaction(t)} className="cursor-pointer">
                         <TableCell>
-                          {isMounted && displayDate ? format(displayDate, 'PPp') : <Skeleton className="h-5 w-40" />}
+                          {isMounted && displayDate ? format(new Date(displayDate), 'PPp') : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -668,7 +651,7 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {isMounted && (selectedTransaction.transactionDate) ? format(selectedTransaction.transactionDate, 'PPpp') : 'Loading date...'}
+                {isMounted && (selectedTransaction.transactionDate) ? format(new Date(selectedTransaction.transactionDate), 'PPpp') : 'Loading date...'}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">

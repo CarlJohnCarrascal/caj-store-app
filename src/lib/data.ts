@@ -212,23 +212,15 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
     return {
       ...transaction,
       ourAccountName: account ? account.accountName : 'Unknown Account',
-      createdAt: transaction.createdAt,
-      updatedAt: transaction.updatedAt,
-      ...(transaction.dateSent && { dateSent: transaction.dateSent }),
-      ...(transaction.dateReceived && { dateReceived: transaction.dateReceived }),
     };
   });
-  return transactionsWithAccountNames.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return transactionsWithAccountNames.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getCashTransactionById(id: string): Promise<CashTransaction | undefined> {
   const snapshot = await get(ref(db, `cashTransactions/${id}`));
   if (snapshot.exists()) {
-    const transaction = snapshot.val();
-    return {
-      id,
-      ...transaction
-    };
+    return { id, ...snapshot.val() };
   }
   return undefined;
 }
@@ -241,7 +233,7 @@ export async function isReferenceNumberDuplicate(reference: string): Promise<boo
   return snapshot.exists();
 }
 
-export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string }, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
+export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'> & { datetime?: string }, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
   const accountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
   const accountSnapshot = await get(accountRef);
   if (!accountSnapshot.exists()) {
@@ -261,7 +253,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   
   let transactionDateString: string;
   if (transactionData.datetime && transactionData.datetime.length > 0) {
-    transactionDateString = new Date(`${transactionData.datetime}:00+08:00`).toISOString();
+    transactionDateString = `${transactionData.datetime}:00+08:00`;
   } else {
     transactionDateString = nowPHTString;
   }
@@ -276,12 +268,6 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
     updatedAt: nowPHTString,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
   };
-
-  if (transactionData.transactionType === 'Cash In') {
-    dataToSave.dateSent = transactionDateString;
-  } else {
-    dataToSave.dateReceived = transactionDateString;
-  }
   
   delete dataToSave.datetime;
 
@@ -293,7 +279,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
 
 export async function updateCashTransaction(
   id: string,
-  transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance'> & { datetime?: string },
+  transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'> & { datetime?: string },
   updatedBy: Omit<ChangeTracker, 'timestamp'>
 ): Promise<{ oldTransaction: CashTransaction, newTransaction: CashTransaction }> {
     const transactionRef = ref(db, `cashTransactions/${id}`);
@@ -302,14 +288,7 @@ export async function updateCashTransaction(
         throw new Error("Transaction to update not found");
     }
     const oldTransactionData = oldTransactionSnapshot.val();
-    const oldTransaction: CashTransaction = {
-      id,
-      ...oldTransactionData,
-      createdAt: new Date(oldTransactionData.createdAt),
-      updatedAt: new Date(oldTransactionData.updatedAt),
-      ...(oldTransactionData.dateSent && { dateSent: new Date(oldTransactionData.dateSent) }),
-      ...(oldTransactionData.dateReceived && { dateReceived: new Date(oldTransactionData.dateReceived) }),
-    };
+    const oldTransaction: CashTransaction = { id, ...oldTransactionData };
 
     // --- Reverse old transaction on account balance ---
     const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
@@ -345,7 +324,7 @@ export async function updateCashTransaction(
     const nowPHTString = getCurrentPHTISOString();
     let transactionDateString: string;
     if (transactionData.datetime && transactionData.datetime.length > 0) {
-        transactionDateString = new Date(`${transactionData.datetime}:00+08:00`).toISOString();
+        transactionDateString = `${transactionData.datetime}:00+08:00`;
     } else {
         transactionDateString = oldTransaction.transactionDate || nowPHTString;
     }
@@ -359,26 +338,11 @@ export async function updateCashTransaction(
         updatedBy: { ...updatedBy, timestamp: nowPHTString },
     };
     
-    if (transactionData.transactionType === 'Cash In') {
-      dataToSave.dateSent = transactionDateString;
-      delete dataToSave.dateReceived;
-    } else { 
-      dataToSave.dateReceived = transactionDateString;
-      delete dataToSave.dateSent;
-    }
-    
     delete dataToSave.datetime;
 
     await set(transactionRef, dataToSave);
 
-    const newTransaction: CashTransaction = {
-      id,
-      ...dataToSave,
-      createdAt: new Date(dataToSave.createdAt),
-      updatedAt: new Date(dataToSave.updatedAt),
-      ...(dataToSave.dateSent && { dateSent: new Date(dataToSave.dateSent) }),
-      ...(dataToSave.dateReceived && { dateReceived: new Date(dataToSave.dateReceived) }),
-    };
+    const newTransaction: CashTransaction = { id, ...dataToSave };
     
     return { oldTransaction, newTransaction };
 }
@@ -681,15 +645,7 @@ export async function updateSalesReports(order: Order) {
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
     const dateForReport = transaction.transactionDate;
-    
-    let dateStr: string;
-    if (dateForReport) {
-        dateStr = dateForReport;
-    } else {
-        dateStr = getCurrentPHTISOString();
-    }
-    
-    const paths = getReportPaths(dateStr);
+    const paths = getReportPaths(dateForReport);
 
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);

@@ -458,7 +458,7 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
 
   const { oldTransaction, newTransaction } = await updateCashTransaction(id, validatedFields.data, user);
   console.log('Old Transaction:', oldTransaction);
-  console.log('New Transaction:', newTransaction)
+  console.log('New Transaction:', newTransaction);
   // Reverse old transaction from reports
   await updateCashIOReport(oldTransaction, 'allTransactions', undefined, -1);
   if (oldTransaction.customerId) {
