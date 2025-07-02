@@ -253,7 +253,8 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   
   let transactionDateString: string;
   if (transactionData.datetime && transactionData.datetime.length > 0) {
-    transactionDateString = new Date(transactionData.datetime).toISOString();
+    // Treat the datetime-local string as PHT and format it correctly with seconds and timezone
+    transactionDateString = `${transactionData.datetime}:00+08:00`;
   } else {
     transactionDateString = nowPHTString;
   }
@@ -288,7 +289,11 @@ export async function updateCashTransaction(
         throw new Error("Transaction to update not found");
     }
     const oldTransactionData = oldTransactionSnapshot.val();
-    const oldTransaction: CashTransaction = { id, ...oldTransactionData };
+    const oldTransaction: CashTransaction = {
+      id,
+      ...oldTransactionData,
+      transactionDate: oldTransactionData.transactionDate,
+    };
 
     // --- Reverse old transaction on account balance ---
     const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
@@ -324,7 +329,7 @@ export async function updateCashTransaction(
     const nowPHTString = getCurrentPHTISOString();
     let transactionDateString: string;
     if (transactionData.datetime && transactionData.datetime.length > 0) {
-        transactionDateString = new Date(transactionData.datetime).toISOString();
+        transactionDateString = `${transactionData.datetime}:00+08:00`;
     } else {
         transactionDateString = oldTransaction.transactionDate || nowPHTString;
     }
@@ -342,7 +347,7 @@ export async function updateCashTransaction(
 
     await set(transactionRef, dataToSave);
 
-    const newTransaction: CashTransaction = { id, ...dataToSave };
+    const newTransaction: CashTransaction = { id, ...dataToSave, transactionDate: transactionDateString };
     
     return { oldTransaction, newTransaction };
 }
@@ -655,6 +660,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: any) => {
+          console.log("current Data: ",currentData)
             if (currentData === null) {
                 if (factor === -1) return; // Cannot subtract from nothing
                 currentData = {
@@ -861,4 +867,5 @@ export async function updateProductReports(productId: string, quantity: number, 
     });
   }
 }
+
 
