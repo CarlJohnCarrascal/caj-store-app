@@ -3,8 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { MoveRight } from 'lucide-react';
 import Link from 'next/link';
 
-const origin = window.location.origin;
-
 export default function WelcomePage() {
   return (
     <div className=" flex flex-col mt-16">
