@@ -253,7 +253,7 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   
   let transactionDateString: string;
   if (transactionData.datetime && transactionData.datetime.length > 0) {
-    transactionDateString = `${transactionData.datetime}:00+08:00`;
+    transactionDateString = new Date(transactionData.datetime).toISOString();
   } else {
     transactionDateString = nowPHTString;
   }
@@ -324,7 +324,7 @@ export async function updateCashTransaction(
     const nowPHTString = getCurrentPHTISOString();
     let transactionDateString: string;
     if (transactionData.datetime && transactionData.datetime.length > 0) {
-        transactionDateString = `${transactionData.datetime}:00+08:00`;
+        transactionDateString = new Date(transactionData.datetime).toISOString();
     } else {
         transactionDateString = oldTransaction.transactionDate || nowPHTString;
     }
@@ -644,10 +644,14 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    const dateForReport = transaction.transactionDate;
-    const paths = getReportPaths(dateForReport);
+    console.log('--- Updating CashIO Report ---');
+    console.log('Transaction:', JSON.stringify(transaction, null, 2));
 
+    const dateForReport = new Date(transaction.transactionDate);
+    const paths = getReportPaths(dateForReport.toISOString());
+    
     for (const periodPath of Object.values(paths)) {
+        console.log('Report Path:', `cashIOReports${periodPath}`);
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: any) => {
@@ -857,3 +861,4 @@ export async function updateProductReports(productId: string, quantity: number, 
     });
   }
 }
+
