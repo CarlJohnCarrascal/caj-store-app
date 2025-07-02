@@ -288,12 +288,7 @@ export async function updateCashTransaction(
     if (!oldTransactionSnapshot.exists()) {
         throw new Error("Transaction to update not found");
     }
-    const oldTransactionData = oldTransactionSnapshot.val();
-    const oldTransaction: CashTransaction = {
-      id,
-      ...oldTransactionData,
-      transactionDate: oldTransactionData.transactionDate,
-    };
+    const oldTransaction: CashTransaction = { id, ...oldTransactionSnapshot.val() };
 
     // --- Reverse old transaction on account balance ---
     const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
@@ -335,7 +330,7 @@ export async function updateCashTransaction(
     }
 
     const dataToSave: any = {
-        ...oldTransactionData,
+        ...oldTransactionSnapshot.val(),
         ...transactionData,
         newBalance: finalNewBalanceForAccount,
         transactionDate: transactionDateString,
@@ -658,11 +653,15 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
-        console.log('Report Path:', `cashIOReports${periodPath}`, reportRef);
+        console.log('Report Path:', `cashIOReports${periodPath}`);
         await runTransaction(reportRef, (currentData: any) => {
-          console.log("current Data: ",currentData)
+          console.log("Current Data: ", currentData);
             if (currentData === null) {
-                if (factor === -1) return; // Cannot subtract from nothing
+                if (factor === -1) {
+                  // This is the problematic case. The report entry to subtract from was not found.
+                  console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
+                  return; // Abort transaction for this path, preventing a crash.
+                }
                 currentData = {
                     cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
                     cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
@@ -729,6 +728,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                 }
             }
             
+            console.log("New Data: ", currentData)
             return currentData;
         });
     }
@@ -869,3 +869,6 @@ export async function updateProductReports(productId: string, quantity: number, 
 }
 
 
+
+
+    
