@@ -474,7 +474,9 @@ export default function CashTransactionTable() {
            <div>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map(t => {
-                const displayDate = t.transactionDate;
+                const date = t.transactionDate ? new Date(t.transactionDate) : null;
+                const isValidDate = date && !isNaN(date.getTime());
+
                 return (
                 <div
                   key={t.id}
@@ -507,7 +509,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && displayDate ? format(new Date(displayDate), 'PPp') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && isValidDate ? format(date, 'PPp') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -553,11 +555,12 @@ export default function CashTransactionTable() {
           <TableBody>
             {paginatedTransactions.length > 0 ? (
                 paginatedTransactions.map(t => {
-                  const displayDate = t.transactionDate;
+                  const date = t.transactionDate ? new Date(t.transactionDate) : null;
+                  const isValidDate = date && !isNaN(date.getTime());
                   return (
                     <TableRow key={t.id} onClick={() => setSelectedTransaction(t)} className="cursor-pointer">
                         <TableCell>
-                          {isMounted && displayDate ? format(new Date(displayDate), 'PPp') : <Skeleton className="h-5 w-40" />}
+                          {isMounted && isValidDate ? format(date, 'PPp') : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -651,7 +654,14 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {isMounted && (selectedTransaction.transactionDate) ? format(new Date(selectedTransaction.transactionDate), 'PPpp') : 'Loading date...'}
+                {(() => {
+                  if (!isMounted || !selectedTransaction.transactionDate) return 'Loading date...';
+                  const date = new Date(selectedTransaction.transactionDate);
+                  if (!isNaN(date.getTime())) {
+                    return format(date, 'PPpp');
+                  }
+                  return "Invalid Date";
+                })()}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">

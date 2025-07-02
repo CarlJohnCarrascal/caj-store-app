@@ -650,15 +650,15 @@ export async function updateSalesReports(order: Order) {
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
     console.log('--- Updating CashIO Report ---');
-    console.log('Transaction:', JSON.stringify(transaction, null, 2));
+    console.log('Transaction:', transaction.transactionDate, type, customerId, factor);
 
     const dateForReport = new Date(transaction.transactionDate);
     const paths = getReportPaths(dateForReport.toISOString());
     
     for (const periodPath of Object.values(paths)) {
-        console.log('Report Path:', `cashIOReports${periodPath}`);
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
+        console.log('Report Path:', `cashIOReports${periodPath}`, reportRef);
         await runTransaction(reportRef, (currentData: any) => {
           console.log("current Data: ",currentData)
             if (currentData === null) {
