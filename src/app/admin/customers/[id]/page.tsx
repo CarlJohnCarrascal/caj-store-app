@@ -1,3 +1,4 @@
+
 import { getCustomerById, getOrdersByCustomerId } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import CustomerActionButtons from '../components/CustomerActionButtons';
+import DeleteCustomerButton from '../components/DeleteCustomerButton';
 
 export default async function CustomerDetailsPage({ params }: { params: { id: string } }) {
   const customer = await getCustomerById(params.id);
@@ -86,8 +88,11 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
                 A positive balance is owed to the customer. A negative balance is owed to the store.
               </p>
             </CardContent>
-            <CardFooter>
-              <CustomerActionButtons customer={customer} className="w-full" />
+            <CardFooter className="flex flex-col gap-2 flex-shrink-0">
+              <CustomerActionButtons customer={customer} />
+              {orders.length === 0 && (
+                <DeleteCustomerButton customerId={customer.id} customerName={customer.name} />
+              )}
             </CardFooter>
           </Card>
         </div>

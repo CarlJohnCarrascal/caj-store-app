@@ -3,8 +3,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
+import { ref, get, update } from 'firebase/database';
+import { db } from './firebase';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -351,6 +353,24 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
     revalidatePath('/admin/activity-logs');
 }
 
+export async function deleteCustomerAction(id: string, user: { userId: string, userName: string }) {
+    const deletedCustomer = await deleteCustomer(id);
+
+    if (deletedCustomer) {
+        await logActivity({
+            type: 'Customer',
+            action: 'Deleted',
+            details: `Customer "${deletedCustomer.name}" was deleted.`,
+            targetId: id,
+            ...user,
+        });
+    }
+
+    revalidatePath('/admin/customers');
+    revalidatePath('/admin/activity-logs');
+}
+
+
 const accountSchema = z.object({
   accountName: z.string().min(1, 'Account name is required'),
   bankName: z.string().min(1, 'Bank name is required'),
@@ -457,8 +477,7 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
   }
 
   const { oldTransaction, newTransaction } = await updateCashTransaction(id, validatedFields.data, user);
-  console.log('Old Transaction:', oldTransaction);
-  console.log('New Transaction:', newTransaction);
+  
   // Reverse old transaction from reports
   await updateCashIOReport(oldTransaction, 'allTransactions', undefined, -1);
   if (oldTransaction.customerId) {
@@ -484,6 +503,46 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
   revalidatePath('/admin/activity-logs');
   revalidatePath('/admin/reports/cashio');
   revalidatePath('/admin/accounts');
+}
+
+export async function deleteCashTransactionAction(id: string, user: { userId: string, userName:string }) {
+    const deletedTransaction = await deleteCashTransaction(id);
+
+    if (deletedTransaction) {
+        // Reverse account balance change
+        const accountRef = ref(db, `accounts/${deletedTransaction.accountUsedId}`);
+        const accountSnapshot = await get(accountRef);
+        if (accountSnapshot.exists()) {
+            const account = accountSnapshot.val();
+            let balanceReversal = 0;
+            if (deletedTransaction.transactionType === 'Cash In') {
+                balanceReversal = -deletedTransaction.amount + deletedTransaction.fee;
+            } else { // Cash Out
+                balanceReversal = deletedTransaction.amount + deletedTransaction.fee;
+            }
+            await update(accountRef, { balance: account.balance + balanceReversal });
+        }
+
+        // Reverse report data
+        await updateCashIOReport(deletedTransaction, 'allTransactions', undefined, -1);
+        if (deletedTransaction.customerId) {
+            await updateCashIOReport(deletedTransaction, 'orderedTransactions', deletedTransaction.customerId, -1);
+        }
+        
+        // Log the deletion
+        await logActivity({
+            type: 'CashIO',
+            action: 'Deleted',
+            details: `Transaction (Ref: ${deletedTransaction.reference}) for "${deletedTransaction.accountName}" was deleted.`,
+            targetId: id,
+            ...user,
+        });
+    }
+
+    revalidatePath('/admin/cashio');
+    revalidatePath('/admin/accounts');
+    revalidatePath('/admin/activity-logs');
+    revalidatePath('/admin/reports/cashio');
 }
 
 const collectionSchema = z.object({

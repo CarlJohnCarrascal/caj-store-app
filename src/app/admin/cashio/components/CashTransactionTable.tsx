@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product, Customer } from '@/lib/types';
 import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -47,6 +47,18 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { deleteCashTransactionAction } from '@/lib/actions';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -80,6 +92,7 @@ export default function CashTransactionTable() {
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isFetching, setIsFetching] = React.useState(false);
+  const [isPendingDelete, startDeleteTransition] = React.useTransition();
 
   const [search, setSearch] = React.useState('');
   const debouncedSearch = useDebouncedValue(search, 500);
@@ -231,6 +244,22 @@ export default function CashTransactionTable() {
 
     toast({ title: 'Success', description: 'Transaction added to order.' });
     setSelectedTransaction(null);
+  };
+  
+  const handleDeleteTransaction = (id: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
+    startDeleteTransition(async () => {
+        try {
+            await deleteCashTransactionAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+            toast({ title: 'Success', description: 'Transaction deleted successfully.' });
+            setSelectedTransaction(null);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete transaction.' });
+        }
+    });
   };
 
   const transactionsWithNames = React.useMemo(() => {
@@ -476,6 +505,7 @@ export default function CashTransactionTable() {
               paginatedTransactions.map(t => {
                 const date = t.transactionDate ? new Date(t.transactionDate) : null;
                 const isValidDate = date && !isNaN(date.getTime());
+                const displayDate = t.transactionDate;
 
                 return (
                 <div
@@ -509,7 +539,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && isValidDate ? format(date, 'PPp') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && isValidDate ? format(new Date(displayDate), 'PPp') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -751,11 +781,38 @@ export default function CashTransactionTable() {
               </div>
             </ScrollArea>
             <DialogFooter className="sm:justify-between gap-2">
-              <Button asChild variant="secondary" className="w-full sm:w-auto">
-                <Link href={`/admin/cashio/edit/${selectedTransaction.id}`}>
-                  <Pencil className="mr-2 h-4 w-4" /> Edit
-                </Link>
-              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button asChild variant="secondary" className="flex-1">
+                  <Link href={`/admin/cashio/edit/${selectedTransaction.id}`}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  </Link>
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="icon" disabled={isPendingDelete}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          This will permanently delete this transaction and reverse its impact on account balances and reports. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteTransaction(selectedTransaction.id)}
+                        disabled={isPendingDelete}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        {isPendingDelete ? 'Deleting...' : 'Confirm Delete'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full">Close</Button>
                 {selectedTransaction.status === 'Available' && (

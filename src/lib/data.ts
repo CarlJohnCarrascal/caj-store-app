@@ -196,6 +196,21 @@ export async function updateCustomerBalance(customerId: string, amount: number):
     return null;
 }
 
+export async function deleteCustomer(id: string): Promise<Customer | null> {
+    const orders = await getOrdersByCustomerId(id);
+    if (orders.length > 0) {
+        throw new Error('Cannot delete a customer with existing orders.');
+    }
+    const customerRef = ref(db, `customers/${id}`);
+    const snapshot = await get(customerRef);
+    if (snapshot.exists()) {
+        const deletedCustomer = { id, ...snapshot.val() };
+        await remove(customerRef);
+        return deletedCustomer;
+    }
+    return null;
+}
+
 // =======================
 // CashTransaction Functions
 // =======================
@@ -366,6 +381,17 @@ export async function updateCashTransactionStatus(id: string, customerId: string
         };
         await update(transactionRef, updates);
         return { ...transaction, ...updates, id };
+    }
+    return null;
+}
+
+export async function deleteCashTransaction(id: string): Promise<CashTransaction | null> {
+    const transactionRef = ref(db, `cashTransactions/${id}`);
+    const snapshot = await get(transactionRef);
+    if (snapshot.exists()) {
+        const deletedTransaction: CashTransaction = { id, ...snapshot.val() };
+        await remove(transactionRef);
+        return deletedTransaction;
     }
     return null;
 }
@@ -644,14 +670,12 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    console.log('--- Updating CashIO Report ---');
     console.log('Transaction:', transaction.transactionDate, type, customerId, factor);
 
     const dateForReport = new Date(transaction.transactionDate);
     const paths = getReportPaths(dateForReport.toISOString());
     console.log('Paths:', paths);
     
-    var i = 0;
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
@@ -659,15 +683,13 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         await runTransaction(reportRef, (currentData: any) => {
 
           console.log("Current Data: ", currentData ? currentData.totalFee : 'null');
-          console.log(`entry path ${periodPath} to reverse transaction from date: ${transaction.transactionDate}`);
-          console.log('initial:', i);
-
+          
             if (currentData === null) {
-                // if (factor === -1 && i >= 1) {
-                //   // This is the problematic case. The report entry to subtract from was not found.
-                //   console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
-                //   return; // Abort transaction for this path, preventing a crash.
-                // }
+                if (factor === -1) {
+                  // This is the problematic case. The report entry to subtract from was not found.
+                  console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
+                  return; // Abort transaction for this path, preventing a crash.
+                }
                 currentData = {
                     cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
                     cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
@@ -737,7 +759,6 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
             console.log("New Data: ", currentData.totalFee)
             return currentData;
         });
-        i++;
     }
 }
 
