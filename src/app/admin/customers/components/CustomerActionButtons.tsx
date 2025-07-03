@@ -13,6 +13,7 @@ import { updateCustomerBalanceAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
 import { Landmark, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
 
 interface CustomerActionButtonsProps {
   customer: Customer;
@@ -30,6 +31,7 @@ export default function CustomerActionButtons({ customer, className }: CustomerA
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'payment' | 'balance' | null>(null);
+  const { user } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -45,11 +47,15 @@ export default function CustomerActionButtons({ customer, className }: CustomerA
   };
   
   const onSubmit = (data: FormValues) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+    }
     const amount = dialogType === 'payment' ? -data.amount : data.amount;
 
     startTransition(async () => {
       try {
-        await updateCustomerBalanceAction(customer.id, amount);
+        await updateCustomerBalanceAction(customer.id, amount, { userId: user.uid, userName: user.displayName || user.email! });
         toast({
           title: 'Success',
           description: `Customer balance updated successfully.`,
@@ -67,7 +73,7 @@ export default function CustomerActionButtons({ customer, className }: CustomerA
 
   return (
     <>
-      <div className={cn("flex flex-col sm:flex-row gap-2", className)}>
+      <div className={cn("flex flex-col lg:flex-row gap-2", className)}>
         <Button variant="outline" onClick={() => handleOpenDialog('payment')} className="flex-1">
           <DollarSign className="mr-2 h-4 w-4" />
           Make Payment
