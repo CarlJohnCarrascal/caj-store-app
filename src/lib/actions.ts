@@ -245,9 +245,8 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     };
 
     if (!isUnknownCustomer) {
-        const newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
         orderPayload.initialCustomerBalance = initialCustomerBalance;
-        orderPayload.newCustomerBalance = newCustomerBalance;
+        orderPayload.newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
     }
 
     const newOrder = await addOrder(orderPayload, user);
