@@ -651,7 +651,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
     const paths = getReportPaths(dateForReport.toISOString());
     console.log('Paths:', paths);
     
-    var i = 0
+    var i = 0;
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
@@ -659,14 +659,15 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         await runTransaction(reportRef, (currentData: any) => {
 
           console.log("Current Data: ", currentData ? currentData.totalFee : 'null');
-          console.error(`entry path ${paths} to reverse transaction from date: ${transaction.transactionDate}`);
+          console.log(`entry path ${periodPath} to reverse transaction from date: ${transaction.transactionDate}`);
+          console.log('initial:', i);
 
             if (currentData === null) {
-                if (factor === -1) {
-                  // This is the problematic case. The report entry to subtract from was not found.
-                  console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
-                  return; // Abort transaction for this path, preventing a crash.
-                }
+                // if (factor === -1 && i >= 1) {
+                //   // This is the problematic case. The report entry to subtract from was not found.
+                //   console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
+                //   return; // Abort transaction for this path, preventing a crash.
+                // }
                 currentData = {
                     cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
                     cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
