@@ -26,24 +26,18 @@ export function getCurrentPHTISOString(): string {
 
 // Function to get report paths for different periods based on a given date string (assumed to be in PHT)
 export function getReportPaths(dateString: string) {
-    // This function creates a Date object that correctly represents the PHT date,
-    // regardless of the server's timezone.
-    // Example: '2024-07-16T00:05:00+08:00' in PHT is July 16th.
-    // In UTC, this is '2024-07-15T16:05:00Z'. new Date() would create a date for July 15th on a UTC server.
-    // We need to parse it carefully to preserve the PHT date parts.
-    
-    // A robust way to get date parts in a specific timezone
-    const formatter = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'Asia/Manila' });
+    // The dateString is assumed to be in a format like '2025-07-02T11:37:00+08:00'
+    // This robustly extracts the date part without being affected by the server's timezone.
+    const datePart = dateString.substring(0, 10); // "2025-07-02"
+    const [year, month, day] = datePart.split('-');
 
-    const date = new Date(dateString);
-    const year = formatter({ year: 'numeric' }).format(date);
-    const month = formatter({ month: '2-digit' }).format(date);
-    const day = formatter({ day: '2-digit' }).format(date);
-    
-    // Get week number in PHT
-    const phtDateForWeek = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    // For week number calculation, create a Date object representing noon on that day in PHT
+    // to avoid midnight timezone-shifting issues.
+    const phtDateForWeek = new Date(`${datePart}T12:00:00+08:00`);
+
     const startOfYear = new Date(phtDateForWeek.getFullYear(), 0, 1);
     const pastDaysOfYear = (phtDateForWeek.getTime() - startOfYear.getTime()) / 86400000;
+    // JS getDay() is Sun-based (0=Sun, 6=Sat). Add 1 to align.
     const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
   
     return {

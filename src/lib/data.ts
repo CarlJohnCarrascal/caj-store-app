@@ -649,13 +649,18 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
 
     const dateForReport = new Date(transaction.transactionDate);
     const paths = getReportPaths(dateForReport.toISOString());
+    console.log('Paths:', paths);
     
+    var i = 0
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
-        console.log('Report Path:', `cashIOReports${periodPath}`);
+        console.log('Report Path:', `cashIOReports${periodPath}`);``
         await runTransaction(reportRef, (currentData: any) => {
-          console.log("Current Data: ", currentData);
+
+          console.log("Current Data: ", currentData ? currentData.totalFee : 'null');
+          console.error(`entry path ${paths} to reverse transaction from date: ${transaction.transactionDate}`);
+
             if (currentData === null) {
                 if (factor === -1) {
                   // This is the problematic case. The report entry to subtract from was not found.
@@ -728,9 +733,10 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                 }
             }
             
-            console.log("New Data: ", currentData)
+            console.log("New Data: ", currentData.totalFee)
             return currentData;
         });
+        i++;
     }
 }
 
