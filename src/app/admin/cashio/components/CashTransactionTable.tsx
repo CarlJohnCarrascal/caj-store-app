@@ -787,31 +787,33 @@ export default function CashTransactionTable() {
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Link>
                 </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="icon" disabled={isPendingDelete}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                          This will permanently delete this transaction and reverse its impact on account balances and reports. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeleteTransaction(selectedTransaction.id)}
-                        disabled={isPendingDelete}
-                        className="bg-destructive hover:bg-destructive/90"
-                      >
-                        {isPendingDelete ? 'Deleting...' : 'Confirm Delete'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {!selectedTransaction.customerId && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="icon" disabled={isPendingDelete}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete this transaction and reverse its impact on account balances and reports. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteTransaction(selectedTransaction.id)}
+                          disabled={isPendingDelete}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {isPendingDelete ? 'Deleting...' : 'Confirm Delete'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full">Close</Button>

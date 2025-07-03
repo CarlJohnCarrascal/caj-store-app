@@ -26,20 +26,30 @@ export function getCurrentPHTISOString(): string {
 
 // Function to get report paths for different periods based on a given date string (assumed to be in PHT)
 export function getReportPaths(dateString: string) {
-    // The dateString is assumed to be in a format like '2025-07-02T11:37:00+08:00'
-    // This robustly extracts the date part without being affected by the server's timezone.
-    const datePart = dateString.substring(0, 10); // "2025-07-02"
-    const [year, month, day] = datePart.split('-');
+    // Create a Date object. The provided string is already in UTC or with offset, so this is safe.
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      // Handle invalid date string gracefully
+      const now = new Date();
+      return {
+        daily: `/daily/${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+        weekly: `/weekly/${now.getFullYear()}-01`,
+        monthly: `/monthly/${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+        yearly: `/yearly/${now.getFullYear()}`,
+        overall: `/overall/all-time`,
+      };
+    }
 
-    // For week number calculation, create a Date object representing noon on that day in PHT
-    // to avoid midnight timezone-shifting issues.
-    const phtDateForWeek = new Date(`${datePart}T12:00:00+08:00`);
+    // To be independent of server timezone, perform all calculations in UTC.
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
 
-    const startOfYear = new Date(phtDateForWeek.getFullYear(), 0, 1);
-    const pastDaysOfYear = (phtDateForWeek.getTime() - startOfYear.getTime()) / 86400000;
-    // JS getDay() is Sun-based (0=Sun, 6=Sat). Add 1 to align.
-    const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
-  
+    // Calculate UTC week number
+    const startOfYear = new Date(Date.UTC(year, 0, 1));
+    const pastDaysOfYear = (date.getTime() - startOfYear.getTime()) / 86400000;
+    const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getUTCDay() + 1) / 7);
+
     return {
       daily: `/daily/${year}-${month}-${day}`,
       weekly: `/weekly/${year}-${String(weekNumber).padStart(2, '0')}`,

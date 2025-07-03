@@ -390,6 +390,11 @@ export async function deleteCashTransaction(id: string): Promise<CashTransaction
     const snapshot = await get(transactionRef);
     if (snapshot.exists()) {
         const deletedTransaction: CashTransaction = { id, ...snapshot.val() };
+        
+        if (deletedTransaction.customerId) {
+            throw new Error('This transaction cannot be deleted because it is part of a processed order.');
+        }
+
         await remove(transactionRef);
         return deletedTransaction;
     }
@@ -670,25 +675,23 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    console.log('Transaction:', transaction.transactionDate, type, customerId, factor);
-
     const dateForReport = new Date(transaction.transactionDate);
+    if (isNaN(dateForReport.getTime())) {
+      console.error(`Invalid transactionDate received for report update: ${transaction.transactionDate}`);
+      return;
+    }
+
     const paths = getReportPaths(dateForReport.toISOString());
-    console.log('Paths:', paths);
     
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);
         
-        console.log('Report Path:', `cashIOReports${periodPath}`);``
         await runTransaction(reportRef, (currentData: any) => {
-
-          console.log("Current Data: ", currentData ? currentData.totalFee : 'null');
           
             if (currentData === null) {
                 if (factor === -1) {
-                  // This is the problematic case. The report entry to subtract from was not found.
                   console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
-                  return; // Abort transaction for this path, preventing a crash.
+                  return; 
                 }
                 currentData = {
                     cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
@@ -756,7 +759,6 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                 }
             }
             
-            console.log("New Data: ", currentData.totalFee)
             return currentData;
         });
     }
