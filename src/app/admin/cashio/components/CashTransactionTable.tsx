@@ -115,34 +115,6 @@ export default function CashTransactionTable() {
   const [accountUsed, setAccountUsed] = React.useState('all');
   const [status, setStatus] = React.useState('all');
 
-  const fetchTransactionsByDate = React.useCallback(async (dateRange: DateRange | undefined) => {
-    if (!dateRange?.from) return;
-    setIsFetching(true);
-    try {
-        const transactionsRef = ref(db, 'cashTransactions');
-        const fromDate = new Date(dateRange.from);
-        const toDate = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
-        
-        fromDate.setHours(0, 0, 0, 0);
-        toDate.setHours(23, 59, 59, 999);
-
-        const q = query(
-            transactionsRef,
-            orderByChild('transactionDate'),
-            startAt(fromDate.toISOString()),
-            endAt(toDate.toISOString())
-        );
-
-        const snapshot = await get(q);
-        const transactionList = snapshotToArray<CashTransaction>(snapshot);
-        setTransactions(transactionList);
-    } catch (error) {
-        console.error("Failed to fetch transactions:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch transactions.' });
-    } finally {
-        setIsFetching(false);
-    }
-  }, [toast]);
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -176,10 +148,37 @@ export default function CashTransactionTable() {
   }, []);
 
   React.useEffect(() => {
-    if (!isLoading && !authLoading && user) {
-        fetchTransactionsByDate(date);
-    }
-  }, [date, isLoading, fetchTransactionsByDate, authLoading, user]);
+    if (!date?.from || authLoading || !user) return;
+    setIsFetching(true);
+
+    const fromDate = new Date(date.from);
+    const toDate = date.to ? new Date(date.to) : new Date(date.from);
+    
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    const transactionsRef = ref(db, 'cashTransactions');
+    const q = query(
+        transactionsRef,
+        orderByChild('transactionDate'),
+        startAt(fromDate.toISOString()),
+        endAt(toDate.toISOString())
+    );
+
+    const unsubscribe = onValue(q, (snapshot) => {
+      const transactionList = snapshotToArray<CashTransaction>(snapshot);
+      setTransactions(transactionList);
+      setIsFetching(false);
+    }, (error) => {
+      console.error("Failed to fetch transactions:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch transactions.' });
+      setIsFetching(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [date, authLoading, user, toast]);
 
   React.useEffect(() => {
     if (!debouncedSearch || debouncedSearch.length < 5) return;
@@ -503,9 +502,8 @@ export default function CashTransactionTable() {
            <div>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map(t => {
-                const date = t.transactionDate ? new Date(t.transactionDate) : null;
-                const isValidDate = date && !isNaN(date.getTime());
-                const displayDate = t.transactionDate;
+                const isValidDate = t.transactionDate && !isNaN(new Date(t.transactionDate).getTime());
+                const displayDate = isValidDate ? new Date(t.transactionDate) : null;
 
                 return (
                 <div
@@ -539,7 +537,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && isValidDate ? format(new Date(displayDate), 'PPp') : <Skeleton className="h-4 w-32" />}
+                        {isMounted && displayDate ? format(displayDate, 'PPp') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -585,12 +583,12 @@ export default function CashTransactionTable() {
           <TableBody>
             {paginatedTransactions.length > 0 ? (
                 paginatedTransactions.map(t => {
-                  const date = t.transactionDate ? new Date(t.transactionDate) : null;
-                  const isValidDate = date && !isNaN(date.getTime());
+                  const isValidDate = t.transactionDate && !isNaN(new Date(t.transactionDate).getTime());
+                  const displayDate = isValidDate ? new Date(t.transactionDate) : null;
                   return (
                     <TableRow key={t.id} onClick={() => setSelectedTransaction(t)} className="cursor-pointer">
                         <TableCell>
-                          {isMounted && isValidDate ? format(date, 'PPp') : <Skeleton className="h-5 w-40" />}
+                          {isMounted && displayDate ? format(displayDate, 'PPp') : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -833,3 +831,5 @@ export default function CashTransactionTable() {
     </div>
   );
 }
+
+    
