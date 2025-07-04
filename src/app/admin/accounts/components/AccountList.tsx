@@ -23,6 +23,7 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -45,10 +46,23 @@ export default function AccountList() {
   const { user } = useAuth();
   
   useEffect(() => {
+    const loadFromCache = async () => {
+      const cachedData = await getStoreData<Account>('accounts');
+      if (cachedData.length > 0) {
+        setAccounts(cachedData);
+        setIsLoading(false);
+      }
+    };
+    loadFromCache();
+
     const accountsRef = ref(db, 'accounts');
     const unsubscribe = onValue(accountsRef, (snapshot) => {
       const accountList = snapshotToArray<Account>(snapshot);
       setAccounts(accountList);
+      setIsLoading(false);
+      setStoreData('accounts', accountList);
+    }, (error) => {
+      console.error("Firebase listener failed:", error);
       setIsLoading(false);
     });
 
@@ -63,6 +77,7 @@ export default function AccountList() {
     startTransition(async () => {
       try {
         await deleteAccountAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteItem('accounts', id);
         toast({ title: 'Success', description: 'Account deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete account.' });

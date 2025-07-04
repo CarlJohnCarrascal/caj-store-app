@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import { getStoreData, setStoreData } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -33,11 +34,24 @@ export default function CustomerList() {
   const [sortBy, setSortBy] = useState('name-asc');
   
   useEffect(() => {
+    const loadFromCache = async () => {
+        const cachedData = await getStoreData<Customer>('customers');
+        if (cachedData.length > 0) {
+            setCustomers(cachedData);
+            setIsLoading(false);
+        }
+    };
+    loadFromCache();
+
     const customersRef = ref(db, 'customers');
     const unsubscribe = onValue(customersRef, (snapshot) => {
       const customerList = snapshotToArray<Customer>(snapshot);
       setCustomers(customerList);
       setIsLoading(false);
+      setStoreData('customers', customerList);
+    }, (error) => {
+        console.error("Firebase listener failed:", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();

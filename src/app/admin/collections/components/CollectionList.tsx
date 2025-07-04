@@ -26,6 +26,7 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -51,28 +52,49 @@ export default function CollectionList() {
   const { user } = useAuth();
 
   useEffect(() => {
+    let collectionsLoadedFromCache = false;
+    let customersLoadedFromCache = false;
+    
+    const loadFromCache = async () => {
+        const cachedCollections = await getStoreData<Collection>('collections');
+        if (cachedCollections.length > 0) {
+            setCollections(cachedCollections);
+            collectionsLoadedFromCache = true;
+        }
+
+        const cachedCustomers = await getStoreData<Customer>('customers');
+        if (cachedCustomers.length > 0) {
+            setCustomers(cachedCustomers);
+            customersLoadedFromCache = true;
+        }
+
+        if (collectionsLoadedFromCache && customersLoadedFromCache) {
+            setIsLoading(false);
+        }
+    };
+    loadFromCache();
+
     const collectionsRef = ref(db, 'collections');
     const customersRef = ref(db, 'customers');
 
-    let collectionsLoaded = false;
-    let customersLoaded = false;
-
-    const checkLoading = () => {
-        if (collectionsLoaded && customersLoaded) {
-            setIsLoading(false);
-        }
-    }
-
     const unsubscribeCollections = onValue(collectionsRef, (snapshot) => {
-        setCollections(snapshotToArray<Collection>(snapshot));
-        collectionsLoaded = true;
-        checkLoading();
+        const collectionList = snapshotToArray<Collection>(snapshot);
+        setCollections(collectionList);
+        setStoreData('collections', collectionList);
+        if (!customersLoadedFromCache) setIsLoading(false);
+    }, (error) => {
+        console.error("Firebase collections listener failed:", error);
+        if (!customersLoadedFromCache) setIsLoading(false);
     });
 
     const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
-        setCustomers(snapshotToArray<Customer>(snapshot));
-        customersLoaded = true;
-        checkLoading();
+        const customerList = snapshotToArray<Customer>(snapshot);
+        setCustomers(customerList);
+        setStoreData('customers', customerList);
+        if (!collectionsLoadedFromCache) setIsLoading(false);
+    }, (error) => {
+        console.error("Firebase customers listener failed:", error);
+        if (!collectionsLoadedFromCache) setIsLoading(false);
     });
 
     return () => {
@@ -82,7 +104,7 @@ export default function CollectionList() {
   }, []);
 
   const collectionsWithCustomerNames = useMemo(() => {
-     if (isLoading) return [];
+     if (isLoading && collections.length === 0) return [];
      const customerMap = new Map(customers.map(c => [c.id, c.name]));
      return collections.map(collection => ({
          ...collection,
@@ -118,6 +140,7 @@ export default function CollectionList() {
     startTransition(async () => {
       try {
         await deleteCollectionAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteItem('collections', id);
         toast({ title: 'Success', description: 'Collection deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete collection.' });

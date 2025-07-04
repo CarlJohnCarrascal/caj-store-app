@@ -59,6 +59,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { deleteCashTransactionAction } from '@/lib/actions';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -118,27 +119,33 @@ export default function CashTransactionTable() {
 
   React.useEffect(() => {
     setIsMounted(true);
-    let accountsLoaded = false;
-    let customersLoaded = false;
-
-    const checkLoading = () => {
-      if (accountsLoaded && customersLoaded) {
-        setIsLoading(false);
-      }
+    
+    // Load all data from cache first
+    const loadFromCache = async () => {
+        const cachedAccounts = await getStoreData<Account>('accounts');
+        const cachedCustomers = await getStoreData<Customer>('customers');
+        setAccounts(cachedAccounts);
+        setCustomers(cachedCustomers);
+        if (cachedAccounts.length > 0 && cachedCustomers.length > 0) {
+            setIsLoading(false);
+        }
     };
+    loadFromCache();
 
+    // Listen for live updates
     const accountsRef = ref(db, 'accounts');
     const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
-      setAccounts(snapshotToArray<Account>(snapshot));
-      accountsLoaded = true;
-      checkLoading();
+      const accountList = snapshotToArray<Account>(snapshot);
+      setAccounts(accountList);
+      setStoreData('accounts', accountList);
     });
 
     const customersRef = ref(db, 'customers');
     const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
-      setCustomers(snapshotToArray<Customer>(snapshot));
-      customersLoaded = true;
-      checkLoading();
+      const customerList = snapshotToArray<Customer>(snapshot);
+      setCustomers(customerList);
+      setStoreData('customers', customerList);
+      setIsLoading(false);
     });
 
     return () => {
@@ -149,11 +156,32 @@ export default function CashTransactionTable() {
 
   React.useEffect(() => {
     if (!date?.from || authLoading || !user) return;
-    setIsFetching(true);
+    
+    // Load from cache that matches date range
+    const loadFromCache = async () => {
+        setIsFetching(true);
+        const cachedTxs = await getStoreData<CashTransaction>('cashTransactions');
+        if (cachedTxs.length > 0) {
+            const fromDate = new Date(date.from!);
+            const toDate = date.to ? new Date(date.to) : new Date(date.from!);
+            fromDate.setHours(0, 0, 0, 0);
+            toDate.setHours(23, 59, 59, 999);
+            
+            const filtered = cachedTxs.filter(tx => {
+                const txDate = new Date(tx.transactionDate);
+                return txDate >= fromDate && txDate <= toDate;
+            });
+            setTransactions(filtered);
+        }
+        setIsFetching(false);
+    }
+    loadFromCache();
 
+
+    // Fetch from Firebase for the date range and update cache
+    setIsFetching(true);
     const fromDate = new Date(date.from);
     const toDate = date.to ? new Date(date.to) : new Date(date.from);
-    
     fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(23, 59, 59, 999);
 
@@ -168,10 +196,11 @@ export default function CashTransactionTable() {
     const unsubscribe = onValue(q, (snapshot) => {
       const transactionList = snapshotToArray<CashTransaction>(snapshot);
       setTransactions(transactionList);
+      setStoreData('cashTransactions', transactionList); // Cache the fetched range
       setIsFetching(false);
     }, (error) => {
       console.error("Failed to fetch transactions:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch transactions.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch transactions. Displaying cached data.' });
       setIsFetching(false);
     });
 
@@ -253,6 +282,7 @@ export default function CashTransactionTable() {
     startDeleteTransition(async () => {
         try {
             await deleteCashTransactionAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+            await deleteItem('cashTransactions', id);
             toast({ title: 'Success', description: 'Transaction deleted successfully.' });
             setSelectedTransaction(null);
         } catch (error: any) {
@@ -684,10 +714,12 @@ export default function CashTransactionTable() {
               <DialogDescription>
                 {(() => {
                   if (!isMounted || !selectedTransaction.transactionDate) return 'Loading date...';
-                  const date = new Date(selectedTransaction.transactionDate);
-                  if (!isNaN(date.getTime())) {
-                    return format(date, 'PPpp');
-                  }
+                  try {
+                    const date = new Date(selectedTransaction.transactionDate);
+                    if (!isNaN(date.getTime())) {
+                      return format(date, 'PPpp');
+                    }
+                  } catch(e) {}
                   return "Invalid Date";
                 })()}
               </DialogDescription>

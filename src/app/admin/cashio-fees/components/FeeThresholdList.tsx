@@ -23,14 +23,56 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import FeeThresholdForm from './FeeThresholdForm';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
+import { db } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
-export default function FeeThresholdList({ thresholds }: { thresholds: FeeThreshold[] }) {
+function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
+}
+
+export default function FeeThresholdList() {
+  const [thresholds, setThresholds] = useState<FeeThreshold[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const { user } = useAuth();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingThreshold, setEditingThreshold] = useState<FeeThreshold | undefined>(undefined);
+
+  useEffect(() => {
+    const loadFromCache = async () => {
+      const cachedData = await getStoreData<FeeThreshold>('feeThresholds');
+      if (cachedData.length > 0) {
+        setThresholds(cachedData);
+        setIsLoading(false);
+      }
+    };
+    loadFromCache();
+    
+    const thresholdsRef = ref(db, 'feeThresholds');
+    const unsubscribe = onValue(thresholdsRef, (snapshot) => {
+      const thresholdList = snapshotToArray<FeeThreshold>(snapshot);
+      setThresholds(thresholdList);
+      setIsLoading(false);
+      setStoreData('feeThresholds', thresholdList);
+    }, (error) => {
+      console.error("Firebase listener failed:", error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const sortedThresholds = useMemo(() => {
     return [...thresholds].sort((a, b) => a.from - b.from);
@@ -44,6 +86,7 @@ export default function FeeThresholdList({ thresholds }: { thresholds: FeeThresh
     startTransition(async () => {
       try {
         await deleteFeeThresholdAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteItem('feeThresholds', id);
         toast({ title: 'Success', description: 'Fee threshold deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete threshold.' });
@@ -64,6 +107,10 @@ export default function FeeThresholdList({ thresholds }: { thresholds: FeeThresh
   const onFormSuccess = () => {
     setIsFormOpen(false);
     setEditingThreshold(undefined);
+  }
+
+  if (isLoading) {
+    return <Skeleton className="h-64 w-full" />
   }
   
   return (

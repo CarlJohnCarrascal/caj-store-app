@@ -15,6 +15,7 @@ import { updateUserAuthorizationAction, updateUserRoleAction } from '@/lib/actio
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { getStoreData, setStoreData } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -37,11 +38,24 @@ export default function UserList() {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    const loadFromCache = async () => {
+        const cachedData = await getStoreData<AppUser>('users');
+        if (cachedData.length > 0) {
+            setUsers(cachedData);
+            setIsLoading(false);
+        }
+    };
+    loadFromCache();
+
     const usersRef = ref(db, 'users');
     const unsubscribe = onValue(usersRef, (snapshot) => {
       const userList = snapshotToArray<AppUser>(snapshot);
       setUsers(userList);
       setIsLoading(false);
+      setStoreData('users', userList);
+    }, (error) => {
+        console.error("Firebase listener failed:", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();

@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -60,15 +61,29 @@ export default function ExpenseList() {
   const { user } = useAuth();
   
   useEffect(() => {
+    const loadFromCache = async () => {
+        const cachedData = await getStoreData<Expense>('expenses');
+        if (cachedData.length > 0) {
+            setExpenses(cachedData.map(e => ({...e, date: new Date(e.date)})));
+            setIsLoading(false);
+        }
+    };
+    loadFromCache();
+
     const expensesRef = ref(db, 'expenses');
     const unsubscribe = onValue(expensesRef, (snapshot) => {
-      const expenseList = snapshotToArray<Expense>(snapshot).map(e => ({
+      const expenseList = snapshotToArray<Expense>(snapshot);
+      const expensesWithDates = expenseList.map(e => ({
         ...e,
         date: new Date(e.date),
         createdAt: e.createdAt,
       }));
-      setExpenses(expenseList);
+      setExpenses(expensesWithDates);
       setIsLoading(false);
+      setStoreData('expenses', expenseList);
+    }, (error) => {
+        console.error("Firebase listener failed:", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -107,6 +122,7 @@ export default function ExpenseList() {
     startTransition(async () => {
       try {
         await deleteExpenseAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteItem('expenses', id);
         toast({ title: 'Success', description: 'Expense deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete expense.' });

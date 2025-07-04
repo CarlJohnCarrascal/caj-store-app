@@ -1,10 +1,7 @@
 import FeeThresholdList from './components/FeeThresholdList';
-import { getFeeThresholds } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-export default async function CashIOFeesPage() {
-  const thresholds = await getFeeThresholds();
-
+export default function CashIOFeesPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -24,7 +21,7 @@ export default async function CashIOFeesPage() {
             </ul>
         </CardContent>
       </Card>
-      <FeeThresholdList thresholds={thresholds} />
+      <FeeThresholdList />
     </div>
   );
 }

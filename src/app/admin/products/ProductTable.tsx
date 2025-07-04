@@ -32,6 +32,7 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -54,11 +55,27 @@ export default function ProductTable() {
   const { user } = useAuth();
 
   useEffect(() => {
+    // Load from cache first for instant UI
+    const loadFromCache = async () => {
+      const cachedProducts = await getStoreData<Product>('products');
+      if (cachedProducts.length > 0) {
+        setProducts(cachedProducts.reverse());
+        setIsLoading(false);
+      }
+    };
+    loadFromCache();
+
+    // Listen for live updates from Firebase
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
       const productList = snapshotToArray<Product>(snapshot);
       setProducts(productList.reverse());
       setIsLoading(false);
+      // Update cache with fresh data
+      setStoreData('products', productList);
+    }, (error) => {
+      console.error("Firebase listener failed:", error);
+      setIsLoading(false); // Stop loading even if firebase fails, rely on cache
     });
 
     return () => unsubscribe();
@@ -72,6 +89,7 @@ export default function ProductTable() {
     startTransition(async () => {
       try {
         await deleteProductAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteItem('products', id);
         toast({ title: 'Success', description: 'Product deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete product.' });

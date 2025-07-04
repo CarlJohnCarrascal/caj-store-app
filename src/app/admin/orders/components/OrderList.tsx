@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getStoreData, setStoreData } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -41,6 +42,16 @@ export default function OrderList() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
+    const loadFromCache = async () => {
+        const cachedData = await getStoreData<Order>('orders');
+        if (cachedData.length > 0) {
+            const ordersWithDates = cachedData.map(o => ({...o, createdAt: new Date(o.createdAt)}));
+            setOrders(ordersWithDates.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
+            setIsLoading(false);
+        }
+    };
+    loadFromCache();
+    
     const ordersRef = query(ref(db, 'orders'), orderByKey(), limitToLast(100));
     const unsubscribe = onValue(ordersRef, (snapshot) => {
       const orderList = snapshotToArray<Order>(snapshot);
@@ -50,6 +61,10 @@ export default function OrderList() {
       }));
       setOrders(ordersWithDates.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
       setIsLoading(false);
+      setStoreData('orders', orderList);
+    }, (error) => {
+        console.error("Firebase listener failed:", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();

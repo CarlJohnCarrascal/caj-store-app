@@ -12,6 +12,7 @@ import { ref, onValue, query, limitToLast, orderByKey, get, endBefore } from 'fi
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { getStoreData, setStoreData } from '@/lib/offline';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -61,17 +62,30 @@ export default function ActivityList() {
   useEffect(() => setIsMounted(true), []);
 
   useEffect(() => {
+    const loadFromCache = async () => {
+      const cachedData = await getStoreData<ActivityLog>('activityLogs');
+      if (cachedData.length > 0) {
+          setActivities(cachedData.map(log => ({ ...log, timestamp: new Date(log.timestamp) })).sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime()));
+          setIsLoading(false);
+      }
+    };
+    loadFromCache();
+
     const activitiesRef = query(ref(db, 'activityLogs'), orderByKey(), limitToLast(ITEMS_PER_PAGE));
     const unsubscribe = onValue(activitiesRef, (snapshot) => {
       const logs = snapshotToArray<ActivityLog>(snapshot);
       const logsWithDates = logs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
       setActivities(logsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+      setStoreData('activityLogs', logs);
       
       if (logs.length > 0) {
         setLastLoadedKey(logs[0].id); // The oldest key is the first one in the original snapshot
       }
       setHasMore(logs.length === ITEMS_PER_PAGE);
       setIsLoading(false);
+    }, (error) => {
+        console.error("Firebase listener failed:", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();
