@@ -13,6 +13,7 @@ import { DollarSign, Package, Printer, ArrowRightLeft, Smartphone, Wrench, Shopp
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
 import { getReportPaths } from '@/lib/utils';
+import { getReportData, setReportData } from '@/lib/offline';
 
 type ServiceData = {
   orders: number;
@@ -233,14 +234,25 @@ export default function SalesAnalytics() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Load from cache first
+    const loadFromCache = async () => {
+        const cachedReports = await getReportData<AllReports>('salesReports');
+        if (cachedReports) {
+            setReports(cachedReports);
+            setIsLoading(false);
+        }
+    };
+    loadFromCache();
+
     const reportsRef = ref(db, 'salesReports');
     const unsubscribe = onValue(reportsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setReports(snapshot.val());
-      } else {
-        setReports(null);
-      }
+      const reportData = snapshot.exists() ? snapshot.val() : null;
+      setReports(reportData);
+      setReportData('salesReports', reportData); // Update cache
       setIsLoading(false);
+    }, (error) => {
+        console.error("Firebase listener failed:", error);
+        setIsLoading(false);
     });
 
     return () => unsubscribe();

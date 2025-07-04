@@ -16,6 +16,7 @@ import type { Customer, Account } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getReportPaths } from '@/lib/utils';
+import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
 
 // Types for Cash IO Reports
 type CustomerCashIOData = {
@@ -380,24 +381,67 @@ export default function CashIOAnalytics() {
         const checkLoading = () => {
             if(reportsLoaded && customersLoaded && accountsLoaded) setIsLoading(false);
         }
+        
+        // Load from cache first
+        const loadFromCache = async () => {
+            const cachedReports = await getReportData<AllReports>('cashIOReports');
+            if (cachedReports) {
+                setReports(cachedReports);
+                reportsLoaded = true;
+            }
 
+            const cachedCustomers = await getStoreData<Customer>('customers');
+            if (cachedCustomers.length > 0) {
+                setCustomers(cachedCustomers);
+                customersLoaded = true;
+            }
+
+            const cachedAccounts = await getStoreData<Account>('accounts');
+            if (cachedAccounts.length > 0) {
+                setAccounts(cachedAccounts);
+                accountsLoaded = true;
+            }
+            
+            checkLoading();
+        };
+        loadFromCache();
+
+        // Listen for live updates
         const reportsRef = ref(db, 'cashIOReports');
         const unsubscribeReports = onValue(reportsRef, (snapshot) => {
-            setReports(snapshot.exists() ? snapshot.val() : null);
+            const reportData = snapshot.exists() ? snapshot.val() : null;
+            setReports(reportData);
+            setReportData('cashIOReports', reportData); // Update cache
+            reportsLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             reportsLoaded = true;
             checkLoading();
         });
 
         const customersRef = ref(db, 'customers');
         const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
-            setCustomers(snapshotToArray<Customer>(snapshot));
+            const customerList = snapshotToArray<Customer>(snapshot);
+            setCustomers(customerList);
+            setStoreData('customers', customerList); // Update cache
+            customersLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             customersLoaded = true;
             checkLoading();
         });
 
         const accountsRef = ref(db, 'accounts');
         const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
-            setAccounts(snapshotToArray<Account>(snapshot));
+            const accountList = snapshotToArray<Account>(snapshot);
+            setAccounts(accountList);
+            setStoreData('accounts', accountList); // Update cache
+            accountsLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             accountsLoaded = true;
             checkLoading();
         });

@@ -13,6 +13,7 @@ import { format, subDays } from 'date-fns';
 import { Product, ProductReportData } from '@/lib/types';
 import { getReportPaths } from '@/lib/utils';
 import Image from 'next/image';
+import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
 
 // Types for Product Reports
 type ReportPeriodData = {
@@ -152,17 +153,47 @@ export default function ProductAnalytics() {
         const checkLoading = () => {
             if(reportsLoaded && productsLoaded) setIsLoading(false);
         }
+        
+        // Load from cache first
+        const loadFromCache = async () => {
+            const cachedReports = await getReportData<AllReports>('productReports');
+            if (cachedReports) {
+                setReports(cachedReports);
+                reportsLoaded = true;
+            }
 
+            const cachedProducts = await getStoreData<Product>('products');
+            if (cachedProducts.length > 0) {
+                setProducts(cachedProducts);
+                productsLoaded = true;
+            }
+            checkLoading();
+        };
+        loadFromCache();
+
+        // Listen for live updates
         const reportsRef = ref(db, 'productReports');
         const unsubscribeReports = onValue(reportsRef, (snapshot) => {
-            setReports(snapshot.exists() ? snapshot.val() : null);
+            const reportData = snapshot.exists() ? snapshot.val() : null;
+            setReports(reportData);
+            setReportData('productReports', reportData); // Update cache
+            reportsLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             reportsLoaded = true;
             checkLoading();
         });
 
         const productsRef = ref(db, 'products');
         const unsubscribeProducts = onValue(productsRef, (snapshot) => {
-            setProducts(snapshotToArray<Product>(snapshot));
+            const productList = snapshotToArray<Product>(snapshot);
+            setProducts(productList);
+            setStoreData('products', productList); // Update cache
+            productsLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             productsLoaded = true;
             checkLoading();
         });

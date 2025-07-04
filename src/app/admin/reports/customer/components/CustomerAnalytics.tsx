@@ -16,6 +16,7 @@ import type { Customer } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getReportPaths } from '@/lib/utils';
+import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
 
 // Types for Customer Reports
 type ActiveCustomerData = {
@@ -242,17 +243,47 @@ export default function CustomerAnalytics() {
         const checkLoading = () => {
             if(reportsLoaded && customersLoaded) setIsLoading(false);
         }
+        
+        // Load from cache first
+        const loadFromCache = async () => {
+            const cachedReports = await getReportData<AllReports>('customerReports');
+            if (cachedReports) {
+                setReports(cachedReports);
+                reportsLoaded = true;
+            }
 
+            const cachedCustomers = await getStoreData<Customer>('customers');
+            if (cachedCustomers.length > 0) {
+                setCustomers(cachedCustomers);
+                customersLoaded = true;
+            }
+            checkLoading();
+        };
+        loadFromCache();
+
+        // Listen for live updates
         const reportsRef = ref(db, 'customerReports');
         const unsubscribeReports = onValue(reportsRef, (snapshot) => {
-            setReports(snapshot.exists() ? snapshot.val() : null);
+            const reportData = snapshot.exists() ? snapshot.val() : null;
+            setReports(reportData);
+            setReportData('customerReports', reportData); // Update cache
+            reportsLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             reportsLoaded = true;
             checkLoading();
         });
 
         const customersRef = ref(db, 'customers');
         const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
-            setCustomers(snapshotToArray<Customer>(snapshot));
+            const customerList = snapshotToArray<Customer>(snapshot);
+            setCustomers(customerList);
+            setStoreData('customers', customerList); // Update cache
+            customersLoaded = true;
+            checkLoading();
+        }, (error) => {
+            console.error("Firebase listener failed:", error);
             customersLoaded = true;
             checkLoading();
         });

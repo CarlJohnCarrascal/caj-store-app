@@ -5,7 +5,7 @@ import { Product, Account, Customer, CashTransaction, Collection, Order, Expense
 import { getCurrentPHTISOString } from './utils';
 
 const DB_NAME = 'caj-store-db';
-const DB_VERSION = 2; // Incremented version to trigger upgrade
+const DB_VERSION = 3; // Incremented version to trigger upgrade
 
 // Define all the object stores
 export const STORE_NAMES = {
@@ -19,7 +19,11 @@ export const STORE_NAMES = {
   users: 'users',
   feeThresholds: 'feeThresholds',
   activityLogs: 'activityLogs',
-  lastUpdate: 'lastUpdate', // New store for timestamps
+  lastUpdate: 'lastUpdate',
+  salesReports: 'salesReports',
+  productReports: 'productReports',
+  customerReports: 'customerReports',
+  cashIOReports: 'cashIOReports',
 } as const;
 
 export type StoreName = typeof STORE_NAMES[keyof typeof STORE_NAMES];
@@ -41,7 +45,11 @@ interface CajStoreDB extends DBSchema {
   users: { key: string; value: AppUser };
   feeThresholds: { key: string; value: FeeThreshold };
   activityLogs: { key: string; value: any };
-  lastUpdate: { key: string; value: LastUpdate }; // New schema for lastUpdate store
+  lastUpdate: { key: string; value: LastUpdate };
+  salesReports: { key: string; value: any };
+  productReports: { key: string; value: any };
+  customerReports: { key: string; value: any };
+  cashIOReports: { key: string; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CajStoreDB>> | null = null;
@@ -54,10 +62,17 @@ const initDB = () => {
     upgrade(db) {
       // This upgrade function will run if the DB_VERSION is higher than the existing version.
       // It checks for each store and creates it if it doesn't exist, making it safe to run.
-      (Object.keys(STORE_NAMES) as Array<keyof typeof STORE_NAMES>).forEach(storeName => {
+      (Object.values(STORE_NAMES)).forEach(storeName => {
         if (!db.objectStoreNames.contains(storeName)) {
-          const keyPath = storeName === 'lastUpdate' ? 'storeName' : 'id';
-          db.createObjectStore(storeName, { keyPath });
+            if (storeName.endsWith('Reports')) {
+                // Reports stores use an out-of-line key ('main')
+                db.createObjectStore(storeName);
+            } else if (storeName === 'lastUpdate') {
+                db.createObjectStore(storeName, { keyPath: 'storeName' });
+            } else {
+                // All other stores use 'id' as the keyPath
+                db.createObjectStore(storeName, { keyPath: 'id' });
+            }
         }
       });
     },
@@ -129,5 +144,38 @@ export async function setLastUpdate(storeName: StoreName, timestamp: string): Pr
         await db.put('lastUpdate', { storeName, timestamp });
     } catch (error) {
         console.error(`Failed to set last update for ${storeName}:`, error);
+    }
+}
+
+export async function getReportData<T>(storeName: 'salesReports' | 'productReports' | 'customerReports' | 'cashIOReports'): Promise<T | null> {
+    if (typeof window === 'undefined') return null;
+    try {
+        const db = await initDB();
+        return db.get(storeName, 'main');
+    } catch (error) {
+        console.error(`Failed to get data from ${storeName}:`, error);
+        return null;
+    }
+}
+
+export async function setReportData(storeName: 'salesReports' | 'productReports' | 'customerReports' | 'cashIOReports', data: any): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+        const db = await initDB();
+        const tx = db.transaction([storeName, 'lastUpdate'], 'readwrite');
+        const store = tx.objectStore(storeName);
+        const lastUpdateStore = tx.objectStore('lastUpdate');
+
+        if (data) {
+            await store.put(data, 'main');
+        } else {
+            await store.clear();
+        }
+        
+        await lastUpdateStore.put({ storeName, timestamp: getCurrentPHTISOString() });
+        
+        await tx.done;
+    } catch (error) {
+        console.error(`Failed to set data in ${storeName}:`, error);
     }
 }
