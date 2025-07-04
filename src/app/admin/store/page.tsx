@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -14,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getStoreData, setStoreData } from '@/lib/offline';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -41,11 +43,27 @@ export default function StorePage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
+    // Load from cache first
+    const loadFromCache = async () => {
+      const cachedProducts = await getStoreData<Product>('products');
+      if (cachedProducts.length > 0) {
+        const visibleProducts = cachedProducts.filter(p => p.show).reverse();
+        setProducts(visibleProducts);
+        setIsLoading(false);
+      }
+    };
+    loadFromCache();
+
+    // Listen for live updates
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
       const allProducts = snapshotToArray<Product>(snapshot);
-      const visibleProducts = allProducts.filter(p => p.show);
+      setStoreData('products', allProducts); // Update cache
+      const visibleProducts = allProducts.filter(p => p.show).reverse();
       setProducts(visibleProducts);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Firebase listener failed:", error);
       setIsLoading(false);
     });
     return () => unsubscribe();

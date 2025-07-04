@@ -41,7 +41,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/use-cart';
 import { db } from '@/lib/firebase';
-import { ref, onValue, query, orderByChild, startAt, endAt, get, equalTo } from 'firebase/database';
+import { ref, onValue, query, orderByChild, get, equalTo } from 'firebase/database';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -155,43 +155,23 @@ export default function CashTransactionTable() {
   }, []);
 
   React.useEffect(() => {
-    if (!date?.from || authLoading || !user) return;
+    if (authLoading || !user) return;
     
     // Load from cache that matches date range
     const loadFromCache = async () => {
         setIsFetching(true);
         const cachedTxs = await getStoreData<CashTransaction>('cashTransactions');
         if (cachedTxs.length > 0) {
-            const fromDate = new Date(date.from!);
-            const toDate = date.to ? new Date(date.to) : new Date(date.from!);
-            fromDate.setHours(0, 0, 0, 0);
-            toDate.setHours(23, 59, 59, 999);
-            
-            const filtered = cachedTxs.filter(tx => {
-                const txDate = new Date(tx.transactionDate);
-                return txDate >= fromDate && txDate <= toDate;
-            });
-            setTransactions(filtered);
+            setTransactions(cachedTxs);
         }
         setIsFetching(false);
     }
     loadFromCache();
 
-
-    // Fetch from Firebase for the date range and update cache
+    // Fetch from Firebase for all transactions and update cache
     setIsFetching(true);
-    const fromDate = new Date(date.from);
-    const toDate = date.to ? new Date(date.to) : new Date(date.from);
-    fromDate.setHours(0, 0, 0, 0);
-    toDate.setHours(23, 59, 59, 999);
-
     const transactionsRef = ref(db, 'cashTransactions');
-    const q = query(
-        transactionsRef,
-        orderByChild('transactionDate'),
-        startAt(fromDate.toISOString()),
-        endAt(toDate.toISOString())
-    );
+    const q = query(transactionsRef, orderByChild('transactionDate'));
 
     const unsubscribe = onValue(q, (snapshot) => {
       const transactionList = snapshotToArray<CashTransaction>(snapshot);
@@ -207,7 +187,7 @@ export default function CashTransactionTable() {
     return () => {
       unsubscribe();
     };
-  }, [date, authLoading, user, toast]);
+  }, [authLoading, user, toast]);
 
   React.useEffect(() => {
     if (!debouncedSearch || debouncedSearch.length < 5) return;
@@ -318,12 +298,27 @@ export default function CashTransactionTable() {
           (t.message && t.message.toLowerCase().includes(searchLower))
         );
       })
+      .filter(t => {
+        if (!date?.from) return true;
+        try {
+          const txDate = new Date(t.transactionDate);
+          if (isNaN(txDate.getTime())) return false; // Guard against invalid dates
+
+          const fromDate = new Date(date.from);
+          const toDate = date.to ? new Date(date.to) : new Date(date.from);
+          fromDate.setHours(0, 0, 0, 0);
+          toDate.setHours(23, 59, 59, 999);
+
+          return txDate >= fromDate && txDate <= toDate;
+        } catch(e) {
+            return false;
+        }
+      })
       .filter(t => type === 'all' || t.transactionType === type)
       .filter(t => method === 'all' || t.paymentMethod === method)
       .filter(t => accountUsed === 'all' || t.accountUsedId === accountUsed)
       .filter(t => status === 'all' || t.status === status);
-      // Date filtering is now done at fetch time
-  }, [search, transactionsWithNames, type, method, accountUsed, status]);
+  }, [search, date, transactionsWithNames, type, method, accountUsed, status]);
 
   const summary = React.useMemo(() => {
     const totalIn = filteredTransactions
@@ -567,7 +562,7 @@ export default function CashTransactionTable() {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <div className="text-sm text-muted-foreground mb-1.5 h-4">
-                        {isMounted && displayDate ? format(displayDate, 'PPp') : <Skeleton className="h-4 w-32" />}
+                         {isMounted && isValidDate ? format(new Date(t.transactionDate), 'PPp') : <Skeleton className="h-4 w-32" />}
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold">
@@ -614,11 +609,10 @@ export default function CashTransactionTable() {
             {paginatedTransactions.length > 0 ? (
                 paginatedTransactions.map(t => {
                   const isValidDate = t.transactionDate && !isNaN(new Date(t.transactionDate).getTime());
-                  const displayDate = isValidDate ? new Date(t.transactionDate) : null;
                   return (
                     <TableRow key={t.id} onClick={() => setSelectedTransaction(t)} className="cursor-pointer">
                         <TableCell>
-                          {isMounted && displayDate ? format(displayDate, 'PPp') : <Skeleton className="h-5 w-40" />}
+                          {isMounted && isValidDate ? format(new Date(t.transactionDate), 'PPp') : <Skeleton className="h-5 w-40" />}
                         </TableCell>
                         <TableCell>
                             <Badge className={t.transactionType === 'Cash In' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
@@ -863,5 +857,3 @@ export default function CashTransactionTable() {
     </div>
   );
 }
-
-    
