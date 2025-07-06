@@ -26,26 +26,43 @@ export function getCurrentPHTISOString(): string {
 
 // Function to get report paths for different periods based on a given date string (assumed to be in PHT)
 export function getReportPaths(dateString: string) {
-    // Create a Date object. The provided string is already in UTC or with offset, so this is safe.
-    const date = new Date(dateString);
+    // The dateString is assumed to be a PHT ISO string like "2024-07-03T10:00:00+08:00"
+    // We need to parse the date parts according to PHT, not the server's local timezone or UTC.
+    
+    // A robust way to do this is to manipulate the string to create a UTC date
+    // that has the same calendar date and time as the PHT date.
+    // e.g., "2024-07-03T10:00:00+08:00" -> "2024-07-03T10:00:00Z"
+    const phtDateAsUTCString = dateString.slice(0, 19) + 'Z';
+    const date = new Date(phtDateAsUTCString);
+
     if (isNaN(date.getTime())) {
-      // Handle invalid date string gracefully
-      const now = new Date();
+      // Fallback for invalid date string
+      const nowPHT = getCurrentPHTISOString();
+      const phtNowAsUTCString = nowPHT.slice(0, 19) + 'Z';
+      const fallbackDate = new Date(phtNowAsUTCString);
+      
+      const year = fallbackDate.getUTCFullYear();
+      const month = String(fallbackDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(fallbackDate.getUTCDate()).padStart(2, '0');
+      const startOfYear = new Date(Date.UTC(year, 0, 1));
+      const pastDaysOfYear = (fallbackDate.getTime() - startOfYear.getTime()) / 86400000;
+      const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getUTCDay() + 1) / 7);
+
       return {
-        daily: `/daily/${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
-        weekly: `/weekly/${now.getFullYear()}-01`,
-        monthly: `/monthly/${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-        yearly: `/yearly/${now.getFullYear()}`,
+        daily: `/daily/${year}-${month}-${day}`,
+        weekly: `/weekly/${year}-${String(weekNumber).padStart(2, '0')}`,
+        monthly: `/monthly/${year}-${month}`,
+        yearly: `/yearly/${year}`,
         overall: `/overall/all-time`,
       };
     }
 
-    // To be independent of server timezone, perform all calculations in UTC.
+    // Now all getUTC... methods will return values corresponding to the PHT calendar date
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
 
-    // Calculate UTC week number
+    // Calculate week number based on this PHT-equivalent UTC date
     const startOfYear = new Date(Date.UTC(year, 0, 1));
     const pastDaysOfYear = (date.getTime() - startOfYear.getTime()) / 86400000;
     const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getUTCDay() + 1) / 7);
@@ -58,6 +75,7 @@ export function getReportPaths(dateString: string) {
       overall: `/overall/all-time`,
     };
 }
+
 
 export function calculateFee(amount: number, thresholds: FeeThreshold[]): number {
   if (amount <= 0 || !thresholds || thresholds.length === 0) {
