@@ -540,7 +540,7 @@ export default function CashTransactionTable() {
                     <div className="space-y-1.5 min-w-0">
                       <p className="font-mono text-base font-medium break-all">{t.reference}</p>
                        <p className="text-sm text-muted-foreground truncate" title={`${t.accountName} (${t.accountNumber})`}>
-                          {t.transactionType === 'Cash In' ? 'From: ' : 'To: '}
+                          {t.transactionType === 'Cash In' ? 'To: ' : 'From: '}
                           {t.accountName} {t.accountNumber}
                       </p>
                       <p className="text-xs text-muted-foreground/80">
@@ -751,7 +751,7 @@ export default function CashTransactionTable() {
                 
                 <div className="space-y-4">
                     <div>
-                        <h4 className="font-semibold mb-2 text-muted-foreground">{selectedTransaction.transactionType === 'Cash In' ? 'From (Sender)' : 'To (Receiver)'}</h4>
+                        <h4 className="font-semibold mb-2 text-muted-foreground">{selectedTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
                         <div className="pl-2 space-y-2 text-sm border-l">
                             <div className="flex items-start gap-3">
                                 <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />

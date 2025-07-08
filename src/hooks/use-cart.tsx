@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -13,6 +14,8 @@ interface CartContextType {
   cartTotal: number;
   cartCustomer: { name: string } | null;
   setCartCustomer: (customer: { name: string } | null) => void;
+  isCartOpen: boolean;
+  setCartOpen: (isOpen: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -20,6 +23,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartCustomer, setCartCustomer] = useState<{ name: string } | null>(null);
+  const [isCartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -82,7 +86,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartCount, cartTotal, cartCustomer, setCartCustomer }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartCount, cartTotal, cartCustomer, setCartCustomer, isCartOpen, setCartOpen }}>
       {children}
     </CartContext.Provider>
   );

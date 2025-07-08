@@ -675,13 +675,13 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    const dateForReport = new Date(transaction.transactionDate);
-    if (isNaN(dateForReport.getTime())) {
-      console.error(`Invalid transactionDate received for report update: ${transaction.transactionDate}`);
-      return;
-    }
+    // const dateForReport = new Date(transaction.transactionDate);
+    // if (isNaN(dateForReport.getTime())) {
+    //   console.error(`Invalid transactionDate received for report update: ${transaction.transactionDate}`);
+    //   return;
+    // }
 
-    const paths = getReportPaths(dateForReport.toISOString());
+    const paths = getReportPaths(transaction.transactionDate);
     
     for (const periodPath of Object.values(paths)) {
         const reportRef = ref(db, `cashIOReports${periodPath}`);

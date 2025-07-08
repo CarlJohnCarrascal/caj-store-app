@@ -129,12 +129,12 @@ export default function AccountList() {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                     <p className={cn(
+                     {/* <p className={cn(
                       "font-semibold text-xl",
                        account.balance >= 0 ? "text-primary" : "text-destructive"
                     )}>
                       ₱{account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
+                    </p> */}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="icon">

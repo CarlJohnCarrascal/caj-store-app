@@ -33,8 +33,7 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { ScrollArea } from './ui/scroll-area';
 
 export default function Header() {
-  const { cartCount } = useCart();
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { cartCount, isCartOpen, setCartOpen } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
@@ -215,7 +214,7 @@ export default function Header() {
             </div>
             
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setIsCartOpen(true)} className="relative">
+              <Button variant="ghost" size="icon" onClick={() => setCartOpen(true)} className="relative">
                 <ShoppingBag className="h-7 w-7" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
@@ -254,7 +253,7 @@ export default function Header() {
           </div>
         </div>
       </header>
-      <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
+      <CartSheet open={isCartOpen} onOpenChange={setCartOpen} />
     </>
   );
 }

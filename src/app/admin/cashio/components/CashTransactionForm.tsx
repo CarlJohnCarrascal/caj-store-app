@@ -63,7 +63,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   const [isGenerating, setIsGenerating] = useState(false);
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [extractionResult, setExtractionResult] = useState<string | null>(null);
-  const { addToCart, setCartCustomer } = useCart();
+  const { addToCart, setCartCustomer, setCartOpen } = useCart();
   const hasProcessedSharedText = useRef(false);
   const { user } = useAuth();
   const [feeThresholds, setFeeThresholds] = useState<FeeThreshold[]>([]);
@@ -332,8 +332,9 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
         addToCart(transactionAsProduct, 1);
         setCartCustomer({ name: newTransaction.accountName });
 
-        router.push('/admin/cashio');
-        router.refresh();
+        toast({ title: 'Success', description: 'Transaction added to order.' });
+        form.reset();
+        setCartOpen(true);
       } catch (error: any) {
         if (error.message === 'DUPLICATE_REFERENCE') {
           toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });

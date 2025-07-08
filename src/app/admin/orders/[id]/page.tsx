@@ -37,7 +37,7 @@ export default async function OrderDetailsPage({ params }: { params: { id: strin
       </div>
 
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-6 overflow-x-auto">
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
