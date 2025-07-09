@@ -51,7 +51,7 @@ export default function CustomerActionButtons({ customer, className }: CustomerA
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
     }
-    const amount = dialogType === 'payment' ? -data.amount : data.amount;
+    const amount = dialogType === 'payment' ? data.amount : -data.amount;
 
     startTransition(async () => {
       try {
