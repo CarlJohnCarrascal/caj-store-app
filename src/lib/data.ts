@@ -675,12 +675,11 @@ export async function updateSalesReports(order: Order) {
 }
 
 export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
-    // const dateForReport = new Date(transaction.transactionDate);
-    // if (isNaN(dateForReport.getTime())) {
-    //   console.error(`Invalid transactionDate received for report update: ${transaction.transactionDate}`);
-    //   return;
-    // }
-
+    if (!transaction || !transaction.transactionDate) {
+        console.error("updateCashIOReport called with invalid transaction or missing transactionDate", transaction);
+        return; // Exit gracefully to prevent crash
+    }
+    
     const paths = getReportPaths(transaction.transactionDate);
     
     for (const periodPath of Object.values(paths)) {
@@ -689,10 +688,6 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
         await runTransaction(reportRef, (currentData: any) => {
           
             if (currentData === null) {
-                // if (factor === -1) {
-                //   console.error(`Could not find report entry at path ${reportRef.toString()} to reverse transaction. Path was generated from date: ${transaction.transactionDate}`);
-                //   return; 
-                // }
                 currentData = {
                     cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
                     cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
@@ -737,7 +732,6 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
                 
                 if (!currentData.customers) currentData.customers = {};
                 if (!currentData.customers[finalCustomerId]) {
-                    // if (factor === -1) return;
                     currentData.customers[finalCustomerId] = {
                         cashIn: 0, cashOut: 0, cashInFee: 0, cashOutFee: 0,
                         cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
