@@ -336,13 +336,20 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
         throw new Error('Customer not found.');
     }
     
-    const actionType = amount > 0 ? 'added to' : 'paid from';
     const absAmount = Math.abs(amount).toFixed(2);
+    let details = '';
+    if (amount > 0) {
+        // This is a payment from the customer
+        details = `Payment of ₱${absAmount} was recorded for ${updatedCustomer.name}.`;
+    } else {
+        // This is adding to the customer's debt
+        details = `₱${absAmount} was added to ${updatedCustomer.name}'s balance (debt).`;
+    }
 
     await logActivity({
         type: 'Customer',
         action: 'Updated',
-        details: `₱${absAmount} was ${actionType} ${updatedCustomer.name}'s balance.`,
+        details: details,
         targetId: customerId,
         ...user,
     });
@@ -749,3 +756,4 @@ export async function deleteFeeThresholdAction(id: string, user: { userId: strin
     revalidatePath('/admin/cashio-fees');
     revalidatePath('/admin/activity-logs');
 }
+
