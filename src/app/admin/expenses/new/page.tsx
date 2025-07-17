@@ -1,9 +1,20 @@
+
+'use client';
+
 import ExpenseForm from '../components/ExpenseForm';
 import { getExpenses } from '@/lib/data';
+import { useEffect, useState } from 'react';
 
-export default async function NewExpensePage() {
-  const expenses = await getExpenses();
-  const categories = [...new Set(expenses.map(e => e.category))];
+export default function NewExpensePage() {
+  const [categories, setCategories] = useState<string[]>([]);
+  
+  useEffect(() => {
+    async function fetchCategories() {
+        const expenses = await getExpenses();
+        setCategories([...new Set(expenses.map(e => e.category))]);
+    }
+    fetchCategories();
+  }, []);
 
   return (
     <div>

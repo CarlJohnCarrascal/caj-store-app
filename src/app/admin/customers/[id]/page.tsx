@@ -1,6 +1,9 @@
 
+'use client';
+
 import { getCustomerById, getOrdersByCustomerId } from '@/lib/data';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { AtSign, Home, Phone, User, Wallet, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,15 +21,73 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import CustomerActionButtons from '../components/CustomerActionButtons';
 import DeleteCustomerButton from '../components/DeleteCustomerButton';
+import { Customer, Order } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function CustomerDetailsPage({ params }: { params: { id: string } }) {
-  const customer = await getCustomerById(params.id);
-  
-  if (!customer) {
-    notFound();
+export default function CustomerDetailsPage() {
+  const params = useParams();
+  const id = params.id as string;
+
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    async function fetchData() {
+      try {
+        const [customerData, ordersData] = await Promise.all([
+          getCustomerById(id),
+          getOrdersByCustomerId(id)
+        ]);
+
+        if (!customerData) {
+          notFound();
+          return;
+        }
+        setCustomer(customerData);
+        setOrders(ordersData);
+      } catch (err: any) {
+        setError("Failed to load customer data. You may not have permission to view this page.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-5 w-64 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-1 space-y-6">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+          <div className="md:col-span-2">
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const orders = await getOrdersByCustomerId(params.id);
+  if (error || !customer) {
+    return (
+      <Card className="mt-4 border-destructive">
+        <CardHeader><CardTitle className="text-destructive">An Error Occurred</CardTitle></CardHeader>
+        <CardContent><p>{error || 'Customer not found.'}</p></CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
