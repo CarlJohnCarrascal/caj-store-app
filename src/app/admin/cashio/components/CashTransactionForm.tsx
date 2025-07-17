@@ -337,7 +337,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
         setCartOpen(true);
       } catch (error: any) {
         if (error.message === 'DUPLICATE_REFERENCE') {
-          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
+          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists.' });
         } else {
           toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
         }
