@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product, Customer } from '@/lib/types';
 import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2 } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2, Clock } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -104,7 +104,7 @@ export default function CashTransactionTable() {
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<any | null>(null);
   const { toast } = useToast();
-  const { addToCart, setCartCustomer } = useCart();
+  const { addToCart, setCartCustomer, setCartOpen } = useCart();
   const { user, loading: authLoading } = useAuth();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -706,7 +706,7 @@ export default function CashTransactionTable() {
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                {(() => {
+                Transaction Date: {(() => {
                   if (!isMounted || !selectedTransaction.transactionDate) return 'Loading date...';
                   try {
                     const date = new Date(selectedTransaction.transactionDate);
@@ -793,6 +793,14 @@ export default function CashTransactionTable() {
                                 <Hash className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
                                 <p className="font-mono break-all">{selectedTransaction.reference}</p>
                             </div>
+                            {selectedTransaction.createdAt && isMounted && (
+                              <div className="flex items-start gap-3">
+                                <Clock className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                <p className="text-muted-foreground">
+                                  Created: {format(new Date(selectedTransaction.createdAt), 'PPp')}
+                                </p>
+                              </div>
+                            )}
                             {selectedTransaction.message && (
                                 <div className="flex items-start gap-3">
                                     <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
