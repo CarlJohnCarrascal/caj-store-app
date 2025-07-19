@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -849,7 +850,7 @@ export default function CashTransactionTable() {
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full">Close</Button>
-                {selectedTransaction.status === 'Available' && (
+                {selectedTransaction.status === 'Available' && !(selectedTransaction.transactionType === 'Cash Out' && selectedTransaction.status === 'Claimed') && (
                     <Button
                       onClick={() => selectedTransaction && handleAddToCart(selectedTransaction)}
                       className="w-full"

@@ -196,7 +196,9 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             
             if (data.datetime) {
                 try {
-                  const localDateTime = new Date(data.datetime).toISOString().slice(0, 16);
+                  // AI returns yyyy-mm-ddThh:mm:ss+08:00
+                  // Input wants YYYY-MM-DDTHH:mm
+                  const localDateTime = data.datetime.slice(0, 16);
                   form.setValue('datetime', localDateTime, { shouldValidate: true });
                   populatedFields.push('datetime');
                 } catch (e) {

@@ -55,7 +55,7 @@ const prompt = ai.definePrompt({
 2.  Extract the following fields: \`datetime\`, \`transactionType\`, \`reference\`, \`accountName\`, \`accountNumber\`, \`balance\`, \`amount\`.
 3.  **Output the result as a JSON object ONLY. Do not include any other text or markdown formatting like \`\`\`json.**
 4.  If a field is not found in the SMS, omit it from the JSON.
-5.  Prioritize the earliest date/time mentioned for \`datetime\` and return it in ISO 8601 format.
+5.  Prioritize the earliest date/time mentioned for \`datetime\` and return it in ISO 8601 format with PHT timezone (e.g., yyyy-mm-ddThh:mm:ss+08:00).
 6.  For \`amount\` and \`balance\`, extract the numeric value only.
 7.  For \`accountName\`, identify the name of the sender/receiver of the transaction.
 8.  For \`accountNumber\`, identify the phone number associated with the \`accountName\`. If the source is a company without an explicit phone number in the SMS, use "N/A".
@@ -68,7 +68,7 @@ const prompt = ai.definePrompt({
 
 **JSON Output 1:**
 {
-  "datetime": "2025-06-22T17:59:00.000Z",
+  "datetime": "2025-06-22T17:59:00+08:00",
   "transactionType": "received",
   "reference": "2029933342823",
   "accountName": "ME******E G.",
@@ -82,7 +82,7 @@ const prompt = ai.definePrompt({
 
 **JSON Output 2:**
 {
-  "datetime": "2025-06-21T16:47:48.000Z",
+  "datetime": "2025-06-21T16:47:48+08:00",
   "transactionType": "received",
   "reference": "8029898986712",
   "accountName": "Philippine Seven Corporation",
@@ -96,7 +96,7 @@ const prompt = ai.definePrompt({
 
 **JSON Output 3:**
 {
-  "datetime": "2025-06-19T09:20:00.000Z",
+  "datetime": "2025-06-19T09:20:00+08:00",
   "transactionType": "sent",
   "reference": "8029822076869",
   "accountName": "EM***N S.",
