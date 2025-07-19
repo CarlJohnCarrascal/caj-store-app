@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -21,6 +21,7 @@ export default function ScanImagePage() {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,6 +80,17 @@ export default function ScanImagePage() {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({
+        title: 'Image Selected',
+        description: `Selected file: ${file.name}`,
+      });
+      // TODO: Add logic to process the selected image file
+    }
+  };
+
   return (
     <div className="space-y-6">
        <Button asChild variant="outline">
@@ -93,7 +105,7 @@ export default function ScanImagePage() {
           <CardDescription>
             {step === 1 
               ? 'First, select the type of transaction you are scanning.' 
-              : 'Position the receipt or message in the frame and press scan.'}
+              : 'Position the receipt in the frame and scan, or upload an image.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -153,11 +165,25 @@ export default function ScanImagePage() {
                         </AlertDescription>
                     </Alert>
                 )}
+                
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                />
 
-                <Button size="lg" className="w-full" disabled={!hasCameraPermission}>
-                    <Camera className="mr-2 h-5 w-5" />
-                    Scan
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                    <Button size="lg" className="w-full" disabled={!hasCameraPermission}>
+                        <Camera className="mr-2 h-5 w-5" />
+                        Scan
+                    </Button>
+                     <Button size="lg" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                        <FileImage className="mr-2 h-5 w-5" />
+                        Upload
+                    </Button>
+                </div>
             </div>
           )}
         </CardContent>
