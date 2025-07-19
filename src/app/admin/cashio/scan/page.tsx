@@ -87,7 +87,7 @@ export default function ScanImagePage() {
             Back to Cash IO
           </Link>
         </Button>
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Scan Transaction Image</CardTitle>
           <CardDescription>
@@ -124,7 +124,7 @@ export default function ScanImagePage() {
 
           {step === 2 && (
             <div className="space-y-4">
-                <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                <div className="w-full aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
                     <video ref={videoRef} className={cn("w-full h-full object-cover", hasCameraPermission === false && "hidden")} autoPlay muted playsInline />
                     {hasCameraPermission === null && <p>Requesting camera...</p>}
                     {hasCameraPermission === false && (
