@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Camera } from 'lucide-react';
 import CashTransactionTable from './components/CashTransactionTable';
@@ -9,6 +10,12 @@ export default function CashIOPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Cash IO Transactions</h1>
         <div className="flex gap-2">
+           <Button asChild variant="outline">
+            <Link href="/admin/cashio/scan">
+              <Camera className="h-5 w-5 md:mr-2" />
+              <span className="hidden md:inline">Scan Image</span>
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/admin/cashio/new">
               <PlusCircle className="h-5 w-5 md:mr-2" />
