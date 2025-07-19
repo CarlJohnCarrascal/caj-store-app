@@ -163,9 +163,16 @@ export default function ScanImagePage() {
     if (!extractedData) return;
 
     const queryParams = new URLSearchParams();
-    if(transactionType) queryParams.set('transactionType', transactionType);
+    
+    // Prioritize user's selection over AI extraction for transactionType
+    if(transactionType) {
+        queryParams.set('transactionType', transactionType);
+    }
     
     Object.entries(extractedData).forEach(([key, value]) => {
+        // Skip setting transactionType if it came from AI, as we already set the user's choice
+        if (key === 'transactionType') return;
+        
         if (value) {
             queryParams.set(key, String(value));
         }
