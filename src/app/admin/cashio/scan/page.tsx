@@ -44,6 +44,7 @@ export default function ScanImagePage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [rawExtractionResult, setRawExtractionResult] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -102,6 +103,7 @@ export default function ScanImagePage() {
   const processImage = async (imageDataUri: string) => {
     setIsLoading(true);
     setExtractedData(null);
+    setRawExtractionResult(null);
     setIsDuplicate(null);
 
     try {
@@ -114,6 +116,9 @@ export default function ScanImagePage() {
         
         const data = result.data;
         setExtractedData(data);
+        if (result.raw) {
+            setRawExtractionResult(result.raw)
+        };
         
         if (data.reference) {
             const duplicate = await isReferenceNumberDuplicate(data.reference);
@@ -178,6 +183,10 @@ export default function ScanImagePage() {
         }
     });
 
+    if (rawExtractionResult) {
+        queryParams.set('message', rawExtractionResult);
+    }
+
     router.push(`/admin/cashio/new?${queryParams.toString()}`);
   };
 
@@ -223,6 +232,7 @@ export default function ScanImagePage() {
     setStep(1);
     setTransactionType(null);
     setExtractedData(null);
+    setRawExtractionResult(null);
     setIsDuplicate(null);
   };
 

@@ -12,9 +12,14 @@ function NewCashTransactionForm() {
   const searchParams = useSearchParams();
   const sharedText = searchParams.get('text');
   
-  const extractedData: { [key: string]: string } = {};
+  const extractedData: { [key: string]: string | undefined } = {};
   for (const [key, value] of searchParams.entries()) {
     extractedData[key] = value;
+  }
+  
+  // Also pass the message parameter if it exists from scan page
+  if (searchParams.has('message')) {
+    extractedData.message = searchParams.get('message') || '';
   }
 
   useEffect(() => {
