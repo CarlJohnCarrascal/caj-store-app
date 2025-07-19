@@ -248,6 +248,19 @@ export async function isReferenceNumberDuplicate(reference: string): Promise<boo
   return snapshot.exists();
 }
 
+export async function getCashTransactionByReference(reference: string): Promise<CashTransaction | null> {
+    const transactionsRef = ref(db, 'cashTransactions');
+    const q = query(transactionsRef, orderByChild('reference'), equalTo(reference));
+    const snapshot = await get(q);
+    if (snapshot.exists()) {
+        const data = snapshot.val();
+        const id = Object.keys(data)[0];
+        return { id, ...data[id] };
+    }
+    return null;
+}
+
+
 export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'> & { datetime?: string }, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
   const accountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
   const accountSnapshot = await get(accountRef);

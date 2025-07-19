@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,7 +54,7 @@ type CashTransactionFormValues = z.infer<typeof formSchema>;
 interface CashTransactionFormProps {
   accounts: Account[];
   sharedText?: string;
-  transaction?: CashTransaction;
+  transaction?: Partial<CashTransaction>;
 }
 
 export default function CashTransactionForm({ accounts, sharedText, transaction }: CashTransactionFormProps) {
@@ -69,14 +70,15 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   const [feeThresholds, setFeeThresholds] = useState<FeeThreshold[]>([]);
 
   const formattedDate = transaction?.transactionDate ? transaction.transactionDate.slice(0, 16) : '';
+  const isEditing = !!transaction?.id;
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: transaction ? {
         ...transaction,
-        amount: Number(transaction.amount),
-        fee: Number(transaction.fee),
-        datetime: formattedDate,
+        amount: transaction.amount ? Number(transaction.amount) : 0,
+        fee: transaction.fee ? Number(transaction.fee) : 0,
+        datetime: transaction.datetime || (formattedDate as any),
         message: transaction.message || '',
     } : {
       transactionType: 'Cash In',
@@ -253,7 +255,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
       handleExtractDetails(sharedText);
       hasProcessedSharedText.current = true;
     }
-  }, [sharedText, form, handleExtractDetails]);
+  }, [sharedText, form]);
 
 
   const onSave = (data: CashTransactionFormValues) => {
@@ -346,7 +348,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   };
 
   const onUpdate = (data: CashTransactionFormValues) => {
-    if (!transaction) return;
+    if (!transaction?.id) return;
     if (!user) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
@@ -380,15 +382,15 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{transaction ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
+          <CardTitle>{isEditing ? 'Edit Transaction' : 'New Transaction'}</CardTitle>
           <CardDescription>
-            {transaction ? 'Update the details of an existing transaction.' : 'Record a new cash in or cash out transaction.'}
+            {isEditing ? 'Update the details of an existing transaction.' : 'Record a new cash in or cash out transaction.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form className="space-y-6">
-              {!transaction && (
+              {!isEditing && (
                 <FormField control={form.control} name="message" render={({ field }) => (
                     <FormItem>
                         <div className="flex justify-between items-center">
@@ -577,7 +579,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-                {transaction ? (
+                {isEditing ? (
                   <Button type="button" onClick={form.handleSubmit(onUpdate)} disabled={isPending}>
                     {isPending ? 'Saving...' : 'Save Changes'}
                   </Button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getAccounts } from '@/lib/data';
@@ -10,6 +11,11 @@ function NewCashTransactionForm() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const searchParams = useSearchParams();
   const sharedText = searchParams.get('text');
+  
+  const extractedData: { [key: string]: string } = {};
+  for (const [key, value] of searchParams.entries()) {
+    extractedData[key] = value;
+  }
 
   useEffect(() => {
     async function fetchAccounts() {
@@ -22,7 +28,7 @@ function NewCashTransactionForm() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Add New Cash Transaction</h1>
-      <CashTransactionForm accounts={accounts} sharedText={sharedText || undefined} />
+      <CashTransactionForm accounts={accounts} sharedText={sharedText || undefined} transaction={extractedData as any} />
     </div>
   );
 }
