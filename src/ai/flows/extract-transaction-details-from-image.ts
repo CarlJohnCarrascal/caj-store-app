@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - ExtractTransactionDetailsFromImageInput - The input type for the function.
  * - ExtractTransactionDetailsOutput - The return type for the function (shared with text extraction).
  */
-
+import 'dotenv/config';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { ExtractTransactionDetailsOutput } from './extract-transaction-details';
