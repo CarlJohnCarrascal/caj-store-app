@@ -106,6 +106,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     fetchThresholds();
   }, []);
 
+  
   // Set the last used account from localStorage
   useEffect(() => {
     if (!transaction && accounts.length > 0) { // Only for new transactions and when accounts are loaded
