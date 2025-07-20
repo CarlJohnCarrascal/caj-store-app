@@ -177,9 +177,6 @@ export default function ScanImagePage() {
     Object.entries(extractedData).forEach(([key, value]) => {
         // Skip setting transactionType if it came from AI, as we already set the user's choice
         if (key === 'transactionType') return;
-        if (key === 'datetime') {
-          queryParams.set('transactionDate', value.slice(0, 16));
-        }
         
         if (value) {
             queryParams.set(key, String(value));
