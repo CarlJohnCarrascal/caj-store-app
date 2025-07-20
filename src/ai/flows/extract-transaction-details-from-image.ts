@@ -55,7 +55,7 @@ const prompt = ai.definePrompt({
 2.  Extract the following fields: \`datetime\`, \`transactionType\`, \`reference\`, \`accountName\`, \`accountNumber\`, \`balance\`, \`amount\`.
 3.  **Output the result as a JSON object ONLY. Do not include any other text or markdown formatting like \`\`\`json.**
 4.  If a field is not found in the SMS, omit it from the JSON.
-5.  Prioritize the earliest date/time mentioned for \`datetime\` and return it in ISO 8601 format with PHT timezone (e.g., yyyy-mm-ddThh:mm:ss+08:00).
+5.  Prioritize the earliest date/time mentioned for \`datetime\`. If only a time is found, combine it with today's date. Return the result in ISO 8601 format with PHT timezone (e.g., yyyy-mm-ddThh:mm:ss+08:00).
 6.  For \`amount\` and \`balance\`, extract the numeric value only.
 7.  For \`accountName\`, identify the name of the sender/receiver of the transaction.
 8.  For \`accountNumber\`, identify the phone number associated with the \`accountName\`. If the source is a company without an explicit phone number in the SMS, use "N/A".
