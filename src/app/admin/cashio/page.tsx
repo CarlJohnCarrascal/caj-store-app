@@ -8,7 +8,7 @@ export default function CashIOPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Cash IO Transactions</h1>
+        <h1 className="text-3xl font-bold">Cash IO</h1>
         <div className="flex gap-2">
            <Button asChild variant="outline">
             <Link href="/admin/cashio/scan">
