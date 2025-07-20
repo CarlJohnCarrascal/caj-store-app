@@ -156,7 +156,7 @@ function toast({ ...props }: Toast) {
     type: "ADD_TOAST",
     toast: {
       ...props,
-      duration: 500, // Auto-close after 0.5 seconds
+      duration: 1500, // Auto-close after 1.5 seconds
       id,
       open: true,
       onOpenChange: (open) => {
