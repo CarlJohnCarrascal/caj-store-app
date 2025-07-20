@@ -53,11 +53,10 @@ type CashTransactionFormValues = z.infer<typeof formSchema>;
 
 interface CashTransactionFormProps {
   accounts: Account[];
-  sharedText?: string;
   transaction?: Partial<CashTransaction>;
 }
 
-export default function CashTransactionForm({ accounts, sharedText, transaction }: CashTransactionFormProps) {
+export default function CashTransactionForm({ accounts, transaction }: CashTransactionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -65,22 +64,14 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [extractionResult, setExtractionResult] = useState<string | null>(null);
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
-  const hasProcessedSharedText = useRef(false);
   const { user } = useAuth();
   const [feeThresholds, setFeeThresholds] = useState<FeeThreshold[]>([]);
 
-  const formattedDate = transaction?.transactionDate ? transaction.transactionDate.slice(0, 16) : '';
   const isEditing = !!transaction?.id;
 
   const form = useForm<CashTransactionFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: transaction ? {
-        ...transaction,
-        amount: transaction.amount ? Number(transaction.amount) : 0,
-        fee: transaction.fee ? Number(transaction.fee) : 0,
-        datetime: transaction.datetime || (formattedDate as any),
-        message: transaction.message || '',
-    } : {
+    defaultValues: {
       transactionType: 'Cash In',
       accountUsedId: '',
       paymentMethod: 'Gcash',
@@ -92,10 +83,14 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
       reference: '',
       message: '',
       datetime: '',
+      ...transaction,
+      amount: transaction?.amount ? Number(transaction.amount) : 0,
+      fee: transaction?.fee ? Number(transaction.fee) : 0,
+      datetime: transaction?.datetime ? (transaction.datetime as any).slice(0, 16) : '',
     },
   });
-
-  const transactionType = form.watch('transactionType');
+  
+  const watchedAmount = form.watch('amount');
 
   // Fetch fee thresholds on mount
   useEffect(() => {
@@ -105,18 +100,27 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
     }
     fetchThresholds();
   }, []);
-
   
   // Set the last used account from localStorage
   useEffect(() => {
-    if (!transaction && accounts.length > 0) { // Only for new transactions and when accounts are loaded
+    if (!isEditing && accounts.length > 0) { // Only for new transactions and when accounts are loaded
       const lastUsedAccountId = localStorage.getItem('lastUsedAccountId');
-      if (lastUsedAccountId && accounts.some(acc => acc.id === lastUsedAccountId)) {
+      if (lastUsedAccountId && accounts.some(acc => acc.id === lastUsedAccountId) && !form.getValues('accountUsedId')) {
         form.setValue('accountUsedId', lastUsedAccountId, { shouldValidate: true });
       }
     }
-  }, [accounts, transaction, form]);
+  }, [accounts, isEditing, form]);
 
+  // Recalculate fee whenever amount or thresholds change
+  useEffect(() => {
+    if (watchedAmount > 0 && feeThresholds.length > 0) {
+      const calculatedFee = calculateFee(watchedAmount, feeThresholds);
+      // Only set the fee if it's different to avoid re-renders
+      if (calculatedFee !== form.getValues('fee')) {
+        form.setValue('fee', calculatedFee, { shouldValidate: true });
+      }
+    }
+  }, [watchedAmount, feeThresholds, form]);
 
   const handlePaste = async () => {
     try {
@@ -135,6 +139,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
           title: 'Pasted!',
           description: 'Message pasted from clipboard.',
         });
+        handleExtractDetails(text);
       } else {
         toast({
           variant: 'default',
@@ -210,11 +215,6 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
             if (data.amount) {
                 form.setValue('amount', data.amount, { shouldValidate: true });
                 populatedFields.push('amount');
-                if (feeThresholds.length > 0) {
-                    const calculatedFee = calculateFee(data.amount, feeThresholds);
-                    form.setValue('fee', calculatedFee, { shouldValidate: true });
-                    populatedFields.push('fee');
-                }
             }
             
             if (data.accountName) {
@@ -251,14 +251,6 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
         setIsGenerating(false);
     }
   };
-
-  useEffect(() => {
-    if (sharedText && !hasProcessedSharedText.current) {
-      form.setValue('message', sharedText);
-      handleExtractDetails(sharedText);
-      hasProcessedSharedText.current = true;
-    }
-  }, [sharedText, form]);
 
 
   const onSave = (data: CashTransactionFormValues) => {
@@ -588,7 +580,7 @@ export default function CashTransactionForm({ accounts, sharedText, transaction 
                   </Button>
                 ) : (
                   <>
-                    {transactionType === 'Cash Out' && (
+                    {form.getValues('transactionType') === 'Cash Out' && (
                       <Button variant="secondary" type="button" onClick={form.handleSubmit(onSave)} disabled={isPending}>
                         {isPending ? 'Saving...' : 'Save'}
                       </Button>

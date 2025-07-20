@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { getAccounts } from '@/lib/data';
@@ -11,30 +12,7 @@ function NewCashTransactionForm() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const searchParams = useSearchParams();
   
-  // Create a base object for the new transaction with defaults
-  const transactionDefaults = {
-    transactionType: 'Cash In',
-    paymentMethod: 'Gcash',
-    status: 'Delivered',
-    accountName: '',
-    accountNumber: '',
-    amount: 0,
-    fee: 0,
-    reference: '',
-    message: '',
-    datetime: '',
-  };
-
-  // Override defaults with any parameters from the URL
-  const extractedData: { [key: string]: any } = {};
-  for (const [key, value] of searchParams.entries()) {
-    // The date from the scanner comes in as `datetime`, but the form input expects it to be `datetime`.
-    // It's already correctly named in the scanner page logic.
-    extractedData[key] = value;
-  }
-  
-  const transaction = { ...transactionDefaults, ...extractedData };
-
+  const [initialTransaction, setInitialTransaction] = useState<any | null>(null);
 
   useEffect(() => {
     async function fetchAccounts() {
@@ -44,10 +22,44 @@ function NewCashTransactionForm() {
     fetchAccounts();
   }, []);
 
+  useEffect(() => {
+    // Create a base object for the new transaction with defaults
+    const transactionDefaults = {
+      transactionType: 'Cash In',
+      paymentMethod: 'Gcash',
+      status: 'Delivered',
+      accountName: '',
+      accountNumber: '',
+      amount: 0,
+      fee: 0,
+      reference: '',
+      message: '',
+      datetime: '',
+    };
+
+    const lastUsedAccountId = typeof window !== 'undefined' ? localStorage.getItem('lastUsedAccountId') : null;
+    if (lastUsedAccountId) {
+      transactionDefaults.accountUsedId = lastUsedAccountId;
+    }
+    
+    // Override defaults with any parameters from the URL
+    const extractedData: { [key: string]: any } = {};
+    for (const [key, value] of searchParams.entries()) {
+      extractedData[key] = value;
+    }
+
+    setInitialTransaction({ ...transactionDefaults, ...extractedData });
+
+  }, [searchParams]);
+
+  if (!initialTransaction) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Add New Cash Transaction</h1>
-      <CashTransactionForm accounts={accounts} transaction={transaction as any} />
+      <CashTransactionForm accounts={accounts} transaction={initialTransaction} />
     </div>
   );
 }

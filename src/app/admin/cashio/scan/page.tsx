@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -16,7 +17,7 @@ import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transacti
 import { isReferenceNumberDuplicate, getCashTransactionByReference } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product } from '@/lib/types';
-
+import Image from 'next/image';
 
 type TransactionType = 'Cash In' | 'Cash Out';
 
@@ -40,7 +41,7 @@ export default function ScanImagePage() {
   const { toast } = useToast();
   const router = useRouter();
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
-
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
@@ -146,6 +147,7 @@ export default function ScanImagePage() {
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg');
+        setPreviewImage(dataUri);
         processImage(dataUri);
       }
     }
@@ -157,6 +159,7 @@ export default function ScanImagePage() {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (typeof e.target?.result === 'string') {
+          setPreviewImage(e.target.result);
           processImage(e.target.result);
         }
       };
@@ -234,6 +237,8 @@ export default function ScanImagePage() {
     setExtractedData(null);
     setRawExtractionResult(null);
     setIsDuplicate(null);
+    setPreviewImage(null);
+    if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
 
@@ -336,6 +341,11 @@ export default function ScanImagePage() {
 
           {step === 3 && (
             <div className="space-y-4">
+                {previewImage && (
+                    <div className="relative w-full aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center">
+                        <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
+                    </div>
+                )}
                 {isDuplicate !== null && (
                     <Alert variant={isDuplicate ? "destructive" : "default"}>
                         {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
