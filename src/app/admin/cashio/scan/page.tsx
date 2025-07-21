@@ -130,9 +130,19 @@ export default function ScanImagePage() {
             setRawExtractionResult(result.raw)
         };
         
+        // Trim whitespace from reference and account number if they exist
+        if (data.reference) {
+            data.reference = data.reference.replace(/\s+/g, '');
+        }
+        if (data.accountNumber) {
+            data.accountNumber = data.accountNumber.replace(/\s+/g, '');
+        }
+        
         // Handle Cash Out auto-detection of account used
         if (transactionType === 'Cash Out' && data.accountNumber && accounts.length > 0) {
-            const matchedAccount = accounts.find(acc => acc.accountNumber === data.accountNumber);
+            const extractedNumSuffix = data.accountNumber.slice(-10);
+            const matchedAccount = accounts.find(acc => acc.accountNumber.replace(/\s+/g, '').slice(-10) === extractedNumSuffix);
+
             if (matchedAccount) {
                 data.accountUsedId = matchedAccount.id;
                 data.accountName = 'N/A';
