@@ -14,9 +14,9 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
-import { isReferenceNumberDuplicate, getCashTransactionByReference } from '@/lib/data';
+import { isReferenceNumberDuplicate, getCashTransactionByReference, getAccounts } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
-import { Product } from '@/lib/types';
+import { Product, Account } from '@/lib/types';
 import Image from 'next/image';
 
 type TransactionType = 'Cash In' | 'Cash Out';
@@ -27,6 +27,7 @@ interface ExtractedData {
     accountName?: string;
     accountNumber?: string;
     datetime?: string;
+    accountUsedId?: string;
     [key: string]: any;
 }
 
@@ -47,6 +48,15 @@ export default function ScanImagePage() {
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [rawExtractionResult, setRawExtractionResult] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  useEffect(() => {
+    async function fetchAccounts() {
+        const fetchedAccounts = await getAccounts();
+        setAccounts(fetchedAccounts);
+    }
+    fetchAccounts();
+  }, []);
 
   useEffect(() => {
     if (step !== 2) {
@@ -115,11 +125,22 @@ export default function ScanImagePage() {
             return;
         }
         
-        const data = result.data;
-        setExtractedData(data);
+        let data: ExtractedData = result.data;
         if (result.raw) {
             setRawExtractionResult(result.raw)
         };
+        
+        // Handle Cash Out auto-detection of account used
+        if (transactionType === 'Cash Out' && data.accountNumber && accounts.length > 0) {
+            const matchedAccount = accounts.find(acc => acc.accountNumber === data.accountNumber);
+            if (matchedAccount) {
+                data.accountUsedId = matchedAccount.id;
+                data.accountName = 'N/A';
+                data.accountNumber = 'N/A';
+            }
+        }
+        
+        setExtractedData(data);
         
         if (data.reference) {
             const duplicate = await isReferenceNumberDuplicate(data.reference);
@@ -366,6 +387,9 @@ export default function ScanImagePage() {
                             <span className="font-mono text-right">{String(value)}</span>
                         </div>
                     ))}
+                    {!extractedData && (
+                        <div className="text-center text-muted-foreground">No details extracted.</div>
+                    )}
                 </div>
                 
                 {isDuplicate ? (
