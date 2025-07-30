@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
-import { isReferenceNumberDuplicate, getCashTransactionByReference, getAccounts } from '@/lib/data';
+import { getCashTransactionByReference, getAccounts } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product, Account } from '@/lib/types';
 import Image from 'next/image';
@@ -48,6 +48,7 @@ export default function ScanImagePage() {
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [rawExtractionResult, setRawExtractionResult] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
+  const [isClaimed, setIsClaimed] = useState<boolean>(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function ScanImagePage() {
     setExtractedData(null);
     setRawExtractionResult(null);
     setIsDuplicate(null);
+    setIsClaimed(false);
 
     try {
         const result = await extractTransactionDetailsFromImage({ imageDataUri });
@@ -153,8 +155,12 @@ export default function ScanImagePage() {
         setExtractedData(data);
         
         if (data.reference) {
-            const duplicate = await isReferenceNumberDuplicate(data.reference);
-            setIsDuplicate(duplicate);
+            const duplicateTx = await getCashTransactionByReference(data.reference);
+            setIsDuplicate(!!duplicateTx);
+
+            if (duplicateTx && transactionType === 'Cash Out' && duplicateTx.status === 'Claimed') {
+                setIsClaimed(true);
+            }
         } else {
             setIsDuplicate(false);
         }
@@ -213,7 +219,13 @@ export default function ScanImagePage() {
         if (key === 'transactionType') return;
         
         if (value) {
-            queryParams.set(key, String(value));
+            if (key === 'datetime') {
+              // The form expects 'datetime' but the transaction data model uses 'transactionDate'
+              // Let's ensure we pass it as 'datetime' for the form.
+              queryParams.set('datetime', String(value));
+            } else {
+              queryParams.set(key, String(value));
+            }
         }
     });
 
@@ -269,6 +281,7 @@ export default function ScanImagePage() {
     setRawExtractionResult(null);
     setIsDuplicate(null);
     setPreviewImage(null);
+    setIsClaimed(false);
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -318,7 +331,7 @@ export default function ScanImagePage() {
 
           {step === 2 && (
             <div className="space-y-4">
-                <div className="w-full aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
                     <video ref={videoRef} className={cn("w-full h-full object-cover", hasCameraPermission === false && "hidden")} autoPlay muted playsInline />
                     {hasCameraPermission === null && <p>Requesting camera...</p>}
                     {hasCameraPermission === false && (
@@ -378,16 +391,26 @@ export default function ScanImagePage() {
                     </div>
                 )}
                 {isDuplicate !== null && (
-                    <Alert variant={isDuplicate ? "destructive" : "default"}>
-                        {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                        <AlertTitle>{isDuplicate ? "Duplicate Transaction" : "New Transaction"}</AlertTitle>
-                        <AlertDescription>
-                            {isDuplicate
-                                ? "This reference number already exists in your records."
-                                : "This reference number appears to be new."
-                            }
-                        </AlertDescription>
-                    </Alert>
+                     isClaimed ? (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Transaction Already Claimed</AlertTitle>
+                            <AlertDescription>
+                                This cash-out transaction has already been claimed and cannot be added to a new order.
+                            </AlertDescription>
+                        </Alert>
+                    ) : (
+                        <Alert variant={isDuplicate ? "destructive" : "default"}>
+                            {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                            <AlertTitle>{isDuplicate ? "Duplicate Transaction" : "New Transaction"}</AlertTitle>
+                            <AlertDescription>
+                                {isDuplicate
+                                    ? "This reference number already exists in your records."
+                                    : "This reference number appears to be new."
+                                }
+                            </AlertDescription>
+                        </Alert>
+                    )
                 )}
 
                 <div className="space-y-2 rounded-md border p-4 text-sm">
@@ -403,7 +426,7 @@ export default function ScanImagePage() {
                 </div>
                 
                 {isDuplicate ? (
-                    <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
+                    <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isClaimed}>Add to Order</Button>
                 ) : (
                     <Button className="w-full" size="lg" onClick={handleAddTransaction}>Add Transaction</Button>
                 )}
