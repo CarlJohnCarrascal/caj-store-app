@@ -12,7 +12,7 @@ import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/u
 import { DollarSign, Package, Printer, ArrowRightLeft, Smartphone, Wrench, ShoppingCart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
-import { getReportPaths } from '@/lib/utils';
+import { getReportPaths, getCurrentPHTISOString } from '@/lib/utils';
 import { getReportData, setReportData } from '@/lib/offline';
 
 type ServiceData = {
