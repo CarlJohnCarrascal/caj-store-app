@@ -282,6 +282,8 @@ export default function ScanImagePage() {
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const canAddToOrder = isDuplicate && !isClaimed && transactionType !== 'Cash In';
+
 
   return (
     <div className="space-y-6">
@@ -436,10 +438,10 @@ export default function ScanImagePage() {
                             )}
                         </div>
                         
-                        {isDuplicate ? (
-                            <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isClaimed}>Add to Order</Button>
+                        {canAddToOrder ? (
+                            <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
                         ) : (
-                            <Button className="w-full" size="lg" onClick={handleAddTransaction}>Add Transaction</Button>
+                            <Button className="w-full" size="lg" onClick={handleAddTransaction} disabled={isDuplicate}>Add Transaction</Button>
                         )}
                     </>
                 )}
@@ -451,4 +453,5 @@ export default function ScanImagePage() {
   );
 }
 
+    
     
