@@ -53,6 +53,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+
 const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
   const sortedData = useMemo(() => {
     if (!data) return [];
@@ -85,6 +86,35 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         return b.key.localeCompare(a.key);
     });
   }, [data, periodName]);
+  
+  const allServices = useMemo(() => {
+    return Array.from(new Set(sortedData.flatMap(d => d.byService ? Object.keys(d.byService) : [])));
+  }, [sortedData]);
+
+  const serviceChartConfig = useMemo(() => {
+      const config: ChartConfig = {};
+      const colors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+      allServices.forEach((service, index) => {
+          config[service] = {
+              label: service,
+              color: colors[index % colors.length],
+          };
+      });
+      return config;
+  }, [allServices]);
+
+  const serviceChartData = useMemo(() => {
+      return sortedData.map(entry => {
+          const serviceSales: { [key: string]: number } = {};
+          allServices.forEach(service => {
+              serviceSales[service] = entry.byService?.[service]?.sales || 0;
+          });
+          return {
+              name: entry.key,
+              ...serviceSales,
+          };
+      }).reverse(); // Chronological order
+  }, [sortedData, allServices]);
 
   const chartData = useMemo(() => {
     return sortedData.map(entry => ({
@@ -133,11 +163,6 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     }, { totalSales: 0, totalOrders: 0 });
   }, [sortedData, periodName]);
 
-  const allServices = useMemo(() => {
-    return Array.from(new Set(sortedData.flatMap(d => d.byService ? Object.keys(d.byService) : [])));
-  }, [sortedData]);
-
-
   if (!data) {
     return (
       <div className="text-center py-16">
@@ -183,6 +208,27 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
               <YAxis tickFormatter={(value) => `₱${value / 1000}k`} />
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
               <Bar dataKey="totalSales" fill="var(--color-totalSales)" radius={4} />
+            </BarChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Trend by Service</CardTitle>
+          <CardDescription>Click on the legend to show or hide a service.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={serviceChartConfig} className="min-h-[300px] w-full">
+            <BarChart data={serviceChartData} accessibilityLayer>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+              <YAxis tickFormatter={(value) => `₱${value / 1000}k`} />
+              <Tooltip cursor={false} content={<ChartTooltipContent />} />
+              <Legend />
+              {allServices.map(service => (
+                <Bar key={service} dataKey={service} fill={`var(--color-${service})`} radius={2} stackId="a" />
+              ))}
             </BarChart>
           </ChartContainer>
         </CardContent>
