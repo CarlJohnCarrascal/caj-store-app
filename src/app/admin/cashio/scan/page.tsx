@@ -28,6 +28,7 @@ interface ExtractedData {
     accountNumber?: string;
     datetime?: string;
     accountUsedId?: string;
+    'Account Used'?: string;
     [key: string]: any;
 }
 
@@ -142,11 +143,12 @@ export default function ScanImagePage() {
         
         // Handle Cash Out auto-detection of account used
         if (transactionType === 'Cash Out' && data.accountNumber && accounts.length > 0) {
-            const extractedNumSuffix = data.accountNumber.slice(-10);
+            const extractedNumSuffix = data.accountNumber.replace(/\s+/g, '').slice(-10);
             const matchedAccount = accounts.find(acc => acc.accountNumber.replace(/\s+/g, '').slice(-10) === extractedNumSuffix);
 
             if (matchedAccount) {
                 data.accountUsedId = matchedAccount.id;
+                data['Account Used'] = matchedAccount.accountName;
                 data.accountName = 'N/A';
                 data.accountNumber = 'N/A';
             }
@@ -216,16 +218,11 @@ export default function ScanImagePage() {
     
     Object.entries(extractedData).forEach(([key, value]) => {
         // Skip setting transactionType if it came from AI, as we already set the user's choice
-        if (key === 'transactionType') return;
+        // also skip our custom 'Account Used' display field
+        if (key === 'transactionType' || key === 'Account Used') return;
         
         if (value) {
-            if (key === 'datetime') {
-              // The form expects 'datetime' but the transaction data model uses 'transactionDate'
-              // Let's ensure we pass it as 'datetime' for the form.
-              queryParams.set('datetime', String(value));
-            } else {
-              queryParams.set(key, String(value));
-            }
+            queryParams.set(key, String(value));
         }
     });
 
@@ -414,12 +411,15 @@ export default function ScanImagePage() {
                 )}
 
                 <div className="space-y-2 rounded-md border p-4 text-sm">
-                    {Object.entries(extractedData || {}).map(([key, value]) => (
-                        <div key={key} className="flex justify-between">
-                            <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                            <span className="font-mono text-right">{String(value)}</span>
-                        </div>
-                    ))}
+                    {Object.entries(extractedData || {}).map(([key, value]) => {
+                         if (key === 'accountUsedId') return null;
+                         return (
+                            <div key={key} className="flex justify-between">
+                                <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                <span className="font-mono text-right">{String(value)}</span>
+                            </div>
+                         );
+                    })}
                     {!extractedData && (
                         <div className="text-center text-muted-foreground">No details extracted.</div>
                     )}
