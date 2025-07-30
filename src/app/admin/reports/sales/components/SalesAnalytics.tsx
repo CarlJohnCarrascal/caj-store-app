@@ -55,6 +55,8 @@ const chartConfig = {
 
 
 const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
+  const [hiddenServices, setHiddenServices] = useState<string[]>([]);
+  
   const sortedData = useMemo(() => {
     if (!data) return [];
     const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
@@ -162,6 +164,14 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         return acc;
     }, { totalSales: 0, totalOrders: 0 });
   }, [sortedData, periodName]);
+  
+  const handleLegendClick = (dataKey: string) => {
+    setHiddenServices(prev => 
+      prev.includes(dataKey) 
+        ? prev.filter(s => s !== dataKey) 
+        : [...prev, dataKey]
+    );
+  };
 
   if (!data) {
     return (
@@ -225,9 +235,15 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
               <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
               <YAxis tickFormatter={(value) => `₱${value / 1000}k`} />
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
-              <Legend />
+              <Legend onClick={(e) => handleLegendClick(e.dataKey)} />
               {allServices.map(service => (
-                <Bar key={service} dataKey={service} fill={`var(--color-${service})`} radius={2} />
+                <Bar 
+                  key={service} 
+                  dataKey={service} 
+                  fill={`var(--color-${service})`} 
+                  radius={2} 
+                  hide={hiddenServices.includes(service)}
+                />
               ))}
             </BarChart>
           </ChartContainer>
