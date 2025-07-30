@@ -114,6 +114,8 @@ export default function ScanImagePage() {
   };
   
   const processImage = async (imageDataUri: string) => {
+    setPreviewImage(imageDataUri); // Show preview immediately
+    setStep(3); // Move to results view to show preview and loading state
     setIsLoading(true);
     setExtractedData(null);
     setRawExtractionResult(null);
@@ -125,6 +127,7 @@ export default function ScanImagePage() {
 
         if (result.error || !result.data) {
             toast({ variant: 'destructive', title: 'Extraction Failed', description: result.error || "The AI could not extract details from the image." });
+            setIsLoading(false); // Stop loading on failure
             return;
         }
         
@@ -167,7 +170,6 @@ export default function ScanImagePage() {
             setIsDuplicate(false);
         }
         
-        setStep(3); // Move to results view
         toast({ title: 'Extraction Successful', description: 'Review the extracted details below.' });
 
     } catch (error: any) {
@@ -186,7 +188,6 @@ export default function ScanImagePage() {
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUri = canvas.toDataURL('image/jpeg');
-        setPreviewImage(dataUri);
         processImage(dataUri);
       }
     }
@@ -198,7 +199,6 @@ export default function ScanImagePage() {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (typeof e.target?.result === 'string') {
-          setPreviewImage(e.target.result);
           processImage(e.target.result);
         }
       };
@@ -328,7 +328,7 @@ export default function ScanImagePage() {
 
           {step === 2 && (
             <div className="space-y-4">
-                <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                <div className="w-full aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
                     <video ref={videoRef} className={cn("w-full h-full object-cover", hasCameraPermission === false && "hidden")} autoPlay muted playsInline />
                     {hasCameraPermission === null && <p>Requesting camera...</p>}
                     {hasCameraPermission === false && (
@@ -387,48 +387,61 @@ export default function ScanImagePage() {
                         <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
                     </div>
                 )}
-                {isDuplicate !== null && (
-                     isClaimed ? (
-                        <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Transaction Already Claimed</AlertTitle>
-                            <AlertDescription>
-                                This cash-out transaction has already been claimed and cannot be added to a new order.
-                            </AlertDescription>
-                        </Alert>
-                    ) : (
-                        <Alert variant={isDuplicate ? "destructive" : "default"}>
-                            {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                            <AlertTitle>{isDuplicate ? "Duplicate Transaction" : "New Transaction"}</AlertTitle>
-                            <AlertDescription>
-                                {isDuplicate
-                                    ? "This reference number already exists in your records."
-                                    : "This reference number appears to be new."
-                                }
-                            </AlertDescription>
-                        </Alert>
-                    )
+                
+                {isLoading && (
+                    <div className="flex items-center justify-center text-muted-foreground py-4">
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <span>Extracting details...</span>
+                    </div>
                 )}
 
-                <div className="space-y-2 rounded-md border p-4 text-sm">
-                    {Object.entries(extractedData || {}).map(([key, value]) => {
-                         if (key === 'accountUsedId') return null;
-                         return (
-                            <div key={key} className="flex justify-between">
-                                <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                                <span className="font-mono text-right">{String(value)}</span>
-                            </div>
-                         );
-                    })}
-                    {!extractedData && (
-                        <div className="text-center text-muted-foreground">No details extracted.</div>
-                    )}
-                </div>
-                
-                {isDuplicate ? (
-                    <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isClaimed}>Add to Order</Button>
-                ) : (
-                    <Button className="w-full" size="lg" onClick={handleAddTransaction}>Add Transaction</Button>
+                {!isLoading && (
+                    <>
+                        {isDuplicate !== null && (
+                             isClaimed ? (
+                                <Alert variant="destructive">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Transaction Already Claimed</AlertTitle>
+                                    <AlertDescription>
+                                        This cash-out transaction has already been claimed and cannot be added to a new order.
+                                    </AlertDescription>
+                                </Alert>
+                            ) : (
+                                <Alert variant={isDuplicate ? "destructive" : "default"}>
+                                    {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                                    <AlertTitle>{isDuplicate ? "Duplicate Transaction" : "New Transaction"}</AlertTitle>
+                                    <AlertDescription>
+                                        {isDuplicate
+                                            ? "This reference number already exists in your records."
+                                            : "This reference number appears to be new."
+                                        }
+                                    </AlertDescription>
+                                </Alert>
+                            )
+                        )}
+
+                        <div className="space-y-2 rounded-md border p-4 text-sm">
+                            {extractedData ? (
+                                Object.entries(extractedData).map(([key, value]) => {
+                                     if (key === 'accountUsedId') return null;
+                                     return (
+                                        <div key={key} className="flex justify-between">
+                                            <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                            <span className="font-mono text-right">{String(value)}</span>
+                                        </div>
+                                     );
+                                })
+                            ) : (
+                                <div className="text-center text-muted-foreground">No details extracted.</div>
+                            )}
+                        </div>
+                        
+                        {isDuplicate ? (
+                            <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isClaimed}>Add to Order</Button>
+                        ) : (
+                            <Button className="w-full" size="lg" onClick={handleAddTransaction}>Add Transaction</Button>
+                        )}
+                    </>
                 )}
             </div>
           )}
@@ -437,3 +450,5 @@ export default function ScanImagePage() {
     </div>
   );
 }
+
+    
