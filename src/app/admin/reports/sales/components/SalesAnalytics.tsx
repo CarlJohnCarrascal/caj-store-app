@@ -227,7 +227,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
               <Legend />
               {allServices.map(service => (
-                <Bar key={service} dataKey={service} fill={`var(--color-${service})`} radius={2} stackId="a" />
+                <Bar key={service} dataKey={service} fill={`var(--color-${service})`} radius={2} />
               ))}
             </BarChart>
           </ChartContainer>
@@ -306,7 +306,7 @@ export default function SalesAnalytics() {
 
   const todayData = useMemo(() => {
     if (!reports?.daily) return undefined;
-    const { daily: todayPath } = getReportPaths(new Date().toISOString());
+    const { daily: todayPath } = getReportPaths(getCurrentPHTISOString());
     const todayReportKey = todayPath.split('/').pop()!;
     const todayEntry = reports.daily[todayReportKey];
     return todayEntry ? { [todayReportKey]: todayEntry } : undefined;
