@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone, Wrench, ShoppingCart, Receipt, BarChart, LogOut, User as UserIcon, DollarSign } from 'lucide-react';
@@ -102,7 +103,7 @@ export default function AdminDashboard() {
       </div>
       
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight mb-4">Management</h2>
+        <h2 className="text-2xl font-semibold tracking-tight mb-4">Management & Reports</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -186,6 +187,26 @@ export default function AdminDashboard() {
                <Button asChild className="w-full mt-4">
                   <Link href="/admin/orders">View Orders</Link>
                </Button>
+            </CardContent>
+          </Card>
+           <Card className="hover:shadow-lg transition-shadow col-span-1 md:col-span-2 lg:col-span-4">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-medium">Reports</CardTitle>
+              <BarChart className="h-6 w-6 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                View detailed reports on sales, products, customers, and more.
+              </CardDescription>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2 mt-4">
+                <Button asChild variant="secondary"><Link href="/admin/reports/sales">Sales</Link></Button>
+                <Button asChild variant="secondary"><Link href="/admin/reports/product">Product</Link></Button>
+                <Button asChild variant="secondary"><Link href="/admin/reports/customer">Customer</Link></Button>
+                <Button asChild variant="secondary"><Link href="/admin/reports/cashio">Cash IO</Link></Button>
+                <Button asChild variant="secondary"><Link href="/admin/reports/e-loading">E-loading</Link></Button>
+                <Button asChild variant="secondary"><Link href="/admin/reports/printing">Printing</Link></Button>
+                <Button asChild variant="secondary"><Link href="/admin/reports/other-service">Other</Link></Button>
+              </div>
             </CardContent>
           </Card>
           <Card className="hover:shadow-lg transition-shadow">

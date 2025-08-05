@@ -149,3 +149,21 @@ export interface ProductReportData {
   totalSales: number;
   totalOrders: number;
 }
+
+export interface EloadingReportData {
+    totalCost: number;
+    totalFee: number;
+    byServiceType: { [key: string]: { count: number; cost: number; fee: number } };
+}
+
+export interface PrintingReportData {
+    totalSales: number;
+    byServiceType: { [key: string]: { count: number; sales: number } };
+    bySize: { [key: string]: number };
+}
+
+export interface OtherServiceReportData {
+    totalCost: number;
+    totalFee: number;
+    totalOrders: number;
+}

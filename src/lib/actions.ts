@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
@@ -180,6 +180,15 @@ const processOrderSchema = z.object({
     userName: z.string(),
 });
 
+function getCostAndFeeFromDescription(description: string): { cost: number, fee: number } {
+    const costMatch = description.match(/Cost: ₱([\d,]+\.\d{2})/);
+    const feeMatch = description.match(/Fee: ₱([\d,]+\.\d{2})/);
+    const cost = costMatch?.[1] ? parseFloat(costMatch[1].replace(/,/g, '')) : 0;
+    const fee = feeMatch?.[1] ? parseFloat(feeMatch[1].replace(/,/g, '')) : 0;
+    return { cost, fee };
+}
+
+
 export async function processOrderAction(orderData: z.infer<typeof processOrderSchema>) {
     const validatedOrder = processOrderSchema.safeParse(orderData);
     if (!validatedOrder.success) {
@@ -206,23 +215,45 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
     let updatedTransaction: CashTransaction | null = null;
     
     for (const item of items) {
-        if (item.category === 'CashIO' && item.originalTransactionId) {
-             const cashTx = await getCashTransactionById(item.originalTransactionId);
-             if (cashTx) {
-                 updatedTransaction = await updateCashTransactionStatus(cashTx.id, customerId);
-                 await logActivity({
-                    type: 'CashIO',
-                    action: 'Updated',
-                    details: `Transaction for "${customerName}" was marked as ${updatedTransaction?.status} via checkout.`,
-                    targetId: item.originalTransactionId,
-                    ...user
-                });
-             }
-        }
-        
-        const serviceGroups = ['Financial', 'Services'];
-        if (!serviceGroups.includes(item.group)) {
-          await updateProductReports(item.id, item.quantity, item.price * item.quantity);
+        switch (item.category) {
+            case 'CashIO':
+                if (item.originalTransactionId) {
+                    const cashTx = await getCashTransactionById(item.originalTransactionId);
+                    if (cashTx) {
+                        updatedTransaction = await updateCashTransactionStatus(cashTx.id, customerId);
+                        await logActivity({
+                            type: 'CashIO',
+                            action: 'Updated',
+                            details: `Transaction for "${customerName}" was marked as ${updatedTransaction?.status} via checkout.`,
+                            targetId: item.originalTransactionId,
+                            ...user
+                        });
+                    }
+                }
+                break;
+            case 'E-loading': {
+                const { cost, fee } = getCostAndFeeFromDescription(item.description || '');
+                const serviceType = item.name.replace('E-loading: ', '').trim();
+                await updateEloadingReports({ serviceType, cost, fee });
+                break;
+            }
+            case 'Printing': {
+                const serviceType = item.name.replace('Printing: ', '').trim();
+                const size = item.dimensions !== 'N/A' ? item.dimensions : '';
+                await updatePrintingReports({ serviceType, size, quantity: item.quantity, sales: item.price * item.quantity });
+                break;
+            }
+            case 'Other Service': {
+                const { cost, fee } = getCostAndFeeFromDescription(item.description || '');
+                await updateOtherServiceReports({ cost, fee });
+                break;
+            }
+            case 'Financial':
+                // No specific reporting for this internal category
+                break;
+            default: // This is a 'Store' product
+                await updateProductReports(item.id, item.quantity, item.price * item.quantity);
+                break;
         }
     }
 
@@ -756,6 +787,7 @@ export async function deleteFeeThresholdAction(id: string, user: { userId: strin
     revalidatePath('/admin/cashio-fees');
     revalidatePath('/admin/activity-logs');
 }
+
 
 
 

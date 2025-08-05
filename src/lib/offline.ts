@@ -1,3 +1,4 @@
+
 'use client';
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
@@ -5,7 +6,7 @@ import { Product, Account, Customer, CashTransaction, Collection, Order, Expense
 import { getCurrentPHTISOString } from './utils';
 
 const DB_NAME = 'caj-store-db';
-const DB_VERSION = 3; // Incremented version to trigger upgrade
+const DB_VERSION = 4; // Incremented version to trigger upgrade
 
 // Define all the object stores
 export const STORE_NAMES = {
@@ -24,6 +25,9 @@ export const STORE_NAMES = {
   productReports: 'productReports',
   customerReports: 'customerReports',
   cashIOReports: 'cashIOReports',
+  eloadingReports: 'eloadingReports',
+  printingReports: 'printingReports',
+  otherServiceReports: 'otherServiceReports',
 } as const;
 
 export type StoreName = typeof STORE_NAMES[keyof typeof STORE_NAMES];
@@ -50,6 +54,9 @@ interface CajStoreDB extends DBSchema {
   productReports: { key: string; value: any };
   customerReports: { key: string; value: any };
   cashIOReports: { key: string; value: any };
+  eloadingReports: { key: string; value: any };
+  printingReports: { key: string; value: any };
+  otherServiceReports: { key: string; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CajStoreDB>> | null = null;
@@ -147,7 +154,7 @@ export async function setLastUpdate(storeName: StoreName, timestamp: string): Pr
     }
 }
 
-export async function getReportData<T>(storeName: 'salesReports' | 'productReports' | 'customerReports' | 'cashIOReports'): Promise<T | null> {
+export async function getReportData<T>(storeName: 'salesReports' | 'productReports' | 'customerReports' | 'cashIOReports' | 'eloadingReports' | 'printingReports' | 'otherServiceReports'): Promise<T | null> {
     if (typeof window === 'undefined') return null;
     try {
         const db = await initDB();
@@ -158,7 +165,7 @@ export async function getReportData<T>(storeName: 'salesReports' | 'productRepor
     }
 }
 
-export async function setReportData(storeName: 'salesReports' | 'productReports' | 'customerReports' | 'cashIOReports', data: any): Promise<void> {
+export async function setReportData(storeName: 'salesReports' | 'productReports' | 'customerReports' | 'cashIOReports' | 'eloadingReports' | 'printingReports' | 'otherServiceReports', data: any): Promise<void> {
     if (typeof window === 'undefined') return;
     try {
         const db = await initDB();

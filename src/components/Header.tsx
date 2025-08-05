@@ -149,6 +149,15 @@ export default function Header() {
                                   <Link href="/admin/reports/cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>Cash IO</span>
                                   </Link>
+                                  <Link href="/admin/reports/e-loading" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Smartphone className="h-5 w-5 text-muted-foreground" /><span>E-loading</span>
+                                  </Link>
+                                  <Link href="/admin/reports/printing" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Printer className="h-5 w-5 text-muted-foreground" /><span>Printing</span>
+                                  </Link>
+                                  <Link href="/admin/reports/other-service" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Wrench className="h-5 w-5 text-muted-foreground" /><span>Other Service</span>
+                                  </Link>
                               </AccordionContent>
                           </AccordionItem>
                       </Accordion>
@@ -208,6 +217,9 @@ export default function Header() {
                     <DropdownMenuItem asChild><Link href="/admin/reports/product" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Product</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/customer" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customer</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/reports/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/e-loading" className="flex items-center gap-2 cursor-pointer"><Smartphone className="h-4 w-4" /> E-loading</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/printing" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/reports/other-service" className="flex items-center gap-2 cursor-pointer"><Wrench className="h-4 w-4" /> Other Service</Link></DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </nav>

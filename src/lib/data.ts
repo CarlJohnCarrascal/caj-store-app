@@ -3,7 +3,7 @@
 
 import { db } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -728,13 +728,14 @@ export async function updateProductReports(productId: string, quantity: number, 
 // Main Reporting Functions
 // ========================
 
-function getFeeFromDescription(description: string): number {
+function getCostAndFeeFromDescription(description: string): { cost: number, fee: number } {
+    const costMatch = description.match(/Cost: ₱([\d,]+\.\d{2})/);
     const feeMatch = description.match(/Fee: ₱([\d,]+\.\d{2})/);
-    if (feeMatch && feeMatch[1]) {
-        return parseFloat(feeMatch[1].replace(/,/g, ''));
-    }
-    return 0;
+    const cost = costMatch?.[1] ? parseFloat(costMatch[1].replace(/,/g, '')) : 0;
+    const fee = feeMatch?.[1] ? parseFloat(feeMatch[1].replace(/,/g, '')) : 0;
+    return { cost, fee };
 }
+
 
 export async function updateSalesReports(order: Order) {
   const paths = getReportPaths(order.createdAt);
@@ -755,7 +756,8 @@ export async function updateSalesReports(order: Order) {
       const cashTx = await getCashTransactionById(item.originalTransactionId);
       saleValue = cashTx ? cashTx.fee : 0;
     } else if (['E-loading', 'Other Service'].includes(category)) {
-      saleValue = getFeeFromDescription(item.description || '');
+      const { fee } = getCostAndFeeFromDescription(item.description || '');
+      saleValue = fee;
     }
      else {
       saleValue = item.price * item.quantity;
@@ -916,6 +918,87 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
 }
 
 
+export async function updateEloadingReports(data: { serviceType: string; cost: number; fee: number }) {
+    const dateStr = getCurrentPHTISOString();
+    const paths = getReportPaths(dateStr);
+
+    for (const periodPath of Object.values(paths)) {
+        const reportRef = ref(db, `eloadingReports${periodPath}`);
+        
+        await runTransaction(reportRef, (currentData: EloadingReportData | null) => {
+            if (currentData === null) {
+                currentData = { totalCost: 0, totalFee: 0, byServiceType: {} };
+            }
+
+            currentData.totalCost += data.cost;
+            currentData.totalFee += data.fee;
+
+            if (!currentData.byServiceType[data.serviceType]) {
+                currentData.byServiceType[data.serviceType] = { count: 0, cost: 0, fee: 0 };
+            }
+            const serviceTypeReport = currentData.byServiceType[data.serviceType];
+            serviceTypeReport.count += 1;
+            serviceTypeReport.cost += data.cost;
+            serviceTypeReport.fee += data.fee;
+
+            return currentData;
+        });
+    }
+}
+
+export async function updatePrintingReports(data: { serviceType: string; size: string; quantity: number, sales: number }) {
+    const dateStr = getCurrentPHTISOString();
+    const paths = getReportPaths(dateStr);
+
+    for (const periodPath of Object.values(paths)) {
+        const reportRef = ref(db, `printingReports${periodPath}`);
+        
+        await runTransaction(reportRef, (currentData: PrintingReportData | null) => {
+            if (currentData === null) {
+                currentData = { totalSales: 0, byServiceType: {}, bySize: {} };
+            }
+
+            currentData.totalSales += data.sales;
+
+            if (!currentData.byServiceType[data.serviceType]) {
+                currentData.byServiceType[data.serviceType] = { count: 0, sales: 0 };
+            }
+            const serviceTypeReport = currentData.byServiceType[data.serviceType];
+            serviceTypeReport.count += data.quantity;
+            serviceTypeReport.sales += data.sales;
+
+            if (data.size) {
+                 if (!currentData.bySize[data.size]) {
+                    currentData.bySize[data.size] = 0;
+                }
+                currentData.bySize[data.size] += data.quantity;
+            }
+
+            return currentData;
+        });
+    }
+}
 
 
+export async function updateOtherServiceReports(data: { cost: number; fee: number }) {
+    const dateStr = getCurrentPHTISOString();
+    const paths = getReportPaths(dateStr);
+
+    for (const periodPath of Object.values(paths)) {
+        const reportRef = ref(db, `otherServiceReports${periodPath}`);
+        
+        await runTransaction(reportRef, (currentData: OtherServiceReportData | null) => {
+            if (currentData === null) {
+                currentData = { totalCost: 0, totalFee: 0, totalOrders: 0 };
+            }
+
+            currentData.totalCost += data.cost;
+            currentData.totalFee += data.fee;
+            currentData.totalOrders += 1;
+
+            return currentData;
+        });
+    }
+}
     
+
