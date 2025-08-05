@@ -22,6 +22,8 @@ import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 const ITEMS_PER_PAGE = 10;
 
@@ -51,6 +53,9 @@ export default function StorePage() {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
+  
+  const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
+  const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
 
   useEffect(() => {
     // Load from cache first
@@ -154,16 +159,8 @@ export default function StorePage() {
         description: `"${product.name}" was added to your order.`,
       });
     } else {
-      toast({
-        variant: 'destructive',
-        title: 'Product Not Found',
-        description: `No product with barcode "${barcode}" found.`,
-        action: (
-          <Button asChild variant="secondary">
-            <Link href={`/admin/products/new?barcode=${barcode}`}>Add Product</Link>
-          </Button>
-        ),
-      });
+      setNotFoundBarcode(barcode);
+      setIsNotFoundDialogOpen(true);
     }
   };
 
@@ -332,7 +329,25 @@ export default function StorePage() {
           </DialogHeader>
           <BarcodeScanner onResult={onBarcodeScanned} onCancel={() => setIsScannerOpen(false)} />
         </DialogContent>
-      </Dialog>
+    </Dialog>
+    
+    <AlertDialog open={isNotFoundDialogOpen} onOpenChange={setIsNotFoundDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Product Not Found</AlertDialogTitle>
+          <AlertDialogDescription>
+            No product with barcode "{notFoundBarcode}" was found in your inventory.
+            Would you like to add it now?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Link href={`/admin/products/new?barcode=${notFoundBarcode}`}>Add Product</Link>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
