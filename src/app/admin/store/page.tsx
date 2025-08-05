@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useTransition } from 'react';
 import { Product } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
@@ -20,6 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -48,6 +50,7 @@ export default function StorePage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { addToCart } = useCart();
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     // Load from cache first
@@ -155,6 +158,11 @@ export default function StorePage() {
         variant: 'destructive',
         title: 'Product Not Found',
         description: `No product with barcode "${barcode}" found.`,
+        action: (
+          <Button asChild variant="secondary">
+            <Link href={`/admin/products/new?barcode=${barcode}`}>Add Product</Link>
+          </Button>
+        ),
       });
     }
   };
