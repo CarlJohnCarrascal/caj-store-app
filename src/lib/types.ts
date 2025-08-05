@@ -158,8 +158,13 @@ export interface EloadingReportData {
 
 export interface PrintingReportData {
     totalSales: number;
-    byServiceType: { [key: string]: { count: number; sales: number } };
-    bySize: { [key: string]: number };
+    byServiceType: {
+        [key: string]: {
+            count: number;
+            sales: number;
+            bySize: { [size: string]: number };
+        };
+    };
 }
 
 export interface OtherServiceReportData {

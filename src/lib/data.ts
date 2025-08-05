@@ -955,23 +955,23 @@ export async function updatePrintingReports(data: { serviceType: string; size: s
         
         await runTransaction(reportRef, (currentData: PrintingReportData | null) => {
             if (currentData === null) {
-                currentData = { totalSales: 0, byServiceType: {}, bySize: {} };
+                currentData = { totalSales: 0, byServiceType: {} };
             }
 
             currentData.totalSales += data.sales;
 
             if (!currentData.byServiceType[data.serviceType]) {
-                currentData.byServiceType[data.serviceType] = { count: 0, sales: 0 };
+                currentData.byServiceType[data.serviceType] = { count: 0, sales: 0, bySize: {} };
             }
             const serviceTypeReport = currentData.byServiceType[data.serviceType];
             serviceTypeReport.count += data.quantity;
             serviceTypeReport.sales += data.sales;
 
             if (data.size) {
-                 if (!currentData.bySize[data.size]) {
-                    currentData.bySize[data.size] = 0;
+                 if (!serviceTypeReport.bySize[data.size]) {
+                    serviceTypeReport.bySize[data.size] = 0;
                 }
-                currentData.bySize[data.size] += data.quantity;
+                serviceTypeReport.bySize[data.size] += data.quantity;
             }
 
             return currentData;
@@ -1001,4 +1001,3 @@ export async function updateOtherServiceReports(data: { cost: number; fee: numbe
     }
 }
     
-

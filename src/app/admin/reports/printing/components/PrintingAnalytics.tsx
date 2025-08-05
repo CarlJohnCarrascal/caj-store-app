@@ -5,14 +5,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Printer, Hash } from 'lucide-react';
+import { DollarSign, Hash, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { subDays } from 'date-fns';
 import { getReportPaths } from '@/lib/utils';
 import { PrintingReportData } from '@/lib/types';
 import { getReportData, setReportData } from '@/lib/offline';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type ReportPeriodData = {
     [key: string]: PrintingReportData;
@@ -31,7 +32,7 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
 
-    const { totalSales, byServiceType, bySize } = data;
+    const { totalSales, byServiceType } = data;
     
     const totalQuantity = useMemo(() => {
         if (!byServiceType) return 0;
@@ -44,12 +45,6 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
             .sort((a, b) => b.sales - a.sales);
     }, [byServiceType]);
     
-    const sizeBreakdown = useMemo(() => {
-        if (!bySize) return [];
-        return Object.entries(bySize).map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-    }, [bySize]);
-
     return (
         <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
@@ -73,15 +68,17 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
                 </Card>
             </div>
             
-            <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Breakdown by Service Type</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Breakdown by Service Type</CardTitle>
+                    <CardDescription>Click on a service to see size breakdown.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-10"></TableHead>
                                     <TableHead>Service Type</TableHead>
                                     <TableHead className="text-right">Quantity</TableHead>
                                     <TableHead className="text-right">Sales</TableHead>
@@ -89,41 +86,49 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
                             </TableHeader>
                             <TableBody>
                                 {serviceTypeBreakdown.map(service => (
-                                    <TableRow key={service.name}>
-                                        <TableCell className="font-medium">{service.name}</TableCell>
-                                        <TableCell className="text-right">{service.count.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">₱{service.sales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                    </TableRow>
+                                    <AccordionItem value={service.name} key={service.name}>
+                                        <AccordionTrigger asChild>
+                                           <TableRow className="cursor-pointer">
+                                                <TableCell>
+                                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                                                </TableCell>
+                                                <TableCell className="font-medium">{service.name}</TableCell>
+                                                <TableCell className="text-right">{service.count.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">₱{service.sales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                            </TableRow>
+                                        </AccordionTrigger>
+                                        <AccordionContent asChild>
+                                            <tr>
+                                                <td colSpan={4} className="p-0">
+                                                    <div className="bg-muted/50 p-4 pl-14">
+                                                        <h4 className="font-semibold mb-2">Size Breakdown for {service.name}</h4>
+                                                         <Table>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead>Size</TableHead>
+                                                                    <TableHead className="text-right">Quantity</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {Object.entries(service.bySize).sort(([,a],[,b])=>b-a).map(([size, count]) => (
+                                                                    <TableRow key={size}>
+                                                                        <TableCell>{size}</TableCell>
+                                                                        <TableCell className="text-right">{count.toLocaleString()}</TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                         </Table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </AccordionContent>
+                                    </AccordionItem>
                                 ))}
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Breakdown by Size</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Size</TableHead>
-                                    <TableHead className="text-right">Quantity</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sizeBreakdown.map(item => (
-                                    <TableRow key={item.name}>
-                                        <TableCell className="font-medium">{item.name}</TableCell>
-                                        <TableCell className="text-right">{item.count.toLocaleString()}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </div>
+                    </Accordion>
+                </CardContent>
+            </Card>
         </div>
     );
 };
@@ -158,21 +163,22 @@ export default function PrintingAnalytics() {
     
     const aggregateReportData = (periodData?: ReportPeriodData): PrintingReportData | undefined => {
         if (!periodData) return undefined;
-        const aggregated: PrintingReportData = { totalSales: 0, byServiceType: {}, bySize: {} };
+        const aggregated: PrintingReportData = { totalSales: 0, byServiceType: {} };
         Object.values(periodData).forEach(entry => {
             aggregated.totalSales += entry.totalSales || 0;
             Object.entries(entry.byServiceType || {}).forEach(([name, stats]) => {
                 if (!aggregated.byServiceType[name]) {
-                    aggregated.byServiceType[name] = { count: 0, sales: 0 };
+                    aggregated.byServiceType[name] = { count: 0, sales: 0, bySize: {} };
                 }
                 aggregated.byServiceType[name].count += stats.count || 0;
                 aggregated.byServiceType[name].sales += stats.sales || 0;
-            });
-             Object.entries(entry.bySize || {}).forEach(([name, count]) => {
-                if (!aggregated.bySize[name]) {
-                    aggregated.bySize[name] = 0;
-                }
-                aggregated.bySize[name] += count || 0;
+                
+                Object.entries(stats.bySize || {}).forEach(([size, count]) => {
+                    if(!aggregated.byServiceType[name].bySize[size]) {
+                        aggregated.byServiceType[name].bySize[size] = 0;
+                    }
+                    aggregated.byServiceType[name].bySize[size] += count;
+                });
             });
         });
         return aggregated;
