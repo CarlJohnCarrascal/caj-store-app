@@ -40,6 +40,8 @@ const chartConfig = {
 
 
 const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
+    const [hiddenSeries, setHiddenSeries] = useState<string[]>([]);
+    
     if (!data) {
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
@@ -93,7 +95,15 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             return value;
         }
     };
-
+    
+    const handleLegendClick = (e: any) => {
+        const { dataKey } = e;
+        setHiddenSeries(prev =>
+            prev.includes(dataKey)
+            ? prev.filter(key => key !== dataKey)
+            : [...prev, dataKey]
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -137,9 +147,9 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
                             <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
                             <YAxis tickFormatter={(value) => `₱${value}`} />
                             <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey="totalCost" fill="var(--color-totalCost)" radius={4} stackId="a" />
-                            <Bar dataKey="totalFee" fill="var(--color-totalFee)" radius={4} stackId="a" />
+                            <Legend onClick={handleLegendClick} />
+                            <Bar dataKey="totalCost" fill="var(--color-totalCost)" radius={4} hide={hiddenSeries.includes('totalCost')} />
+                            <Bar dataKey="totalFee" fill="var(--color-totalFee)" radius={4} hide={hiddenSeries.includes('totalFee')} />
                         </BarChart>
                     </ChartContainer>
                 </CardContent>
