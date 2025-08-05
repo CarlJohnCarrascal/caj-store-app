@@ -6,9 +6,11 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { DollarSign, Wrench, Receipt } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { subDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { getReportPaths } from '@/lib/utils';
 import { OtherServiceReportData } from '@/lib/types';
 import { getReportData, setReportData } from '@/lib/offline';
@@ -25,12 +27,73 @@ type AllReports = {
     overall?: ReportPeriodData;
 };
 
-const ReportView = ({ data, periodName }: { data?: OtherServiceReportData; periodName: string }) => {
+const chartConfig = {
+  totalFee: {
+    label: 'Total Fees',
+    color: 'hsl(var(--chart-1))',
+  },
+  totalCost: {
+    label: 'Total Cost',
+    color: 'hsl(var(--chart-2))',
+  },
+} satisfies ChartConfig;
+
+
+const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
     if (!data) {
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
 
-    const { totalCost, totalFee, totalOrders } = data;
+    const sortedData = useMemo(() => {
+        if (!data) return [];
+        const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
+        return entries.sort((a, b) => b.key.localeCompare(a.key));
+    }, [data]);
+
+     const chartData = useMemo(() => {
+        return sortedData.map(entry => ({
+            name: entry.key,
+            totalCost: entry.totalCost || 0,
+            totalFee: entry.totalFee || 0,
+        })).reverse();
+    }, [sortedData]);
+
+    const summary = useMemo(() => {
+        if (!sortedData || sortedData.length === 0) {
+            return { totalCost: 0, totalFee: 0, totalOrders: 0 };
+        }
+    
+        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
+            return sortedData[0];
+        }
+    
+        return sortedData.reduce((acc, entry) => {
+            acc.totalCost += entry.totalCost || 0;
+            acc.totalFee += entry.totalFee || 0;
+            acc.totalOrders += entry.totalOrders || 0;
+            return acc;
+        }, { totalCost: 0, totalFee: 0, totalOrders: 0 });
+    }, [sortedData, periodName]);
+
+    const formatXAxis = (value: string) => {
+        if (!value || typeof value !== 'string') return '';
+        try {
+            if (periodName === 'Weekly') {
+                const [, week] = value.split('-');
+                return week ? `W${week}` : value;
+            }
+            if (periodName === 'Monthly') {
+                return format(new Date(value), 'MMM yyyy');
+            }
+            if (periodName === 'Yearly' || periodName === 'Overall') {
+                return value;
+            }
+            return format(new Date(value), 'MMM dd');
+        } catch(e) {
+            return value;
+        }
+    };
+
 
     return (
         <div className="space-y-6">
@@ -41,7 +104,7 @@ const ReportView = ({ data, periodName }: { data?: OtherServiceReportData; perio
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱{(totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">₱{(summary.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -50,7 +113,7 @@ const ReportView = ({ data, periodName }: { data?: OtherServiceReportData; perio
                         <Receipt className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱{(totalCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">₱{(summary.totalCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </CardContent>
                 </Card>
                  <Card>
@@ -59,16 +122,26 @@ const ReportView = ({ data, periodName }: { data?: OtherServiceReportData; perio
                         <Wrench className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{(totalOrders || 0).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">{(summary.totalOrders || 0).toLocaleString()}</div>
                     </CardContent>
                 </Card>
             </div>
              <Card>
                 <CardHeader>
-                    <CardTitle>Summary</CardTitle>
+                    <CardTitle>Other Services Trends</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>This report tracks the total cost and fees generated from miscellaneous services entered in the "Other Services" POS page.</p>
+                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                        <BarChart data={chartData} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+                            <YAxis tickFormatter={(value) => `₱${value}`} />
+                            <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                            <Legend />
+                            <Bar dataKey="totalCost" fill="var(--color-totalCost)" radius={4} stackId="a" />
+                            <Bar dataKey="totalFee" fill="var(--color-totalFee)" radius={4} stackId="a" />
+                        </BarChart>
+                    </ChartContainer>
                 </CardContent>
             </Card>
         </div>
@@ -103,24 +176,6 @@ export default function OtherServiceAnalytics() {
         return () => unsubscribeReports();
     }, []);
     
-    const aggregateReportData = (periodData?: ReportPeriodData): OtherServiceReportData | undefined => {
-        if (!periodData) return undefined;
-        const aggregated: OtherServiceReportData = { totalCost: 0, totalFee: 0, totalOrders: 0 };
-        Object.values(periodData).forEach(entry => {
-            aggregated.totalCost += entry.totalCost || 0;
-            aggregated.totalFee += entry.totalFee || 0;
-            aggregated.totalOrders += entry.totalOrders || 0;
-        });
-        return aggregated;
-    };
-
-    const todayData = useMemo(() => {
-        if (!reports?.daily) return undefined;
-        const { daily: todayPath } = getReportPaths(new Date().toISOString());
-        const todayReportKey = todayPath.split('/').pop()!;
-        return reports.daily[todayReportKey];
-    }, [reports]);
-
     const last30DaysData = useMemo(() => {
         if (!reports?.daily) return undefined;
         const dailyEntries = Object.entries(reports.daily);
@@ -136,7 +191,15 @@ export default function OtherServiceAnalytics() {
         });
 
         if (last30DaysEntries.length === 0) return undefined;
-        return aggregateReportData(Object.fromEntries(last30DaysEntries));
+        return Object.fromEntries(last30DaysEntries);
+    }, [reports]);
+
+    const todayData = useMemo(() => {
+        if (!reports?.daily) return undefined;
+        const { daily: todayPath } = getReportPaths(new Date().toISOString());
+        const todayReportKey = todayPath.split('/').pop()!;
+        const entry = reports.daily[todayReportKey];
+        return entry ? { [todayReportKey]: entry } : undefined;
     }, [reports]);
 
     if (isLoading) {
@@ -159,10 +222,10 @@ export default function OtherServiceAnalytics() {
             </TabsList>
             <TabsContent value="today"><ReportView data={todayData} periodName="Today" /></TabsContent>
             <TabsContent value="daily"><ReportView data={last30DaysData} periodName="Last 30 Days" /></TabsContent>
-            <TabsContent value="weekly"><ReportView data={aggregateReportData(reports.weekly)} periodName="Weekly" /></TabsContent>
-            <TabsContent value="monthly"><ReportView data={aggregateReportData(reports.monthly)} periodName="Monthly" /></TabsContent>
-            <TabsContent value="yearly"><ReportView data={aggregateReportData(reports.yearly)} periodName="Yearly" /></TabsContent>
-            <TabsContent value="overall"><ReportView data={aggregateReportData(reports.overall)} periodName="Overall" /></TabsContent>
+            <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" /></TabsContent>
+            <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" /></TabsContent>
+            <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" /></TabsContent>
+            <TabsContent value="overall"><ReportView data={reports.overall} periodName="Overall" /></TabsContent>
         </Tabs>
     );
 }

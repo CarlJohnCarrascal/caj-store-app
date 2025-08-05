@@ -7,9 +7,11 @@ import { ref, onValue } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { DollarSign, Hash, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { subDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { getReportPaths } from '@/lib/utils';
 import { PrintingReportData } from '@/lib/types';
 import { getReportData, setReportData } from '@/lib/offline';
@@ -27,23 +29,88 @@ type AllReports = {
     overall?: ReportPeriodData;
 };
 
-const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodName: string }) => {
+const chartConfig = {
+  totalSales: {
+    label: 'Total Sales',
+    color: 'hsl(var(--chart-1))',
+  },
+} satisfies ChartConfig;
+
+const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
     if (!data) {
         return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
     }
-
-    const { totalSales, byServiceType } = data;
     
-    const totalQuantity = useMemo(() => {
-        if (!byServiceType) return 0;
-        return Object.values(byServiceType).reduce((acc, stats) => acc + stats.count, 0);
-    }, [byServiceType]);
+    const sortedData = useMemo(() => {
+        if (!data) return [];
+        const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
+        return entries.sort((a, b) => b.key.localeCompare(a.key));
+    }, [data]);
+    
+    const chartData = useMemo(() => {
+        return sortedData.map(entry => ({
+            name: entry.key,
+            totalSales: entry.totalSales || 0,
+        })).reverse();
+    }, [sortedData]);
+    
+    const summary = useMemo(() => {
+        if (!sortedData || sortedData.length === 0) {
+            return { totalSales: 0, totalQuantity: 0 };
+        }
+    
+        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
+            const entry = sortedData[0];
+            const totalQuantity = entry.byServiceType ? Object.values(entry.byServiceType).reduce((acc, s) => acc + s.count, 0) : 0;
+            return { totalSales: entry.totalSales, totalQuantity };
+        }
+    
+        return sortedData.reduce((acc, entry) => {
+            acc.totalSales += entry.totalSales || 0;
+            if(entry.byServiceType) {
+              acc.totalQuantity += Object.values(entry.byServiceType).reduce((sum, s) => sum + s.count, 0);
+            }
+            return acc;
+        }, { totalSales: 0, totalQuantity: 0 });
+    }, [sortedData, periodName]);
 
+
+    const formatXAxis = (value: string) => {
+        if (!value || typeof value !== 'string') return '';
+        try {
+            if (periodName === 'Weekly') {
+                const [, week] = value.split('-');
+                return week ? `W${week}` : value;
+            }
+            if (periodName === 'Monthly') {
+                return format(new Date(value), 'MMM yyyy');
+            }
+            if (periodName === 'Yearly' || periodName === 'Overall') {
+                return value;
+            }
+            return format(new Date(value), 'MMM dd');
+        } catch(e) {
+            return value;
+        }
+    };
+    
     const serviceTypeBreakdown = useMemo(() => {
-        if (!byServiceType) return [];
-        return Object.entries(byServiceType).map(([name, stats]) => ({ name, ...stats }))
-            .sort((a, b) => b.sales - a.sales);
-    }, [byServiceType]);
+        const aggregated: PrintingReportData['byServiceType'] = {};
+        sortedData.forEach(period => {
+             Object.entries(period.byServiceType || {}).forEach(([name, stats]) => {
+                if (!aggregated[name]) {
+                    aggregated[name] = { count: 0, sales: 0, bySize: {} };
+                }
+                aggregated[name].count += stats.count;
+                aggregated[name].sales += stats.sales;
+                Object.entries(stats.bySize).forEach(([size, count]) => {
+                    aggregated[name].bySize[size] = (aggregated[name].bySize[size] || 0) + count;
+                });
+            });
+        });
+        return Object.entries(aggregated).map(([name, stats]) => ({ name, ...stats }))
+            .sort((a,b) => b.sales - a.sales);
+    }, [sortedData]);
     
     return (
         <div className="space-y-6">
@@ -54,7 +121,7 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱{(totalSales || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">₱{(summary.totalSales || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -63,11 +130,28 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
                         <Hash className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{(totalQuantity || 0).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">{(summary.totalQuantity || 0).toLocaleString()}</div>
                     </CardContent>
                 </Card>
             </div>
             
+             <Card>
+                <CardHeader>
+                    <CardTitle>Printing Sales Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                        <BarChart data={chartData} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+                            <YAxis tickFormatter={(value) => `₱${value}`} />
+                            <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                            <Bar dataKey="totalSales" fill="var(--color-totalSales)" radius={4} />
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Breakdown by Service Type</CardTitle>
@@ -77,19 +161,17 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
                     <Accordion type="single" collapsible className="w-full">
                          {serviceTypeBreakdown.map(service => (
                             <AccordionItem value={service.name} key={service.name}>
-                                <AccordionTrigger className="hover:no-underline">
-                                     <Table className="w-full">
-                                        <TableBody>
-                                            <TableRow className="border-none hover:bg-transparent">
-                                                <TableCell className="w-10 p-0 pl-4">
-                                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                                                </TableCell>
-                                                <TableCell className="font-medium">{service.name}</TableCell>
-                                                <TableCell className="text-right">{service.count.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">₱{service.sales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                    </Table>
+                                <AccordionTrigger className="hover:no-underline group">
+                                     <div className="flex items-center justify-between w-full">
+                                        <div className="flex items-center gap-2">
+                                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                                            <span className="font-medium">{service.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-8 pr-4">
+                                            <span className="text-right">{service.count.toLocaleString()} pcs</span>
+                                            <span className="text-right font-semibold">₱{service.sales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
                                      <div className="bg-muted/50 p-4 pl-14">
@@ -153,36 +235,6 @@ export default function PrintingAnalytics() {
         return () => unsubscribeReports();
     }, []);
     
-    const aggregateReportData = (periodData?: ReportPeriodData): PrintingReportData | undefined => {
-        if (!periodData) return undefined;
-        const aggregated: PrintingReportData = { totalSales: 0, byServiceType: {} };
-        Object.values(periodData).forEach(entry => {
-            aggregated.totalSales += entry.totalSales || 0;
-            Object.entries(entry.byServiceType || {}).forEach(([name, stats]) => {
-                if (!aggregated.byServiceType[name]) {
-                    aggregated.byServiceType[name] = { count: 0, sales: 0, bySize: {} };
-                }
-                aggregated.byServiceType[name].count += stats.count || 0;
-                aggregated.byServiceType[name].sales += stats.sales || 0;
-                
-                Object.entries(stats.bySize || {}).forEach(([size, count]) => {
-                    if(!aggregated.byServiceType[name].bySize[size]) {
-                        aggregated.byServiceType[name].bySize[size] = 0;
-                    }
-                    aggregated.byServiceType[name].bySize[size] += count;
-                });
-            });
-        });
-        return aggregated;
-    };
-
-    const todayData = useMemo(() => {
-        if (!reports?.daily) return undefined;
-        const { daily: todayPath } = getReportPaths(new Date().toISOString());
-        const todayReportKey = todayPath.split('/').pop()!;
-        return reports.daily[todayReportKey];
-    }, [reports]);
-
     const last30DaysData = useMemo(() => {
         if (!reports?.daily) return undefined;
         const dailyEntries = Object.entries(reports.daily);
@@ -198,7 +250,15 @@ export default function PrintingAnalytics() {
         });
 
         if (last30DaysEntries.length === 0) return undefined;
-        return aggregateReportData(Object.fromEntries(last30DaysEntries));
+        return Object.fromEntries(last30DaysEntries);
+    }, [reports]);
+
+    const todayData = useMemo(() => {
+        if (!reports?.daily) return undefined;
+        const { daily: todayPath } = getReportPaths(new Date().toISOString());
+        const todayReportKey = todayPath.split('/').pop()!;
+        const entry = reports.daily[todayReportKey];
+        return entry ? { [todayReportKey]: entry } : undefined;
     }, [reports]);
 
     if (isLoading) {
@@ -221,10 +281,10 @@ export default function PrintingAnalytics() {
             </TabsList>
             <TabsContent value="today"><ReportView data={todayData} periodName="Today" /></TabsContent>
             <TabsContent value="daily"><ReportView data={last30DaysData} periodName="Last 30 Days" /></TabsContent>
-            <TabsContent value="weekly"><ReportView data={aggregateReportData(reports.weekly)} periodName="Weekly" /></TabsContent>
-            <TabsContent value="monthly"><ReportView data={aggregateReportData(reports.monthly)} periodName="Monthly" /></TabsContent>
-            <TabsContent value="yearly"><ReportView data={aggregateReportData(reports.yearly)} periodName="Yearly" /></TabsContent>
-            <TabsContent value="overall"><ReportView data={aggregateReportData(reports.overall)} periodName="Overall" /></TabsContent>
+            <TabsContent value="weekly"><ReportView data={reports.weekly} periodName="Weekly" /></TabsContent>
+            <TabsContent value="monthly"><ReportView data={reports.monthly} periodName="Monthly" /></TabsContent>
+            <TabsContent value="yearly"><ReportView data={reports.yearly} periodName="Yearly" /></TabsContent>
+            <TabsContent value="overall"><ReportView data={reports.overall} periodName="Overall" /></TabsContent>
         </Tabs>
     );
 }
