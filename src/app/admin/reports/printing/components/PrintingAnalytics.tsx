@@ -75,57 +75,49 @@ const ReportView = ({ data, periodName }: { data?: PrintingReportData; periodNam
                 </CardHeader>
                 <CardContent>
                     <Accordion type="single" collapsible className="w-full">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-10"></TableHead>
-                                    <TableHead>Service Type</TableHead>
-                                    <TableHead className="text-right">Quantity</TableHead>
-                                    <TableHead className="text-right">Sales</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {serviceTypeBreakdown.map(service => (
-                                    <AccordionItem value={service.name} key={service.name}>
-                                        <AccordionTrigger asChild>
-                                           <TableRow className="cursor-pointer">
-                                                <TableCell>
+                         {serviceTypeBreakdown.map(service => (
+                            <AccordionItem value={service.name} key={service.name}>
+                                <AccordionTrigger className="hover:no-underline">
+                                     <Table className="w-full">
+                                        <TableBody>
+                                            <TableRow className="border-none hover:bg-transparent">
+                                                <TableCell className="w-10 p-0 pl-4">
                                                     <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                 </TableCell>
                                                 <TableCell className="font-medium">{service.name}</TableCell>
                                                 <TableCell className="text-right">{service.count.toLocaleString()}</TableCell>
                                                 <TableCell className="text-right">₱{service.sales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                             </TableRow>
-                                        </AccordionTrigger>
-                                        <AccordionContent asChild>
-                                            <tr>
-                                                <td colSpan={4} className="p-0">
-                                                    <div className="bg-muted/50 p-4 pl-14">
-                                                        <h4 className="font-semibold mb-2">Size Breakdown for {service.name}</h4>
-                                                         <Table>
-                                                            <TableHeader>
-                                                                <TableRow>
-                                                                    <TableHead>Size</TableHead>
-                                                                    <TableHead className="text-right">Quantity</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {Object.entries(service.bySize).sort(([,a],[,b])=>b-a).map(([size, count]) => (
-                                                                    <TableRow key={size}>
-                                                                        <TableCell>{size}</TableCell>
-                                                                        <TableCell className="text-right">{count.toLocaleString()}</TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                         </Table>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                        </TableBody>
+                                    </Table>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                     <div className="bg-muted/50 p-4 pl-14">
+                                        <h4 className="font-semibold mb-2">Size Breakdown for {service.name}</h4>
+                                         {service.bySize && Object.keys(service.bySize).length > 0 ? (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Size</TableHead>
+                                                        <TableHead className="text-right">Quantity</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {Object.entries(service.bySize).sort(([,a],[,b])=>b-a).map(([size, count]) => (
+                                                        <TableRow key={size}>
+                                                            <TableCell>{size}</TableCell>
+                                                            <TableCell className="text-right">{count.toLocaleString()}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                             </Table>
+                                         ) : (
+                                            <p className="text-sm text-muted-foreground">No size breakdown available for this service.</p>
+                                         )}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
                     </Accordion>
                 </CardContent>
             </Card>
