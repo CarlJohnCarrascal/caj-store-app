@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,13 +13,15 @@ import { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { addProductAction, updateProductAction } from '@/lib/actions';
-import { Bot, ImageIcon } from 'lucide-react';
+import { Bot, ImageIcon, ScanBarcode } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { generateProductDescription } from '@/ai/flows/generate-product-description';
 import { generateProductImage } from '@/ai/flows/generate-product-image';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/hooks/use-auth';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import BarcodeScanner from '@/components/BarcodeScanner';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -27,6 +30,7 @@ const formSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Price must be a positive number'),
   stock: z.coerce.number().min(0, 'Stock cannot be negative'),
+  barcode: z.string().optional(),
   material: z.string().optional(),
   dimensions: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters'),
@@ -47,11 +51,12 @@ export default function ProductForm({ product }: ProductFormProps) {
   const [isPending, startTransition] = useTransition();
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: product
-      ? { ...product, price: Number(product.price), stock: Number(product.stock), unit: product.unit || 'each' }
+      ? { ...product, price: Number(product.price), stock: Number(product.stock), unit: product.unit || 'each', barcode: product.barcode || '' }
       : {
           name: '',
           group: '',
@@ -59,6 +64,7 @@ export default function ProductForm({ product }: ProductFormProps) {
           category: '',
           price: 0,
           stock: 0,
+          barcode: '',
           material: '',
           dimensions: '',
           description: '',
@@ -94,8 +100,8 @@ export default function ProductForm({ product }: ProductFormProps) {
         }
         router.push('/admin/products');
         router.refresh();
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };
@@ -159,8 +165,15 @@ export default function ProductForm({ product }: ProductFormProps) {
           setIsGeneratingImage(false);
       }
   };
+  
+  const onBarcodeScanned = (result: string) => {
+    form.setValue('barcode', result, { shouldValidate: true });
+    setIsScannerOpen(false);
+    toast({ title: 'Barcode Scanned!', description: `Value: ${result}` });
+  };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>{product ? 'Edit Product' : 'Create Product'}</CardTitle>
@@ -224,6 +237,19 @@ export default function ProductForm({ product }: ProductFormProps) {
                 )} />
               </div>
               <div className="space-y-8">
+                <FormField control={form.control} name="barcode" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Barcode (Optional)</FormLabel>
+                    <div className="flex gap-2">
+                        <FormControl><Input placeholder="e.g. 123456789012" {...field} /></FormControl>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
+                            <ScanBarcode className="h-4 w-4" />
+                            <span className="sr-only">Scan Barcode</span>
+                        </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -301,7 +327,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                          {isGeneratingDesc ? 'Generating...' : 'Generate with AI'}
                        </Button>
                     </div>
-                    <FormControl><Textarea placeholder="Describe the product..." rows={8} {...field} /></FormControl>
+                    <FormControl><Textarea placeholder="Describe the product..." rows={5} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -317,5 +343,15 @@ export default function ProductForm({ product }: ProductFormProps) {
         </Form>
       </CardContent>
     </Card>
+    
+    <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Scan Barcode</DialogTitle>
+          </DialogHeader>
+          <BarcodeScanner onResult={onBarcodeScanned} onCancel={() => setIsScannerOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

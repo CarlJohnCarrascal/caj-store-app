@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
@@ -15,6 +15,7 @@ const productSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
   stock: z.coerce.number().min(0, 'Stock must be positive'),
+  barcode: z.string().optional(),
   material: z.string().optional(),
   dimensions: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters'),
@@ -38,6 +39,13 @@ export async function addProductAction(data: FormData) {
   const validatedFields = productSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid product data.');
+  }
+
+  if (validatedFields.data.barcode) {
+    const isDuplicate = await isBarcodeDuplicate(validatedFields.data.barcode);
+    if (isDuplicate) {
+      throw new Error(`Barcode "${validatedFields.data.barcode}" is already assigned to another product.`);
+    }
   }
 
   const newProduct = await addProduct(validatedFields.data, user);
@@ -64,6 +72,13 @@ export async function updateProductAction(id: string, data: FormData) {
   const validatedFields = productSchema.safeParse(rawData);
   if (!validatedFields.success) {
     throw new Error('Invalid product data.');
+  }
+
+  if (validatedFields.data.barcode) {
+    const isDuplicate = await isBarcodeDuplicate(validatedFields.data.barcode, id);
+    if (isDuplicate) {
+      throw new Error(`Barcode "${validatedFields.data.barcode}" is already assigned to another product.`);
+    }
   }
 
   const product: Product = { id, ...validatedFields.data, role: 'user' }; // role is required but not on form
@@ -232,9 +247,10 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                 }
                 break;
             case 'E-loading': {
-                const { cost, fee } = getCostAndFeeFromDescription(item.description || '');
+                const { fee } = getCostAndFeeFromDescription(item.description || '');
                 const serviceType = item.name.replace('E-loading: ', '').trim();
-                await updateEloadingReports({ serviceType, cost, fee });
+                const totalCost = item.price - fee;
+                await updateEloadingReports({ serviceType, cost: totalCost, fee });
                 break;
             }
             case 'Printing': {
@@ -244,8 +260,9 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                 break;
             }
             case 'Other Service': {
-                const { cost, fee } = getCostAndFeeFromDescription(item.description || '');
-                await updateOtherServiceReports({ cost, fee });
+                const { fee } = getCostAndFeeFromDescription(item.description || '');
+                const totalCost = item.price - fee;
+                await updateOtherServiceReports({ cost: totalCost, fee });
                 break;
             }
             case 'Financial':
@@ -787,7 +804,3 @@ export async function deleteFeeThresholdAction(id: string, user: { userId: strin
     revalidatePath('/admin/cashio-fees');
     revalidatePath('/admin/activity-logs');
 }
-
-
-
-

@@ -89,6 +89,22 @@ export async function getProductById(id: string): Promise<Product | undefined> {
   return undefined;
 }
 
+export async function isBarcodeDuplicate(barcode: string, currentProductId?: string): Promise<boolean> {
+    const productsRef = ref(db, 'products');
+    const q = query(productsRef, orderByChild('barcode'), equalTo(barcode));
+    const snapshot = await get(q);
+    if (snapshot.exists()) {
+      if (currentProductId) {
+        // If we are updating, check if the found product is the same as the one being updated
+        const data = snapshot.val();
+        const foundProductId = Object.keys(data)[0];
+        return foundProductId !== currentProductId;
+      }
+      return true; // Found a duplicate on creation
+    }
+    return false;
+}
+
 export async function addProduct(product: Omit<Product, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product> {
   const newProductRef = push(ref(db, 'products'));
   const dataToSave = {
@@ -1000,4 +1016,3 @@ export async function updateOtherServiceReports(data: { cost: number; fee: numbe
         });
     }
 }
-    

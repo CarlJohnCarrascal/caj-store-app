@@ -4,18 +4,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Product } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
 import ProductCard from '@/components/ProductCard';
 import ProductListItem from '@/components/ProductListItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ScanBarcode } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getStoreData, setStoreData } from '@/lib/offline';
+import { getStoreData, setStoreData, getProductByBarcode } from '@/lib/offline';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import BarcodeScanner from '@/components/BarcodeScanner';
+import { useCart } from '@/hooks/use-cart';
+import { useToast } from '@/hooks/use-toast';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -41,6 +45,9 @@ export default function StorePage() {
   const [filters, setFilters] = useState({ category: 'all', group: 'all' });
   const [sortOrder, setSortOrder] = useState('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const { addToCart } = useCart();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Load from cache first
@@ -91,7 +98,8 @@ export default function StorePage() {
       results = results.filter(product =>
         product.name.toLowerCase().includes(lowercasedTerm) ||
         product.group.toLowerCase().includes(lowercasedTerm) ||
-        product.category.toLowerCase().includes(lowercasedTerm)
+        product.category.toLowerCase().includes(lowercasedTerm) ||
+        product.barcode?.includes(lowercasedTerm)
       );
     }
     
@@ -133,6 +141,24 @@ export default function StorePage() {
     }
   };
 
+  const onBarcodeScanned = async (barcode: string) => {
+    setIsScannerOpen(false);
+    const product = await getProductByBarcode(barcode);
+    if (product) {
+      addToCart(product);
+      toast({
+        title: 'Product Added to Order',
+        description: `"${product.name}" was added to your order.`,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Product Not Found',
+        description: `No product with barcode "${barcode}" found.`,
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -152,17 +178,24 @@ export default function StorePage() {
   }
 
   return (
+    <>
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Products</h1>
-        <div className="relative w-full md:w-auto md:max-w-xs">
-          <Input
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <div className="flex w-full md:w-auto gap-2">
+          <div className="relative flex-grow">
+            <Input
+              placeholder="Search or scan barcode..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          </div>
+          <Button variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
+            <ScanBarcode className="h-5 w-5" />
+            <span className="sr-only">Scan Product</span>
+          </Button>
         </div>
       </div>
 
@@ -283,5 +316,15 @@ export default function StorePage() {
         </div>
       )}
     </div>
+
+    <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Scan Product Barcode</DialogTitle>
+          </DialogHeader>
+          <BarcodeScanner onResult={onBarcodeScanned} onCancel={() => setIsScannerOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

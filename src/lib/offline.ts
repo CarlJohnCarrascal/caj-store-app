@@ -39,7 +39,7 @@ interface LastUpdate {
 
 // Define the database schema
 interface CajStoreDB extends DBSchema {
-  products: { key: string; value: Product };
+  products: { key: string; value: Product; indexes: { 'by_barcode': string } };
   accounts: { key: string; value: Account };
   customers: { key: string; value: Customer };
   cashTransactions: { key: string; value: CashTransaction };
@@ -66,7 +66,7 @@ const initDB = () => {
     return dbPromise;
   }
   dbPromise = openDB<CajStoreDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion) {
       // This upgrade function will run if the DB_VERSION is higher than the existing version.
       // It checks for each store and creates it if it doesn't exist, making it safe to run.
       (Object.values(STORE_NAMES)).forEach(storeName => {
@@ -76,12 +76,25 @@ const initDB = () => {
                 db.createObjectStore(storeName);
             } else if (storeName === 'lastUpdate') {
                 db.createObjectStore(storeName, { keyPath: 'storeName' });
+            } else if (storeName === 'products') {
+                const store = db.createObjectStore(storeName, { keyPath: 'id' });
+                store.createIndex('by_barcode', 'barcode', { unique: true });
             } else {
                 // All other stores use 'id' as the keyPath
                 db.createObjectStore(storeName, { keyPath: 'id' });
             }
         }
       });
+
+      // Handle specific upgrade tasks for versions
+      if (oldVersion < 4) {
+          if (db.objectStoreNames.contains('products')) {
+              const productStore = db.transaction('products', 'readwrite').objectStore('products');
+              if (!productStore.indexNames.contains('by_barcode')) {
+                  productStore.createIndex('by_barcode', 'barcode', { unique: true });
+              }
+          }
+      }
     },
   });
   return dbPromise;
@@ -184,5 +197,17 @@ export async function setReportData(storeName: 'salesReports' | 'productReports'
         await tx.done;
     } catch (error) {
         console.error(`Failed to set data in ${storeName}:`, error);
+    }
+}
+
+export async function getProductByBarcode(barcode: string): Promise<Product | null> {
+    if (typeof window === 'undefined' || !barcode) return null;
+    try {
+        const db = await initDB();
+        const product = await db.getFromIndex('products', 'by_barcode', barcode);
+        return product || null;
+    } catch (error) {
+        console.error(`Failed to get product by barcode ${barcode}:`, error);
+        return null;
     }
 }

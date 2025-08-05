@@ -24,6 +24,7 @@ export interface Product {
   category: string;
   price: number;
   stock: number;
+  barcode?: string;
   material?: string;
   dimensions?: string;
   description: string;
