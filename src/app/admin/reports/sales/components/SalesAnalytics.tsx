@@ -165,7 +165,8 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     }, { totalSales: 0, totalOrders: 0 });
   }, [sortedData, periodName]);
   
-  const handleLegendClick = (dataKey: string) => {
+  const handleLegendClick = (e: any) => {
+    const dataKey = e.dataKey;
     setHiddenServices(prev => 
       prev.includes(dataKey) 
         ? prev.filter(s => s !== dataKey) 
@@ -235,7 +236,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
               <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
               <YAxis tickFormatter={(value) => `₱${value / 1000}k`} />
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
-              <Legend onClick={(e) => handleLegendClick(e.dataKey)} />
+              <Legend onClick={handleLegendClick} />
               {allServices.map(service => (
                 <Bar 
                   key={service} 
