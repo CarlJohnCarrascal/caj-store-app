@@ -13,7 +13,21 @@ function NewProductForm() {
 
   useEffect(() => {
     const barcode = searchParams.get('barcode');
-    const defaults: Partial<Product> = {};
+    // Set default values for all fields, especially numeric ones, to avoid NaN errors.
+    const defaults: Partial<Product> = {
+        name: '',
+        group: '',
+        show: true,
+        category: '',
+        price: 0, // Default to 0
+        stock: 0, // Default to 0
+        barcode: '',
+        material: '',
+        dimensions: '',
+        description: '',
+        image: '',
+        unit: 'each',
+    };
     if (barcode) {
       defaults.barcode = barcode;
     }
