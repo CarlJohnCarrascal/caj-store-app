@@ -6,7 +6,7 @@ import { Product, Account, Customer, CashTransaction, Collection, Order, Expense
 import { getCurrentPHTISOString } from './utils';
 
 const DB_NAME = 'caj-store-db';
-const DB_VERSION = 4; // Incremented version to trigger upgrade
+const DB_VERSION = 5; // Incremented version to trigger upgrade
 
 // Define all the object stores
 export const STORE_NAMES = {
@@ -66,13 +66,14 @@ const initDB = () => {
     return dbPromise;
   }
   dbPromise = openDB<CajStoreDB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
-      // This upgrade function will run if the DB_VERSION is higher than the existing version.
-      // It checks for each store and creates it if it doesn't exist, making it safe to run.
+    upgrade(db, oldVersion, newVersion, tx) {
+      // This function runs when the DB_VERSION is higher than the existing version.
+      // It handles both initial creation and subsequent upgrades.
+
+      // Handle initial creation of stores that don't exist
       (Object.values(STORE_NAMES)).forEach(storeName => {
         if (!db.objectStoreNames.contains(storeName)) {
             if (storeName.endsWith('Reports')) {
-                // Reports stores use an out-of-line key ('main')
                 db.createObjectStore(storeName);
             } else if (storeName === 'lastUpdate') {
                 db.createObjectStore(storeName, { keyPath: 'storeName' });
@@ -80,16 +81,16 @@ const initDB = () => {
                 const store = db.createObjectStore(storeName, { keyPath: 'id' });
                 store.createIndex('by_barcode', 'barcode', { unique: true });
             } else {
-                // All other stores use 'id' as the keyPath
                 db.createObjectStore(storeName, { keyPath: 'id' });
             }
         }
       });
-
+      
       // Handle specific upgrade tasks for versions
-      if (oldVersion < 4) {
+      // This will run if a user has an old DB version and needs the new index.
+      if (oldVersion < 5) {
           if (db.objectStoreNames.contains('products')) {
-              const productStore = db.transaction('products', 'readwrite').objectStore('products');
+              const productStore = tx.objectStore('products');
               if (!productStore.indexNames.contains('by_barcode')) {
                   productStore.createIndex('by_barcode', 'barcode', { unique: true });
               }
