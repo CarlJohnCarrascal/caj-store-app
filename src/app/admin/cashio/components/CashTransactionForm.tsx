@@ -31,7 +31,7 @@ import { extractTransactionDetails } from '@/ai/flows/extract-transaction-detail
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
-import { getFeeThresholds } from '@/lib/data';
+import { getFeeThresholds, isReferenceNumberDuplicate } from '@/lib/data';
 import { calculateFee } from '@/lib/utils';
 
 
@@ -260,6 +260,12 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     }
     startTransition(async () => {
       try {
+        const isDuplicate = await isReferenceNumberDuplicate(data.reference);
+        if (isDuplicate) {
+          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
+          return;
+        }
+
         localStorage.setItem('lastUsedAccountId', data.accountUsedId);
         const formData = new FormData();
         const dataToSubmit = { ...data, status: 'Available' as const };
@@ -276,11 +282,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         router.push('/admin/cashio');
         router.refresh();
       } catch (error: any) {
-        if (error.message === 'DUPLICATE_REFERENCE') {
-          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
-        } else {
-          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
-        }
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };
@@ -292,6 +294,12 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     }
     startTransition(async () => {
       try {
+        const isDuplicate = await isReferenceNumberDuplicate(data.reference);
+        if (isDuplicate) {
+            toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists.' });
+            return;
+        }
+
         localStorage.setItem('lastUsedAccountId', data.accountUsedId);
         const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
         
@@ -333,11 +341,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         form.reset();
         setCartOpen(true);
       } catch (error: any) {
-        if (error.message === 'DUPLICATE_REFERENCE') {
-          toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists.' });
-        } else {
-          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
-        }
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };
@@ -612,3 +616,4 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     </>
   );
 }
+

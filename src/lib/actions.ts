@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -496,8 +497,11 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
     throw new Error('Invalid cash transaction data.');
   }
 
+  // This duplicate check is now mainly a server-side safeguard.
+  // The client should check first.
   const isDuplicate = await isReferenceNumberDuplicate(validatedFields.data.reference);
   if (isDuplicate) {
+    // This error will be caught by the client.
     throw new Error('DUPLICATE_REFERENCE');
   }
 
