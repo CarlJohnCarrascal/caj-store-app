@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product, Customer } from '@/lib/types';
 import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2, Clock } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2, Clock, Loader2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -93,8 +93,12 @@ type OverallReport = {
     totalTransactions: number;
 } | null;
 
+interface CashTransactionTableProps {
+  isSearchOpen: boolean;
+  onSearchOpenChange: (isOpen: boolean) => void;
+}
 
-export default function CashTransactionTable() {
+export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange }: CashTransactionTableProps) {
   const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -114,6 +118,11 @@ export default function CashTransactionTable() {
   const { toast } = useToast();
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
   const { user, loading: authLoading } = useAuth();
+  
+  const [referenceSearch, setReferenceSearch] = React.useState('');
+  const [isSearchingByRef, setIsSearchingByRef] = React.useState(false);
+  const [foundTransaction, setFoundTransaction] = React.useState<any | null>(null);
+  const [searchAttempted, setSearchAttempted] = React.useState(false);
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
@@ -216,42 +225,36 @@ export default function CashTransactionTable() {
     };
   }, [authLoading, user, toast]);
 
-  React.useEffect(() => {
-    if (!debouncedSearch || debouncedSearch.length < 5) return;
+  const handleReferenceSearch = async () => {
+    if (!referenceSearch) return;
 
-    const searchOnlineByReference = async () => {
-        const isAlreadyFetched = transactions.some(t => t.reference === debouncedSearch);
-        if (isAlreadyFetched) return;
-        
-        setIsFetching(true);
-        try {
-            const transactionsRef = ref(db, 'cashTransactions');
-            const q = query(transactionsRef, orderByChild('reference'), equalTo(debouncedSearch));
-            const snapshot = await get(q);
-            if (snapshot.exists()) {
-                const fetchedList = snapshotToArray<CashTransaction>(snapshot);
-                setTransactions(prev => {
-                    const existingIds = new Set(prev.map(p => p.id));
-                    const newTransactions = fetchedList.filter(t => !existingIds.has(t.id));
-                    if (newTransactions.length > 0) {
-                        toast({ title: 'Found transaction', description: 'Added transaction from outside the current date range.' });
-                        return [...newTransactions, ...prev];
-                    }
-                    return prev;
-                });
-            } else {
-                 toast({ variant: 'default', title: 'Not Found', description: 'No transaction with that reference number was found.' });
+    setIsSearchingByRef(true);
+    setSearchAttempted(true);
+    setFoundTransaction(null);
+    try {
+        const transactionsRef = ref(db, 'cashTransactions');
+        const q = query(transactionsRef, orderByChild('reference'), equalTo(referenceSearch));
+        const snapshot = await get(q);
+        if (snapshot.exists()) {
+            const fetchedList = snapshotToArray<CashTransaction>(snapshot);
+            const accountMap = new Map(accounts.map(acc => [acc.id, acc.accountName]));
+            const customerMap = new Map(customers.map(c => [c.id, c.name]));
+            const transactionWithName = {
+              ...fetchedList[0],
+              ourAccountName: accountMap.get(fetchedList[0].accountUsedId) || 'Unknown Account',
+              customerName: fetchedList[0].customerId ? (customerMap.get(fetchedList[0].customerId) || 'Unknown Customer') : fetchedList[0].accountName,
             }
-        } catch (error) {
-            console.error("Failed to search by reference:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to search by reference.' });
-        } finally {
-            setIsFetching(false);
+            setFoundTransaction(transactionWithName);
+        } else {
+            setFoundTransaction(null);
         }
-    };
-    
-    searchOnlineByReference();
-  }, [debouncedSearch, transactions, toast]);
+    } catch (error) {
+        console.error("Failed to search by reference:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to search by reference.' });
+    } finally {
+        setIsSearchingByRef(false);
+    }
+  };
 
   const handleAddToCart = (transaction: any) => {
     const finalPrice = transaction.transactionType === 'Cash In'
@@ -317,7 +320,7 @@ export default function CashTransactionTable() {
   const filteredTransactions = React.useMemo(() => {
     return transactionsWithNames
       .filter(t => {
-        const searchLower = search.toLowerCase();
+        const searchLower = debouncedSearch.toLowerCase();
         if (!searchLower) return true;
         return (
           t.reference.toLowerCase().includes(searchLower) ||
@@ -345,7 +348,7 @@ export default function CashTransactionTable() {
       .filter(t => method === 'all' || t.paymentMethod === method)
       .filter(t => accountUsed === 'all' || t.accountUsedId === accountUsed)
       .filter(t => status === 'all' || t.status === status);
-  }, [search, date, transactionsWithNames, type, method, accountUsed, status]);
+  }, [debouncedSearch, date, transactionsWithNames, type, method, accountUsed, status]);
 
   const sortedTransactions = React.useMemo(() => {
     const sorted = [...filteredTransactions];
@@ -383,7 +386,7 @@ export default function CashTransactionTable() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [itemsPerPage, search, date, type, method, accountUsed, status]);
+  }, [itemsPerPage, debouncedSearch, date, type, method, accountUsed, status]);
 
   const overallLoading = authLoading || isLoading;
 
@@ -423,7 +426,7 @@ export default function CashTransactionTable() {
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-auto md:max-w-xs">
           <Input
-            placeholder="Search by reference, name..."
+            placeholder="Search by ref, name, message..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -708,6 +711,63 @@ export default function CashTransactionTable() {
             </div>
         </div>
       </div>
+      
+       <Dialog open={isSearchOpen} onOpenChange={onSearchOpenChange}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Search by Reference Number</DialogTitle>
+                <DialogDescription>
+                    Find a specific transaction by its reference number, regardless of date filters.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2">
+                <Input 
+                    placeholder="Enter reference number..."
+                    value={referenceSearch}
+                    onChange={(e) => setReferenceSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleReferenceSearch()}
+                />
+                <Button onClick={handleReferenceSearch} disabled={isSearchingByRef}>
+                    {isSearchingByRef ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+            </div>
+
+            <div className="mt-4 min-h-[100px]">
+                {isSearchingByRef ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : foundTransaction ? (
+                     <div className="space-y-4">
+                        <div
+                            className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50"
+                            onClick={() => {
+                                setSelectedTransaction(foundTransaction);
+                                onSearchOpenChange(false);
+                            }}
+                        >
+                            <div className="font-medium">{foundTransaction.accountName}</div>
+                            <div className="text-sm text-muted-foreground">{foundTransaction.transactionType} - ₱{foundTransaction.amount.toFixed(2)}</div>
+                            <div className="text-xs text-muted-foreground">{format(new Date(foundTransaction.transactionDate), 'PPp')}</div>
+                        </div>
+                        <Button
+                            className="w-full"
+                            onClick={() => {
+                                setSelectedTransaction(foundTransaction);
+                                onSearchOpenChange(false);
+                            }}
+                        >
+                            View Details
+                        </Button>
+                    </div>
+                ) : searchAttempted ? (
+                    <div className="text-center text-muted-foreground h-full flex items-center justify-center">
+                        <p>No transaction found with that reference.</p>
+                    </div>
+                ) : null}
+            </div>
+        </DialogContent>
+      </Dialog>
       
       {selectedTransaction && (
         <Dialog open={!!selectedTransaction} onOpenChange={(isOpen) => !isOpen && setSelectedTransaction(null)}>
