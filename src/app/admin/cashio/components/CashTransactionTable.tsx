@@ -60,7 +60,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { deleteCashTransactionAction } from '@/lib/actions';
-import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
+import { getStoreData, setStoreData, deleteItem, getReportData } from '@/lib/offline';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -87,6 +87,12 @@ const useDebouncedValue = (value: string, delay: number) => {
     return debouncedValue;
 };
 
+type OverallReport = {
+    cashInTotal: number;
+    cashOutTotal: number;
+    totalTransactions: number;
+} | null;
+
 
 export default function CashTransactionTable() {
   const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
@@ -95,13 +101,14 @@ export default function CashTransactionTable() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isFetching, setIsFetching] = React.useState(false);
   const [isPendingDelete, startDeleteTransition] = React.useTransition();
+  const [overallReport, setOverallReport] = React.useState<OverallReport>(null);
 
   const [search, setSearch] = React.useState('');
   const debouncedSearch = useDebouncedValue(search, 500);
   const [page, setPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [sort, setSort] = React.useState<{key: string, order: 'asc' | 'desc'}>({ key: 'transactionDate', order: 'desc' });
-  const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = React.useState<'grid' | 'grid'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<any | null>(null);
   const { toast } = useToast();
@@ -120,18 +127,34 @@ export default function CashTransactionTable() {
 
   React.useEffect(() => {
     setIsMounted(true);
+    let allDataLoaded = false;
     
     // Load all data from cache first
     const loadFromCache = async () => {
         const cachedAccounts = await getStoreData<Account>('accounts');
         const cachedCustomers = await getStoreData<Customer>('customers');
+        const cachedReports = await getReportData<any>('cashIOReports');
+
         setAccounts(cachedAccounts);
         setCustomers(cachedCustomers);
-        if (cachedAccounts.length > 0 && cachedCustomers.length > 0) {
+        
+        if (cachedReports?.overall?.['all-time']) {
+            setOverallReport(cachedReports.overall['all-time']);
+        }
+
+        if (cachedAccounts.length > 0 && cachedCustomers.length > 0 && cachedReports) {
+            allDataLoaded = true;
             setIsLoading(false);
         }
     };
     loadFromCache();
+
+    const reportsRef = ref(db, 'cashIOReports/overall/all-time');
+    const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            setOverallReport(snapshot.val());
+        }
+    });
 
     // Listen for live updates
     const accountsRef = ref(db, 'accounts');
@@ -146,12 +169,15 @@ export default function CashTransactionTable() {
       const customerList = snapshotToArray<Customer>(snapshot);
       setCustomers(customerList);
       setStoreData('customers', customerList);
-      setIsLoading(false);
+      if (!allDataLoaded) {
+          setIsLoading(false);
+      }
     });
 
     return () => {
       unsubscribeAccounts();
       unsubscribeCustomers();
+      unsubscribeReports();
     };
   }, []);
 
@@ -321,17 +347,6 @@ export default function CashTransactionTable() {
       .filter(t => status === 'all' || t.status === status);
   }, [search, date, transactionsWithNames, type, method, accountUsed, status]);
 
-  const summary = React.useMemo(() => {
-    const totalIn = filteredTransactions
-      .filter((t) => t.transactionType === 'Cash In')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalOut = filteredTransactions
-      .filter((t) => t.transactionType === 'Cash Out')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalTransactions = filteredTransactions.length;
-    return { totalIn, totalOut, totalTransactions };
-  }, [filteredTransactions]);
-
   const sortedTransactions = React.useMemo(() => {
     const sorted = [...filteredTransactions];
     sorted.sort((a, b) => {
@@ -393,15 +408,15 @@ export default function CashTransactionTable() {
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-red-600">
                 <ArrowDown className="h-5 w-5" />
-                <span className="font-semibold text-lg">₱{summary.totalOut.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="font-semibold text-lg">₱{(overallReport?.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex items-center gap-2 text-green-600">
                 <ArrowUp className="h-5 w-5" />
-                <span className="font-semibold text-lg">₱{summary.totalIn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="font-semibold text-lg">₱{(overallReport?.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
         </div>
         <div className="text-sm text-muted-foreground">
-            Total Transactions: <span className="font-semibold text-foreground">{summary.totalTransactions}</span>
+            All-Time Transactions: <span className="font-semibold text-foreground">{(overallReport?.totalTransactions || 0).toLocaleString()}</span>
         </div>
       </div>
 
