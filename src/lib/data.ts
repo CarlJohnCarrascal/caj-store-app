@@ -1016,3 +1016,90 @@ export async function updateOtherServiceReports(data: { cost: number; fee: numbe
         });
     }
 }
+
+export async function regenerateCashIOReports(): Promise<void> {
+    const allTransactions = await getCashTransactions();
+    const newReportsData = {}; // This will hold the regenerated data.
+
+    for (const transaction of allTransactions) {
+        const paths = getReportPaths(transaction.transactionDate);
+        for (const periodKey of Object.keys(paths)) { // 'daily', 'weekly', etc.
+            const path = (paths as any)[periodKey];
+            
+            // Logic similar to updateCashIOReport, but accumulating into newReportsData
+            const currentPeriod = newReportsData[path] || {
+                cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
+                cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
+                customers: {}, byAccount: {},
+            };
+            
+            // All Transactions part
+            currentPeriod.totalTransactions += 1;
+            currentPeriod.totalAmount += transaction.amount;
+            currentPeriod.totalFee += transaction.fee;
+            
+            const accountId = transaction.accountUsedId;
+            const accountReport = currentPeriod.byAccount[accountId] || {
+                cashInCount: 0, cashInAmount: 0, cashInFee: 0,
+                cashOutCount: 0, cashOutAmount: 0, cashOutFee: 0,
+            };
+
+            if (transaction.transactionType === 'Cash In') {
+                currentPeriod.cashIn += 1;
+                currentPeriod.cashInFee += transaction.fee;
+                currentPeriod.cashInTotal += transaction.amount;
+                accountReport.cashInCount += 1;
+                accountReport.cashInAmount += transaction.amount;
+                accountReport.cashInFee += transaction.fee;
+            } else { // Cash Out
+                currentPeriod.cashOut += 1;
+                currentPeriod.cashOutFee += transaction.fee;
+                currentPeriod.cashOutTotal += transaction.amount;
+                accountReport.cashOutCount += 1;
+                accountReport.cashOutAmount += transaction.amount;
+                accountReport.cashOutFee += transaction.fee;
+            }
+            currentPeriod.byAccount[accountId] = accountReport;
+
+            // Ordered Transactions part
+            if (transaction.customerId) {
+                const customerReport = currentPeriod.customers[transaction.customerId] || {
+                    cashIn: 0, cashOut: 0, cashInFee: 0, cashOutFee: 0,
+                    cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
+                };
+
+                customerReport.totalAmount += transaction.amount;
+                customerReport.totalFee += transaction.fee;
+
+                if (transaction.transactionType === 'Cash In') {
+                    customerReport.cashIn += 1;
+                    customerReport.cashInFee += transaction.fee;
+                    customerReport.cashInTotal += transaction.amount;
+                } else { // Cash Out
+                    customerReport.cashOut += 1;
+                    customerReport.cashOutFee += transaction.fee;
+                    customerReport.cashOutTotal += transaction.amount;
+                }
+                currentPeriod.customers[transaction.customerId] = customerReport;
+            }
+            
+            newReportsData[path] = currentPeriod;
+        }
+    }
+
+    // Restructure for Firebase
+    const finalReportObject: any = {};
+    for (const [path, data] of Object.entries(newReportsData)) {
+      const parts = path.substring(1).split('/'); // Remove leading '/' and split
+      let currentLevel = finalReportObject;
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentLevel[parts[i]] = currentLevel[parts[i]] || {};
+        currentLevel = currentLevel[parts[i]];
+      }
+      currentLevel[parts[parts.length - 1]] = data;
+    }
+
+    // Overwrite the entire cashIOReports node
+    const reportsRef = ref(db, 'cashIOReports');
+    await set(reportsRef, finalReportObject);
+}

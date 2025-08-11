@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
@@ -802,5 +802,23 @@ export async function deleteFeeThresholdAction(id: string, user: { userId: strin
     });
 
     revalidatePath('/admin/cashio-fees');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function regenerateCashIOReportsAction(user: { userId: string; userName: string }) {
+    const actor = await getUserById(user.userId);
+    if (!actor || actor.role !== 'admin') {
+        throw new Error('Unauthorized: Only admins can regenerate reports.');
+    }
+    await regenerateCashIOReports();
+    await logActivity({
+        type: 'System',
+        action: 'Updated',
+        details: 'CashIO reports were regenerated for all periods.',
+        targetId: 'cashIOReports',
+        ...user,
+    });
+
+    revalidatePath('/admin/reports/cashio');
     revalidatePath('/admin/activity-logs');
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -160,6 +160,21 @@ export default function Header() {
                                   </Link>
                               </AccordionContent>
                           </AccordionItem>
+                          {isAdmin && (
+                            <AccordionItem value="system" className="border-b-0">
+                              <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
+                                  <div className="flex items-center gap-4">
+                                    <Settings className="h-6 w-6" />
+                                    System
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pl-10 space-y-1">
+                                  <Link href="/admin/system/cashio-report-fix" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <ArrowRightLeft className="h-5 w-5 text-muted-foreground" /><span>CashIO Report Fix</span>
+                                  </Link>
+                              </AccordionContent>
+                            </AccordionItem>
+                          )}
                       </Accordion>
                     </nav>
                   </ScrollArea>
@@ -222,6 +237,16 @@ export default function Header() {
                     <DropdownMenuItem asChild><Link href="/admin/reports/other-service" className="flex items-center gap-2 cursor-pointer"><Wrench className="h-4 w-4" /> Other Service</Link></DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {isAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
+                      System <ChevronDown className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem asChild><Link href="/admin/system/cashio-report-fix" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> CashIO Report Fix</Link></DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </nav>
             </div>
             

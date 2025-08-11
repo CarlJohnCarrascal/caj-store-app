@@ -113,7 +113,7 @@ export interface Order {
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System';
   action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange';
   timestamp: Date;
   details: string;
