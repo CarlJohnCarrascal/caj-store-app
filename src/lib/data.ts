@@ -1,8 +1,10 @@
 
+
 'use server';
 
-import { db } from './firebase';
+import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
+import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
@@ -428,6 +430,17 @@ export async function deleteCashTransaction(id: string): Promise<CashTransaction
         return deletedTransaction;
     }
     return null;
+}
+
+
+// =======================
+// Image Upload Function
+// =======================
+export async function uploadReceiptImage(dataUrl: string, fileName: string): Promise<string> {
+    const imageRef = storageRef(storage, `cashio/scanned/${fileName}`);
+    const snapshot = await uploadString(imageRef, dataUrl, 'data_url');
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
 }
 
 // =======================

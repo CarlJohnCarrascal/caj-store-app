@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
-import { getCashTransactionByReference, getAccounts } from '@/lib/data';
+import { getCashTransactionByReference, getAccounts, uploadReceiptImage } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product, Account } from '@/lib/types';
 import Image from 'next/image';
@@ -28,7 +28,7 @@ interface ExtractedData {
     accountNumber?: string;
     datetime?: string;
     accountUsedId?: string;
-    'Account Used'?: string;
+    receiptImageUrl?: string;
     [key: string]: any;
 }
 
@@ -45,7 +45,7 @@ export default function ScanImagePage() {
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [rawExtractionResult, setRawExtractionResult] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
@@ -114,9 +114,9 @@ export default function ScanImagePage() {
   };
   
   const processImage = async (imageDataUri: string) => {
-    setPreviewImage(imageDataUri); // Show preview immediately
-    setStep(3); // Move to results view to show preview and loading state
-    setIsLoading(true);
+    setPreviewImage(imageDataUri); 
+    setStep(3);
+    setIsProcessing(true);
     setExtractedData(null);
     setRawExtractionResult(null);
     setIsDuplicate(null);
@@ -127,7 +127,7 @@ export default function ScanImagePage() {
 
         if (result.error || !result.data) {
             toast({ variant: 'destructive', title: 'Extraction Failed', description: result.error || "The AI could not extract details from the image." });
-            setIsLoading(false); // Stop loading on failure
+            setIsProcessing(false);
             return;
         }
         
@@ -136,7 +136,6 @@ export default function ScanImagePage() {
             setRawExtractionResult(result.raw)
         };
         
-        // Trim whitespace from reference and account number if they exist
         if (data.reference) {
             data.reference = data.reference.replace(/\s+/g, '');
         }
@@ -144,7 +143,6 @@ export default function ScanImagePage() {
             data.accountNumber = data.accountNumber.replace(/\s+/g, '');
         }
         
-        // Handle Cash Out auto-detection of account used
         if (transactionType === 'Cash Out' && data.accountNumber && accounts.length > 0) {
             const extractedNumSuffix = data.accountNumber.replace(/\s+/g, '').slice(-10);
             const matchedAccount = accounts.find(acc => acc.accountNumber.replace(/\s+/g, '').slice(-10) === extractedNumSuffix);
@@ -175,7 +173,7 @@ export default function ScanImagePage() {
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || "An unknown error occurred during image processing." });
     } finally {
-        setIsLoading(false);
+        setIsProcessing(false);
     }
   };
 
@@ -206,32 +204,40 @@ export default function ScanImagePage() {
     }
   };
 
-  const handleAddTransaction = () => {
+  const submitTransaction = async () => {
     if (!extractedData) return;
+    setIsProcessing(true);
 
-    const queryParams = new URLSearchParams();
-    
-    // Prioritize user's selection over AI extraction for transactionType
-    if(transactionType) {
-        queryParams.set('transactionType', transactionType);
-    }
-    
-    Object.entries(extractedData).forEach(([key, value]) => {
-        // Skip setting transactionType if it came from AI, as we already set the user's choice
-        // also skip our custom 'Account Used' display field
-        if (key === 'transactionType' || key === 'Account Used') return;
-        
-        if (value) {
-            queryParams.set(key, String(value));
+    try {
+        const queryParams = new URLSearchParams();
+        if(transactionType) {
+            queryParams.set('transactionType', transactionType);
         }
-    });
+        
+        let imageUrl = '';
+        if (previewImage) {
+            toast({ title: "Uploading receipt...", description: "Please wait." });
+            imageUrl = await uploadReceiptImage(previewImage, `${extractedData.reference || Date.now()}.jpg`);
+            queryParams.set('receiptImageUrl', imageUrl);
+        }
+        
+        Object.entries(extractedData).forEach(([key, value]) => {
+            if (key !== 'transactionType' && key !== 'receiptImageUrl' && value) {
+                queryParams.set(key, String(value));
+            }
+        });
 
-    if (rawExtractionResult) {
-        queryParams.set('message', rawExtractionResult);
+        if (rawExtractionResult) {
+            queryParams.set('message', rawExtractionResult);
+        }
+
+        router.push(`/admin/cashio/new?${queryParams.toString()}`);
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Submission Failed', description: error.message || "Could not process transaction."});
+        setIsProcessing(false);
     }
-
-    router.push(`/admin/cashio/new?${queryParams.toString()}`);
-  };
+  }
 
   const handleAddToOrder = async () => {
     if (!extractedData?.reference) return;
@@ -366,15 +372,15 @@ export default function ScanImagePage() {
                     onChange={handleFileChange}
                     accept="image/*"
                     className="hidden"
-                    disabled={isLoading}
+                    disabled={isProcessing}
                 />
 
                 <div className="grid grid-cols-2 gap-2">
-                    <Button size="lg" className="w-full" onClick={handleScanClick} disabled={!hasCameraPermission || isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
+                    <Button size="lg" className="w-full" onClick={handleScanClick} disabled={!hasCameraPermission || isProcessing}>
+                        {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
                         Scan
                     </Button>
-                     <Button size="lg" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                     <Button size="lg" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
                         <FileImage className="mr-2 h-5 w-5" />
                         Upload
                     </Button>
@@ -390,14 +396,14 @@ export default function ScanImagePage() {
                     </div>
                 )}
                 
-                {isLoading && (
+                {isProcessing && (
                     <div className="flex items-center justify-center text-muted-foreground py-4">
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        <span>Extracting details...</span>
+                        <span>Processing image...</span>
                     </div>
                 )}
 
-                {!isLoading && (
+                {!isProcessing && (
                     <>
                         {isDuplicate !== null && (
                              isClaimed ? (
@@ -441,7 +447,10 @@ export default function ScanImagePage() {
                         {canAddToOrder ? (
                             <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
                         ) : (
-                            <Button className="w-full" size="lg" onClick={handleAddTransaction} disabled={isDuplicate}>Add Transaction</Button>
+                            <Button className="w-full" size="lg" onClick={submitTransaction} disabled={isDuplicate || isProcessing}>
+                                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
+                                Add Transaction
+                            </Button>
                         )}
                     </>
                 )}
@@ -452,6 +461,3 @@ export default function ScanImagePage() {
     </div>
   );
 }
-
-    
-    

@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { CashTransaction, Account, Product, Customer } from '@/lib/types';
 import { subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2, Clock, Loader2 } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, CalendarIcon, ArrowDown, ArrowUp, LayoutGrid, List, User, Wallet, Landmark, Hash, MessageSquare, Pencil, Trash2, Clock, Loader2, FileImage } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -61,6 +61,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { deleteCashTransactionAction } from '@/lib/actions';
 import { getStoreData, setStoreData, deleteItem, getReportData } from '@/lib/offline';
+import Image from 'next/image';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -796,6 +797,17 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">
               <div className="space-y-6 py-4 px-6">
+                 {selectedTransaction.receiptImageUrl && (
+                    <div>
+                        <h4 className="font-semibold mb-2 text-muted-foreground">Receipt</h4>
+                        <a href={selectedTransaction.receiptImageUrl} target="_blank" rel="noopener noreferrer" className="block relative aspect-video bg-muted rounded-md overflow-hidden border">
+                            <Image src={selectedTransaction.receiptImageUrl} alt="Transaction Receipt" layout="fill" objectFit="contain" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                <FileImage className="h-8 w-8 text-white" />
+                            </div>
+                        </a>
+                    </div>
+                )}
                 <div className="space-y-2">
                     <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
                         <span className="text-muted-foreground">Amount</span>

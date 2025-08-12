@@ -485,6 +485,7 @@ const cashTransactionSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
+  receiptImageUrl: z.string().url().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
@@ -497,11 +498,8 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
     throw new Error('Invalid cash transaction data.');
   }
 
-  // This duplicate check is now mainly a server-side safeguard.
-  // The client should check first.
   const isDuplicate = await isReferenceNumberDuplicate(validatedFields.data.reference);
   if (isDuplicate) {
-    // This error will be caught by the client.
     throw new Error('DUPLICATE_REFERENCE');
   }
 

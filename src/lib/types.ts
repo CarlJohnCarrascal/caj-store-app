@@ -77,6 +77,7 @@ export interface CashTransaction {
   transactionDate: string; // ISO string with timezone
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
+  receiptImageUrl?: string;
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
   createdBy?: ChangeTracker;
