@@ -37,7 +37,14 @@ export default function EditCashTransactionPage() {
           return;
         }
 
-        setTransaction(transactionData);
+        // The datetime-local input needs a 'YYYY-MM-DDTHH:mm' format.
+        // The date from DB is 'YYYY-MM-DDTHH:mm:ss+08:00'. We slice it.
+        const formattedTransaction = {
+          ...transactionData,
+          datetime: transactionData.transactionDate ? transactionData.transactionDate.slice(0, 16) : '',
+        };
+
+        setTransaction(formattedTransaction as CashTransaction);
         setAccounts(accountsData);
       } catch (err: any) {
         console.error("Error fetching data:", err);
