@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
-import { getCashTransactionByReference, getAccounts, uploadReceiptImage } from '@/lib/data';
+import { getCashTransactionByReference, getAccounts, uploadTempReceiptImage } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product, Account } from '@/lib/types';
 import Image from 'next/image';
@@ -28,7 +28,7 @@ interface ExtractedData {
     accountNumber?: string;
     datetime?: string;
     accountUsedId?: string;
-    receiptImageUrl?: string;
+    tempReceiptPath?: string;
     [key: string]: any;
 }
 
@@ -214,15 +214,14 @@ export default function ScanImagePage() {
             queryParams.set('transactionType', transactionType);
         }
         
-        let imageUrl = '';
         if (previewImage) {
             toast({ title: "Uploading receipt...", description: "Please wait." });
-            imageUrl = await uploadReceiptImage(previewImage, `${extractedData.reference || Date.now()}.jpg`);
-            queryParams.set('receiptImageUrl', imageUrl);
+            const tempPath = await uploadTempReceiptImage(previewImage, `${extractedData.reference || Date.now()}.jpg`);
+            queryParams.set('tempReceiptPath', tempPath);
         }
         
         Object.entries(extractedData).forEach(([key, value]) => {
-            if (key !== 'transactionType' && key !== 'receiptImageUrl' && value) {
+            if (key !== 'transactionType' && key !== 'tempReceiptPath' && value) {
                 queryParams.set(key, String(value));
             }
         });
@@ -417,7 +416,7 @@ export default function ScanImagePage() {
                             ) : (
                                 <Alert variant={isDuplicate ? "destructive" : "default"}>
                                     {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                                    <AlertTitle>{isDuplicate ? "Duplicate Transaction" : "New Transaction"}</AlertTitle>
+                                    <AlertTitle>{isDuplicate ? "Transaction Found" : "New Transaction"}</AlertTitle>
                                     <AlertDescription>
                                         {isDuplicate
                                             ? "This reference number already exists in your records."

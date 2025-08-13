@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCashTransactionStatus, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, finalizeReceiptImage } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
@@ -236,11 +236,23 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                 if (item.originalTransactionId) {
                     const cashTx = await getCashTransactionById(item.originalTransactionId);
                     if (cashTx) {
-                        updatedTransaction = await updateCashTransactionStatus(cashTx.id, customerId);
+                        const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+                        let finalImageUrl = cashTx.receiptImageUrl || '';
+                        
+                        if (cashTx.tempReceiptPath) {
+                            finalImageUrl = await finalizeReceiptImage(cashTx.tempReceiptPath, cashTx.transactionType);
+                        }
+                        
+                        updatedTransaction = await updateCashTransaction(cashTx.id, { 
+                            status: finalStatus,
+                            customerId,
+                            receiptImageUrl: finalImageUrl,
+                        }, user);
+
                         await logActivity({
                             type: 'CashIO',
                             action: 'Updated',
-                            details: `Transaction for "${customerName}" was marked as ${updatedTransaction?.status} via checkout.`,
+                            details: `Transaction for "${customerName}" was marked as ${finalStatus} via checkout.`,
                             targetId: item.originalTransactionId,
                             ...user
                         });
@@ -485,7 +497,7 @@ const cashTransactionSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
-  receiptImageUrl: z.string().url().optional(),
+  tempReceiptPath: z.string().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
@@ -526,13 +538,29 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
   
-  const validatedFields = cashTransactionSchema.safeParse(rawData);
+  const validatedFields = cashTransactionSchema.partial().safeParse(rawData);
   if (!validatedFields.success) {
     console.error(validatedFields.error.flatten().fieldErrors);
     throw new Error('Invalid cash transaction data.');
   }
+  
+  const oldTransactionSnapshot = await get(ref(db, `cashTransactions/${id}`));
+  if (!oldTransactionSnapshot.exists()) {
+    throw new Error('Transaction not found to update.');
+  }
+  const oldTransaction: CashTransaction = { id, ...oldTransactionSnapshot.val() };
+  
+  // Create a full transaction object for report reversal by merging old data with new
+  const fullNewDataForReport: CashTransaction = {
+      ...oldTransaction,
+      ...validatedFields.data,
+      amount: validatedFields.data.amount ?? oldTransaction.amount,
+      fee: validatedFields.data.fee ?? oldTransaction.fee,
+      // Ensure other required fields are present
+  };
 
-  const { oldTransaction, newTransaction } = await updateCashTransaction(id, validatedFields.data, user);
+
+  const newTransaction = await updateCashTransaction(id, validatedFields.data, user);
   
   // Reverse old transaction from reports
   await updateCashIOReport(oldTransaction, 'allTransactions', undefined, -1);

@@ -1,4 +1,5 @@
 
+
 'use server';
 
 export interface ChangeTracker {
@@ -78,6 +79,7 @@ export interface CashTransaction {
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
   receiptImageUrl?: string;
+  tempReceiptPath?: string;
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
   createdBy?: ChangeTracker;
