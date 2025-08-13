@@ -4,7 +4,7 @@
 
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
@@ -326,9 +326,9 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
 
 export async function updateCashTransaction(
   id: string,
-  transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'> & { datetime?: string },
+  transactionData: Partial<Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'>> & { datetime?: string },
   updatedBy: Omit<ChangeTracker, 'timestamp'>
-): Promise<{ oldTransaction: CashTransaction, newTransaction: CashTransaction }> {
+): Promise<CashTransaction> {
     const transactionRef = ref(db, `cashTransactions/${id}`);
     const oldTransactionSnapshot = await get(transactionRef);
     if (!oldTransactionSnapshot.exists()) {
@@ -336,35 +336,47 @@ export async function updateCashTransaction(
     }
     const oldTransaction: CashTransaction = { id, ...oldTransactionSnapshot.val() };
 
-    // --- Reverse old transaction on account balance ---
-    const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
-    const oldAccountSnapshot = await get(oldAccountRef);
-    if (oldAccountSnapshot.exists()) {
-        const oldAccount = oldAccountSnapshot.val();
-        let balanceReversal = 0;
-        if (oldTransaction.transactionType === 'Cash In') {
-            balanceReversal = -oldTransaction.amount + oldTransaction.fee;
-        } else { // Cash Out
-            balanceReversal = oldTransaction.amount + oldTransaction.fee;
-        }
-        await update(oldAccountRef, { balance: oldAccount.balance + balanceReversal });
-    }
+    let finalNewBalanceForAccount;
 
-    // --- Apply new transaction on account balance ---
-    const newAccountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
-    const newAccountSnapshot = await get(newAccountRef);
-    if (!newAccountSnapshot.exists()) {
-        throw new Error("New account not found");
+    // Only perform balance recalculations if amount, fee, or accountUsedId changed
+    const needsBalanceUpdate = 'amount' in transactionData || 'fee' in transactionData || 'accountUsedId' in transactionData;
+
+    if (needsBalanceUpdate) {
+        // --- Reverse old transaction on account balance ---
+        const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
+        const oldAccountSnapshot = await get(oldAccountRef);
+        if (oldAccountSnapshot.exists()) {
+            const oldAccount = oldAccountSnapshot.val();
+            let balanceReversal = 0;
+            if (oldTransaction.transactionType === 'Cash In') {
+                balanceReversal = -oldTransaction.amount + oldTransaction.fee;
+            } else { // Cash Out
+                balanceReversal = oldTransaction.amount + oldTransaction.fee;
+            }
+            await update(oldAccountRef, { balance: oldAccount.balance + balanceReversal });
+        }
+
+        const newAccountUsedId = transactionData.accountUsedId || oldTransaction.accountUsedId;
+        const newTransactionType = transactionData.transactionType || oldTransaction.transactionType;
+        const newAmount = transactionData.amount || oldTransaction.amount;
+        const newFee = transactionData.fee || oldTransaction.fee;
+        
+        // --- Apply new transaction on account balance ---
+        const newAccountRef = ref(db, `accounts/${newAccountUsedId}`);
+        const newAccountSnapshot = await get(newAccountRef);
+        if (!newAccountSnapshot.exists()) {
+            throw new Error("New account not found");
+        }
+        const newAccount = newAccountSnapshot.val();
+        let newEffect = 0;
+        if (newTransactionType === 'Cash In') {
+            newEffect = newAmount - newFee;
+        } else { // Cash Out
+            newEffect = -newAmount - newFee;
+        }
+        finalNewBalanceForAccount = newAccount.balance + newEffect;
+        await update(newAccountRef, { balance: finalNewBalanceForAccount });
     }
-    const newAccount = newAccountSnapshot.val();
-    let newEffect = 0;
-    if (transactionData.transactionType === 'Cash In') {
-        newEffect = transactionData.amount - transactionData.fee;
-    } else { // Cash Out
-        newEffect = -transactionData.amount - transactionData.fee;
-    }
-    const finalNewBalanceForAccount = newAccount.balance + newEffect;
-    await update(newAccountRef, { balance: finalNewBalanceForAccount });
 
     // --- Prepare and save the updated transaction ---
     const nowPHTString = getCurrentPHTISOString();
@@ -376,44 +388,22 @@ export async function updateCashTransaction(
     }
 
     const dataToSave: any = {
-        ...oldTransactionSnapshot.val(),
-        ...transactionData,
-        newBalance: finalNewBalanceForAccount,
+        ...oldTransaction, // Start with old data
+        ...transactionData, // Overwrite with new data
         transactionDate: transactionDateString,
         updatedAt: nowPHTString,
         updatedBy: { ...updatedBy, timestamp: nowPHTString },
     };
     
+    if (finalNewBalanceForAccount !== undefined) {
+        dataToSave.newBalance = finalNewBalanceForAccount;
+    }
+    
     delete dataToSave.datetime;
 
     await set(transactionRef, dataToSave);
 
-    const newTransaction: CashTransaction = { id, ...dataToSave, transactionDate: transactionDateString };
-    
-    return { oldTransaction, newTransaction };
-}
-
-export async function updateCashTransactionStatus(id: string, customerId: string): Promise<CashTransaction | null> {
-    const transactionRef = ref(db, `cashTransactions/${id}`);
-    const snapshot = await get(transactionRef);
-
-    if (snapshot.exists()) {
-        const transaction = snapshot.val();
-        if (transaction.customerId) {
-            return { id, ...transaction }; // Return existing transaction if already processed
-        }
-
-        const newStatus = transaction.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-        const updatedAt = getCurrentPHTISOString();
-        const updates = {
-            status: newStatus,
-            updatedAt,
-            customerId,
-        };
-        await update(transactionRef, updates);
-        return { ...transaction, ...updates, id };
-    }
-    return null;
+    return { id, ...dataToSave };
 }
 
 export async function deleteCashTransaction(id: string): Promise<CashTransaction | null> {
@@ -436,10 +426,33 @@ export async function deleteCashTransaction(id: string): Promise<CashTransaction
 // =======================
 // Image Upload Function
 // =======================
-export async function uploadReceiptImage(dataUrl: string, fileName: string): Promise<string> {
-    const imageRef = storageRef(storage, `cashio/scanned/${fileName}`);
-    const snapshot = await uploadString(imageRef, dataUrl, 'data_url');
-    const downloadURL = await getDownloadURL(snapshot.ref);
+export async function uploadTempReceiptImage(dataUrl: string, fileName: string): Promise<string> {
+    const path = `cashio/scanned/${fileName}`;
+    const imageRef = storageRef(storage, path);
+    await uploadString(imageRef, dataUrl, 'data_url');
+    return path; // Return the full path instead of download URL
+}
+
+export async function finalizeReceiptImage(tempPath: string, transactionType: 'Cash In' | 'Cash Out'): Promise<string> {
+    const finalFolder = transactionType === 'Cash In' ? 'cashin' : 'cashout';
+    const fileName = tempPath.split('/').pop();
+    const finalPath = `cashio/${finalFolder}/${fileName}`;
+    
+    const tempImageRef = storageRef(storage, tempPath);
+    const finalImageRef = storageRef(storage, finalPath);
+    
+    // Get the download URL of the temp file (which is the data)
+    const dataUrl = await getDownloadURL(tempImageRef);
+    
+    // Upload the data to the new location
+    await uploadString(finalImageRef, dataUrl, 'data_url');
+
+    // Get the download URL of the final file
+    const downloadURL = await getDownloadURL(finalImageRef);
+
+    // Delete the temporary file
+    await deleteObject(tempImageRef);
+
     return downloadURL;
 }
 
