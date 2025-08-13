@@ -214,7 +214,7 @@ export default function ScanImagePage() {
             queryParams.set('transactionType', transactionType);
         }
         
-        if (previewImage) {
+        if (previewImage && transactionType === 'Cash Out') {
             toast({ title: "Uploading receipt...", description: "Please wait." });
             const tempPath = await uploadTempReceiptImage(previewImage, `${extractedData.reference || Date.now()}.jpg`);
             queryParams.set('tempReceiptPath', tempPath);

@@ -4,7 +4,7 @@
 
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import { ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
@@ -436,24 +436,38 @@ export async function uploadTempReceiptImage(dataUrl: string, fileName: string):
 export async function finalizeReceiptImage(tempPath: string, transactionType: 'Cash In' | 'Cash Out'): Promise<string> {
     const finalFolder = transactionType === 'Cash In' ? 'cashin' : 'cashout';
     const fileName = tempPath.split('/').pop();
+    if (!fileName) {
+        throw new Error("Invalid tempPath provided. Cannot extract filename.");
+    }
     const finalPath = `cashio/${finalFolder}/${fileName}`;
     
     const tempImageRef = storageRef(storage, tempPath);
     const finalImageRef = storageRef(storage, finalPath);
     
-    // Get the download URL of the temp file (which is the data)
-    const dataUrl = await getDownloadURL(tempImageRef);
-    
-    // Upload the data to the new location
-    await uploadString(finalImageRef, dataUrl, 'data_url');
+    try {
+        // Get the bytes of the temp file
+        const imageBytes = await getBytes(tempImageRef);
+        
+        // Upload the bytes to the new location
+        await uploadString(finalImageRef, imageBytes.toString(), 'base64');
+        
+        // Get the download URL of the final file
+        const downloadURL = await getDownloadURL(finalImageRef);
 
-    // Get the download URL of the final file
-    const downloadURL = await getDownloadURL(finalImageRef);
+        // Delete the temporary file
+        await deleteObject(tempImageRef);
 
-    // Delete the temporary file
-    await deleteObject(tempImageRef);
-
-    return downloadURL;
+        return downloadURL;
+    } catch(error) {
+        console.error("Error finalizing receipt image:", error);
+        // If it fails, maybe the temp file doesn't exist. Try to get URL of final path if it was already moved.
+        try {
+            return await getDownloadURL(finalImageRef);
+        } catch (finalError) {
+             console.error("Could not retrieve URL from final path either:", finalError);
+             throw new Error("Failed to finalize and retrieve receipt image URL.");
+        }
+    }
 }
 
 // =======================
