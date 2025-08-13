@@ -4,7 +4,7 @@
 
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
+import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes, uploadBytes } from 'firebase/storage';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
@@ -445,22 +445,17 @@ export async function finalizeReceiptImage(tempPath: string, transactionType: 'C
     const finalImageRef = storageRef(storage, finalPath);
     
     try {
-        // Get the bytes of the temp file
         const imageBytes = await getBytes(tempImageRef);
         
-        // Upload the bytes to the new location
-        await uploadString(finalImageRef, imageBytes.toString(), 'base64');
+        await uploadBytes(finalImageRef, imageBytes);
         
-        // Get the download URL of the final file
         const downloadURL = await getDownloadURL(finalImageRef);
 
-        // Delete the temporary file
         await deleteObject(tempImageRef);
 
         return downloadURL;
     } catch(error) {
         console.error("Error finalizing receipt image:", error);
-        // If it fails, maybe the temp file doesn't exist. Try to get URL of final path if it was already moved.
         try {
             return await getDownloadURL(finalImageRef);
         } catch (finalError) {
