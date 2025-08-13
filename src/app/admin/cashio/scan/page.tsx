@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
-import { getCashTransactionByReference, getAccounts, uploadTempReceiptImage } from '@/lib/data';
+import { getCashTransactionByReference, getAccounts } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product, Account } from '@/lib/types';
 import Image from 'next/image';
@@ -28,7 +28,7 @@ interface ExtractedData {
     accountNumber?: string;
     datetime?: string;
     accountUsedId?: string;
-    tempReceiptPath?: string;
+    tempImageDataUri?: string;
     [key: string]: any;
 }
 
@@ -214,14 +214,12 @@ export default function ScanImagePage() {
             queryParams.set('transactionType', transactionType);
         }
         
-        if (previewImage && transactionType === 'Cash Out') {
-            toast({ title: "Uploading receipt...", description: "Please wait." });
-            const tempPath = await uploadTempReceiptImage(previewImage, `${extractedData.reference || Date.now()}.jpg`);
-            queryParams.set('tempReceiptPath', tempPath);
+        if (previewImage) {
+            localStorage.setItem('temp_receipt_image', previewImage);
         }
         
         Object.entries(extractedData).forEach(([key, value]) => {
-            if (key !== 'transactionType' && key !== 'tempReceiptPath' && value) {
+            if (key !== 'transactionType' && value) {
                 queryParams.set(key, String(value));
             }
         });

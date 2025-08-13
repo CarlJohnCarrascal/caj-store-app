@@ -4,8 +4,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, finalizeReceiptImage, uploadTempReceiptImage } from './data';
-import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './types';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, uploadReceiptImage } from './data';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './lib/types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
 
@@ -239,15 +239,17 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                         const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
                         let finalImageUrl = cashTx.receiptImageUrl || '';
                         
-                        if (cashTx.tempReceiptPath) {
-                            finalImageUrl = await finalizeReceiptImage(cashTx.tempReceiptPath, cashTx.transactionType);
+                        if (cashTx.tempImageDataUri) {
+                            const fileName = `${cashTx.reference || Date.now()}.jpg`;
+                            const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
+                            finalImageUrl = await uploadReceiptImage(cashTx.tempImageDataUri, folder, fileName);
                         }
                         
                         updatedTransaction = await updateCashTransaction(cashTx.id, { 
                             status: finalStatus,
                             customerId,
                             receiptImageUrl: finalImageUrl,
-                            tempReceiptPath: '', // Clear temp path after finalization
+                            tempImageDataUri: '', // Clear temp path after finalization
                         }, user);
 
                         await logActivity({
@@ -498,7 +500,7 @@ const cashTransactionSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
-  tempReceiptPath: z.string().optional(),
+  tempImageDataUri: z.string().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
@@ -509,11 +511,6 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
   if (!validatedFields.success) {
     console.error(validatedFields.error.flatten().fieldErrors);
     throw new Error('Invalid cash transaction data.');
-  }
-
-  const isDuplicate = await isReferenceNumberDuplicate(validatedFields.data.reference);
-  if (isDuplicate) {
-    throw new Error('DUPLICATE_REFERENCE');
   }
 
   const newTransaction = await addCashTransaction(validatedFields.data, user);

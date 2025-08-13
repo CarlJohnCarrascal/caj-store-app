@@ -79,7 +79,7 @@ export interface CashTransaction {
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed';
   receiptImageUrl?: string;
-  tempReceiptPath?: string;
+  tempImageDataUri?: string;
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
   createdBy?: ChangeTracker;

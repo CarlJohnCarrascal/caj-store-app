@@ -31,7 +31,7 @@ import { extractTransactionDetails } from '@/ai/flows/extract-transaction-detail
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
-import { getFeeThresholds, isReferenceNumberDuplicate, uploadTempReceiptImage } from '@/lib/data';
+import { getFeeThresholds, isReferenceNumberDuplicate } from '@/lib/data';
 import { calculateFee } from '@/lib/utils';
 
 
@@ -47,7 +47,7 @@ const formSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional(),
   datetime: z.string().optional(),
-  tempReceiptPath: z.string().optional(),
+  tempImageDataUri: z.string().optional(),
 });
 
 type CashTransactionFormValues = z.infer<typeof formSchema>;
@@ -84,6 +84,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
       reference: '',
       message: '',
       datetime: '',
+      tempImageDataUri: '',
       ...transaction,
       amount: transaction?.amount ? Number(transaction.amount) : 0,
       fee: transaction?.fee ? Number(transaction.fee) : 0,
