@@ -294,7 +294,11 @@ export async function processOrderAction(
 
     const isUnknownCustomer = customerId === 'unknown';
     const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
-    const changeToBalance = settlementType === 'add_to_balance' ? (amountTendered - total) : 0;
+    
+    // Correctly handle negative totals (from Cash Out)
+    const finalAmountTendered = total < 0 ? 0 : amountTendered;
+    const changeToBalance = settlementType === 'add_to_balance' ? (finalAmountTendered - total) : 0;
+
     const totalBalanceUpdate = changeToBalance - balanceUsed;
     
     const orderPayload: Omit<Order, 'id'> = {
@@ -304,9 +308,9 @@ export async function processOrderAction(
         subtotal,
         discount,
         total,
-        amountTendered,
+        amountTendered: finalAmountTendered,
         settlementType,
-        applyCustomerBalance,
+        applyCustomerBalance: applyCustomerBalance,
         createdAt: '', // Will be set by addOrder
     };
 
@@ -850,3 +854,5 @@ export async function regenerateCashIOReportsAction(user: { userId: string; user
     revalidatePath('/admin/reports/cashio');
     revalidatePath('/admin/activity-logs');
 }
+
+    
