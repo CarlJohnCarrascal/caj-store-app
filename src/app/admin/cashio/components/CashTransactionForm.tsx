@@ -47,7 +47,7 @@ const formSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional(),
   datetime: z.string().optional(),
-  tempImageDataUri: z.string().optional(),
+  fromScanned: z.boolean().optional(),
 });
 
 type CashTransactionFormValues = z.infer<typeof formSchema>;
@@ -84,7 +84,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
       reference: '',
       message: '',
       datetime: '',
-      tempImageDataUri: '',
+      fromScanned: false,
       ...transaction,
       amount: transaction?.amount ? Number(transaction.amount) : 0,
       fee: transaction?.fee ? Number(transaction.fee) : 0,
@@ -334,7 +334,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
             material: 'N/A',
             dimensions: 'N/A',
             originalTransactionId: newTransaction.id,
-            tempImageDataUri: newTransaction.tempImageDataUri,
+            fromScanned: newTransaction.fromScanned,
         };
         
         addToCart(transactionAsProduct, 1);

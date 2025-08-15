@@ -35,7 +35,7 @@ function NewCashTransactionForm() {
       reference: '',
       message: '',
       datetime: '',
-      tempImageDataUri: '',
+      fromScanned: false,
     };
 
     const lastUsedAccountId = typeof window !== 'undefined' ? localStorage.getItem('lastUsedAccountId') : null;
@@ -46,28 +46,13 @@ function NewCashTransactionForm() {
     // Override defaults with any parameters from the URL
     const extractedData: { [key: string]: any } = {};
     for (const [key, value] of searchParams.entries()) {
-      if (key === 'tempImageDataUri') continue;
-      extractedData[key] = value;
+      if (key === 'fromScanned') {
+        extractedData[key] = value === 'true';
+      } else {
+        extractedData[key] = value;
+      }
     }
     
-    if (typeof window !== 'undefined') {
-        const storedImageItem = localStorage.getItem('temp_receipt_image');
-        if (storedImageItem) {
-            try {
-                const receiptData = JSON.parse(storedImageItem);
-                if (receiptData && receiptData.image) {
-                     extractedData['tempImageDataUri'] = receiptData.image;
-                }
-            } catch (e) {
-                // Fallback for old string format
-                extractedData['tempImageDataUri'] = storedImageItem;
-            } finally {
-                 localStorage.removeItem('temp_receipt_image');
-            }
-        }
-    }
-
-
     setInitialTransaction({ ...transactionDefaults, ...extractedData });
 
   }, [searchParams]);

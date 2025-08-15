@@ -194,6 +194,7 @@ const processOrderSchema = z.object({
     settlementType: z.enum(['pay_order', 'add_to_balance']),
     userId: z.string(),
     userName: z.string(),
+    imageDataUri: z.string().optional(),
 });
 
 function getCostAndFeeFromDescription(description: string): { cost: number, fee: number } {
@@ -225,6 +226,7 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         settlementType,
         userId,
         userName,
+        imageDataUri
     } = validatedOrder.data;
 
     const user = { userId, userName };
@@ -239,17 +241,16 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                         const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
                         let finalImageUrl = cashTx.receiptImageUrl || '';
                         
-                        if (item.tempImageDataUri) {
+                        if (imageDataUri) {
                             const fileName = `${cashTx.reference || Date.now()}.jpg`;
                             const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-                            finalImageUrl = await finalizeReceiptImage(item.tempImageDataUri, folder, fileName);
+                            finalImageUrl = await finalizeReceiptImage(imageDataUri, folder, fileName);
                         }
                         
                         updatedTransaction = await updateCashTransaction(cashTx.id, { 
                             status: finalStatus,
                             customerId,
                             receiptImageUrl: finalImageUrl,
-                            tempImageDataUri: '', // Clear temp path after finalization
                         }, user);
 
                         await logActivity({
@@ -500,7 +501,7 @@ const cashTransactionSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
-  tempImageDataUri: z.string().optional(),
+  fromScanned: z.boolean().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {

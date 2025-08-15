@@ -28,7 +28,7 @@ interface ExtractedData {
     accountNumber?: string;
     datetime?: string;
     accountUsedId?: string;
-    tempImageDataUri?: string;
+    fromScanned?: boolean;
     [key: string]: any;
 }
 
@@ -210,6 +210,7 @@ export default function ScanImagePage() {
 
     try {
         const queryParams = new URLSearchParams();
+        queryParams.set('fromScanned', 'true');
         if(transactionType) {
             queryParams.set('transactionType', transactionType);
         }
