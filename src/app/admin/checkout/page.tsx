@@ -149,12 +149,13 @@ export default function CheckoutPage() {
         let imageDataUri: string | undefined = undefined;
         const scannedItem = cartItems.find(item => item.fromScanned);
         if (scannedItem) {
-            const storedItem = localStorage.getItem('temp_receipt_image');
-            if (storedItem) {
-                const parsed = JSON.parse(storedItem);
-                if (parsed && parsed.reference === scannedItem.description?.split(' | ')[0].replace('Ref: ','')) {
-                    imageDataUri = parsed.image;
-                    localStorage.removeItem('temp_receipt_image');
+            const storedItemRaw = localStorage.getItem('temp_receipt_image');
+            if (storedItemRaw) {
+                const storedItem = JSON.parse(storedItemRaw);
+                // Check if the reference from storage matches the one in the cart item description
+                const refInDescription = scannedItem.description?.split(' | ')[0].replace('Ref: ','');
+                if (storedItem && storedItem.reference === refInDescription) {
+                    imageDataUri = storedItem.image;
                 }
             }
         }
@@ -174,6 +175,11 @@ export default function CheckoutPage() {
           userName: user.displayName || user.email!,
           imageDataUri,
         });
+        
+        // Clean up local storage after successful processing
+        if (scannedItem) {
+            localStorage.removeItem('temp_receipt_image');
+        }
 
         toast({
           title: 'Order Processed!',
@@ -446,4 +452,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
