@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, finalizeReceiptImage, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, uploadReceiptImage, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './lib/types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
@@ -245,7 +245,7 @@ export async function processOrderAction(
                         if (imageDataUri) {
                             const fileName = `${cashTx.reference || Date.now()}.jpg`;
                             const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-                            finalImageUrl = await finalizeReceiptImage(imageDataUri, folder, fileName);
+                            finalImageUrl = await uploadReceiptImage(imageDataUri, folder, fileName);
                         }
                         
                         updatedTransaction = await updateCashTransaction(cashTx.id, { 

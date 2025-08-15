@@ -221,7 +221,7 @@ export default function ScanImagePage() {
                 reference: extractedData.reference,
                 date: new Date().toISOString(),
             };
-            localStorage.setItem('temp_receipt_image', JSON.stringify(receiptData));
+            localStorage.setItem('temp_receipt_image_' + extractedData.reference, JSON.stringify(receiptData));
         }
         
         Object.entries(extractedData).forEach(([key, value]) => {
