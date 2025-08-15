@@ -77,7 +77,7 @@ export interface CashTransaction {
   newBalance: number;
   transactionDate: string; // ISO string with timezone
   customerId?: string;
-  status: 'Delivered' | 'Available' | 'Claimed';
+  status: 'Delivered' | 'Available' | 'Claimed' | 'Processing';
   receiptImageUrl?: string;
   tempImageDataUri?: string;
   createdAt: string; // ISO string

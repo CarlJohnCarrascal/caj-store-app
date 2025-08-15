@@ -275,7 +275,8 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
         image: 'https://placehold.co/600x600.png',
         material: 'N/A',
         dimensions: 'N/A',
-        originalTransactionId: transaction.id
+        originalTransactionId: transaction.id,
+        tempImageDataUri: transaction.tempImageDataUri
     };
     
     addToCart(transactionAsProduct, 1);
@@ -518,6 +519,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                 <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Processing">Processing</SelectItem>
                   <SelectItem value="Delivered">Delivered</SelectItem>
                   <SelectItem value="Available">Available</SelectItem>
                   <SelectItem value="Claimed">Claimed</SelectItem>
@@ -573,6 +575,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                             {
                               'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
                               'bg-cyan-500 hover:bg-cyan-600': t.status === 'Available',
+                              'bg-amber-500 hover:bg-amber-600': t.status === 'Processing',
                             }
                           )}
                         >
@@ -653,6 +656,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                                 {
                                   'bg-green-600 hover:bg-green-700': t.status === 'Delivered' || t.status === 'Claimed',
                                   'bg-cyan-500 hover:bg-cyan-600': t.status === 'Available',
+                                  'bg-amber-500 hover:bg-amber-600': t.status === 'Processing',
                                 }
                               )}
                             >
@@ -827,6 +831,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                             {
                                 'bg-green-600 hover:bg-green-700': selectedTransaction.status === 'Delivered' || selectedTransaction.status === 'Claimed',
                                 'bg-cyan-500 hover:bg-cyan-600': selectedTransaction.status === 'Available',
+                                'bg-amber-500 hover:bg-amber-600': selectedTransaction.status === 'Processing',
                             }
                             )}
                         >
@@ -937,14 +942,14 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full">Close</Button>
-                {selectedTransaction.status === 'Available' && !(selectedTransaction.transactionType === 'Cash Out' && selectedTransaction.status === 'Claimed') && (
+                {(selectedTransaction.status === 'Available' || selectedTransaction.status === 'Processing') && (
                     <Button
                       onClick={() => selectedTransaction && handleAddToCart(selectedTransaction)}
                       className="w-full"
                     >
                       Add to Order
                     </Button>
-                  )}
+                )}
               </div>
             </DialogFooter>
           </DialogContent>

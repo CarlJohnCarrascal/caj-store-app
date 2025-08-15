@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateSalesReports, updateCashIOReport, updateCustomerReports, createUserProfile, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, uploadReceiptImage } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, finalizeReceiptImage, createUserProfile } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './lib/types';
 import { ref, get, update } from 'firebase/database';
 import { db } from './firebase';
@@ -169,8 +169,8 @@ export async function updateUserRoleAction(userId: string, role: 'admin' | 'user
     const targetUser = await getUserById(userId);
 
     await logActivity({
-        type: 'User',
-        action: 'RoleChange',
+        type: 'RoleChange',
+        action: 'Updated',
         details: `${targetUser?.name || 'user'} was assigned the role: ${role}.`,
         targetId: userId,
         ...updatedBy,
@@ -239,10 +239,10 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
                         const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
                         let finalImageUrl = cashTx.receiptImageUrl || '';
                         
-                        if (cashTx.tempImageDataUri) {
+                        if (item.tempImageDataUri) {
                             const fileName = `${cashTx.reference || Date.now()}.jpg`;
                             const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-                            finalImageUrl = await uploadReceiptImage(cashTx.tempImageDataUri, folder, fileName);
+                            finalImageUrl = await finalizeReceiptImage(item.tempImageDataUri, folder, fileName);
                         }
                         
                         updatedTransaction = await updateCashTransaction(cashTx.id, { 
@@ -492,7 +492,7 @@ const cashTransactionSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
   accountUsedId: z.string().min(1, 'Please select an account.'),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
-  status: z.enum(['Delivered', 'Available', 'Claimed']),
+  status: z.enum(['Delivered', 'Available', 'Claimed', 'Processing']),
   accountName: z.string().min(1, "Sender/Receiver's account name is required."),
   accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),
   amount: z.coerce.number().positive('Amount must be a positive number.'),

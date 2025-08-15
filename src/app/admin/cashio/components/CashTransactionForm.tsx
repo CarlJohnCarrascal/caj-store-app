@@ -39,7 +39,7 @@ const formSchema = z.object({
   transactionType: z.enum(['Cash In', 'Cash Out']),
   accountUsedId: z.string().min(1, 'Please select an account.'),
   paymentMethod: z.enum(['Gcash', 'Maya', 'Other']),
-  status: z.enum(['Delivered', 'Available', 'Claimed']),
+  status: z.enum(['Delivered', 'Available', 'Claimed', 'Processing']),
   accountName: z.string().min(1, "Sender/Receiver's account name is required."),
   accountNumber: z.string().min(1, "Sender/Receiver's account number is required."),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
@@ -76,7 +76,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
       transactionType: 'Cash In',
       accountUsedId: '',
       paymentMethod: 'Gcash',
-      status: 'Delivered',
+      status: 'Processing',
       accountName: '',
       accountNumber: '',
       amount: 0,
@@ -195,7 +195,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
                 const formTransactionType = data.transactionType === 'sent' ? 'Cash In' : 'Cash Out';
                 form.setValue('transactionType', formTransactionType, { shouldValidate: true });
                 if (formTransactionType === 'Cash In') {
-                  form.setValue('status', 'Delivered');
+                  form.setValue('status', 'Processing');
                 } else {
                   form.setValue('status', 'Available');
                 }
@@ -303,7 +303,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         }
 
         localStorage.setItem('lastUsedAccountId', data.accountUsedId);
-        const finalStatus = data.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+        const finalStatus = data.transactionType === 'Cash In' ? 'Processing' : 'Available';
         
         const formData = new FormData();
         const dataToSubmit = { ...data, status: finalStatus };
@@ -333,7 +333,8 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
             image: 'https://placehold.co/600x600.png',
             material: 'N/A',
             dimensions: 'N/A',
-            originalTransactionId: newTransaction.id
+            originalTransactionId: newTransaction.id,
+            tempImageDataUri: newTransaction.tempImageDataUri,
         };
         
         addToCart(transactionAsProduct, 1);
@@ -424,7 +425,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
                         onValueChange={(value) => {
                           field.onChange(value);
                           if (value === 'Cash In') {
-                            form.setValue('status', 'Delivered');
+                            form.setValue('status', 'Processing');
                           } else {
                             form.setValue('status', 'Available');
                           }

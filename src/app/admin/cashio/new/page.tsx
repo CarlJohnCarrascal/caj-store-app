@@ -27,7 +27,7 @@ function NewCashTransactionForm() {
     const transactionDefaults = {
       transactionType: 'Cash In',
       paymentMethod: 'Gcash',
-      status: 'Delivered',
+      status: 'Processing',
       accountName: '',
       accountNumber: '',
       amount: 0,
