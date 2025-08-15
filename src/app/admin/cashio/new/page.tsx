@@ -51,10 +51,19 @@ function NewCashTransactionForm() {
     }
     
     if (typeof window !== 'undefined') {
-        const storedImage = localStorage.getItem('temp_receipt_image');
-        if (storedImage) {
-            extractedData['tempImageDataUri'] = storedImage;
-            localStorage.removeItem('temp_receipt_image');
+        const storedImageItem = localStorage.getItem('temp_receipt_image');
+        if (storedImageItem) {
+            try {
+                const receiptData = JSON.parse(storedImageItem);
+                if (receiptData && receiptData.image) {
+                     extractedData['tempImageDataUri'] = receiptData.image;
+                }
+            } catch (e) {
+                // Fallback for old string format
+                extractedData['tempImageDataUri'] = storedImageItem;
+            } finally {
+                 localStorage.removeItem('temp_receipt_image');
+            }
         }
     }
 

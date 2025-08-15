@@ -214,8 +214,13 @@ export default function ScanImagePage() {
             queryParams.set('transactionType', transactionType);
         }
         
-        if (previewImage) {
-            localStorage.setItem('temp_receipt_image', previewImage);
+        if (previewImage && extractedData.reference) {
+            const receiptData = {
+                image: previewImage,
+                reference: extractedData.reference,
+                date: new Date().toISOString(),
+            };
+            localStorage.setItem('temp_receipt_image', JSON.stringify(receiptData));
         }
         
         Object.entries(extractedData).forEach(([key, value]) => {
