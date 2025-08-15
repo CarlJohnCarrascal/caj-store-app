@@ -148,12 +148,11 @@ export default function CheckoutPage() {
       try {
         let imageDataUri: string | undefined = undefined;
         const scannedItem = cartItems.find(item => item.fromScanned);
-        if (scannedItem?.originalTransactionId) {
+        if (scannedItem) {
             const storedItem = localStorage.getItem('temp_receipt_image');
             if (storedItem) {
                 const parsed = JSON.parse(storedItem);
-                const tx = await (await fetch(parsed.image)).json()
-                if (tx && tx.reference === scannedItem.description.split(' | ')[0].replace('Ref: ','')) {
+                if (parsed && parsed.reference === scannedItem.description?.split(' | ')[0].replace('Ref: ','')) {
                     imageDataUri = parsed.image;
                     localStorage.removeItem('temp_receipt_image');
                 }
@@ -447,3 +446,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

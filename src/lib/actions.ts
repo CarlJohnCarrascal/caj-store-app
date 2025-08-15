@@ -425,20 +425,18 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
 }
 
 export async function deleteCustomerAction(id: string, user: { userId: string, userName: string }) {
-    const deletedCustomer = await deleteCustomer(id);
-
-    if (deletedCustomer) {
-        await logActivity({
-            type: 'Customer',
-            action: 'Deleted',
-            details: `Customer "${deletedCustomer.name}" was deleted.`,
-            targetId: id,
-            ...user,
-        });
+    const orders = await getOrdersByCustomerId(id);
+    if (orders.length > 0) {
+        throw new Error('Cannot delete a customer with existing orders.');
     }
-
-    revalidatePath('/admin/customers');
-    revalidatePath('/admin/activity-logs');
+    const customerRef = ref(db, `customers/${id}`);
+    const snapshot = await get(customerRef);
+    if (snapshot.exists()) {
+        const deletedCustomer = { id, ...snapshot.val() };
+        await remove(customerRef);
+        return deletedCustomer;
+    }
+    return null;
 }
 
 
@@ -851,3 +849,4 @@ export async function regenerateCashIOReportsAction(user: { userId: string; user
     revalidatePath('/admin/reports/cashio');
     revalidatePath('/admin/activity-logs');
 }
+
