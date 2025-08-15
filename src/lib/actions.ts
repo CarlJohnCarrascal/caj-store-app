@@ -501,7 +501,7 @@ const cashTransactionSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
-  fromScanned: z.boolean().optional(),
+  fromScanned: z.coerce.boolean().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
