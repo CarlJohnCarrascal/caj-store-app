@@ -194,7 +194,6 @@ const processOrderSchema = z.object({
     settlementType: z.enum(['pay_order', 'add_to_balance']),
     userId: z.string(),
     userName: z.string(),
-    imageDataUri: z.string().optional(),
 });
 
 function getCostAndFeeFromDescription(description: string): { cost: number, fee: number } {
@@ -206,7 +205,10 @@ function getCostAndFeeFromDescription(description: string): { cost: number, fee:
 }
 
 
-export async function processOrderAction(orderData: z.infer<typeof processOrderSchema>) {
+export async function processOrderAction(
+    orderData: z.infer<typeof processOrderSchema>,
+    imageDataUri?: string | null
+) {
     const validatedOrder = processOrderSchema.safeParse(orderData);
     if (!validatedOrder.success) {
         console.error(validatedOrder.error.flatten().fieldErrors);
@@ -226,7 +228,6 @@ export async function processOrderAction(orderData: z.infer<typeof processOrderS
         settlementType,
         userId,
         userName,
-        imageDataUri
     } = validatedOrder.data;
 
     const user = { userId, userName };
@@ -849,4 +850,3 @@ export async function regenerateCashIOReportsAction(user: { userId: string; user
     revalidatePath('/admin/reports/cashio');
     revalidatePath('/admin/activity-logs');
 }
-

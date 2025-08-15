@@ -146,7 +146,7 @@ export default function CheckoutPage() {
 
     startTransition(async () => {
       try {
-        let imageDataUri: string | undefined = undefined;
+        let imageDataUri: string | undefined | null = undefined;
         const scannedItem = cartItems.find(item => item.fromScanned);
         if (scannedItem) {
             const storedItemRaw = localStorage.getItem('temp_receipt_image');
@@ -159,8 +159,8 @@ export default function CheckoutPage() {
                 }
             }
         }
-
-        await processOrderAction({
+        
+        const orderPayload = {
           customerId: customerForAction.id,
           customerName: customerForAction.name,
           items: cartItems,
@@ -173,8 +173,9 @@ export default function CheckoutPage() {
           settlementType,
           userId: user.uid,
           userName: user.displayName || user.email!,
-          imageDataUri,
-        });
+        };
+
+        await processOrderAction(orderPayload, imageDataUri);
         
         // Clean up local storage after successful processing
         if (scannedItem) {
