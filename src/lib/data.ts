@@ -4,7 +4,7 @@
 
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
-import { ref as storageRef, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
@@ -426,9 +426,10 @@ export async function deleteCashTransaction(id: string): Promise<CashTransaction
 // =======================
 // Image Upload Function
 // =======================
-export async function uploadReceiptImage(dataUrl: string, folder: 'cashin' | 'cashout' | 'scanned', fileName: string): Promise<string> {
+export async function finalizeReceiptImage(dataUrl: string, folder: 'cashin' | 'cashout', fileName: string): Promise<string> {
     const path = `cashio/${folder}/${fileName}`;
     const imageRef = storageRef(storage, path);
+    // Directly upload the data URL string
     const snapshot = await uploadString(imageRef, dataUrl, 'data_url');
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
@@ -1107,3 +1108,4 @@ export async function regenerateCashIOReports(): Promise<void> {
     const reportsRef = ref(db, 'cashIOReports');
     await set(reportsRef, finalReportObject);
 }
+

@@ -4,9 +4,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, uploadReceiptImage, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './lib/types';
-import { ref, get, update } from 'firebase/database';
+import { ref, get, update, remove } from 'firebase/database';
 import { db } from './firebase';
 
 const productSchema = z.object({
@@ -207,7 +207,7 @@ function getCostAndFeeFromDescription(description: string): { cost: number, fee:
 
 export async function processOrderAction(
     orderData: z.infer<typeof processOrderSchema>,
-    imageDataUri?: string | null
+    imageDataUris: { image: string, reference: string }[] = []
 ) {
     const validatedOrder = processOrderSchema.safeParse(orderData);
     if (!validatedOrder.success) {
@@ -242,10 +242,13 @@ export async function processOrderAction(
                         const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
                         let finalImageUrl = cashTx.receiptImageUrl || '';
                         
-                        if (imageDataUri) {
-                            const fileName = `${cashTx.reference || Date.now()}.jpg`;
-                            const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-                            finalImageUrl = await uploadReceiptImage(imageDataUri, folder, fileName);
+                        if (item.fromScanned) {
+                            const matchingImage = imageDataUris.find(img => img.reference === cashTx.reference);
+                            if (matchingImage) {
+                                const fileName = `${cashTx.reference || Date.now()}.jpg`;
+                                const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
+                                finalImageUrl = await finalizeReceiptImage(matchingImage.image, folder, fileName);
+                            }
                         }
                         
                         updatedTransaction = await updateCashTransaction(cashTx.id, { 
@@ -265,7 +268,8 @@ export async function processOrderAction(
                 }
                 break;
             case 'E-loading': {
-                const { fee } = getCostAndFeeFromDescription(item.description || '');
+                const description = typeof item.description === 'string' ? item.description : '';
+                const { fee } = getCostAndFeeFromDescription(description);
                 const serviceType = item.name.replace('E-loading: ', '').trim();
                 const totalCost = item.price - fee;
                 await updateEloadingReports({ serviceType, cost: totalCost, fee });
@@ -278,6 +282,7 @@ export async function processOrderAction(
                 break;
             }
             case 'Other Service': {
+                const description = typeof item.description === 'string' ? item.description : '';
                 const { fee } = getCostAndFeeFromDescription(item.description || '');
                 const totalCost = item.price - fee;
                 await updateOtherServiceReports({ cost: totalCost, fee });
@@ -297,7 +302,19 @@ export async function processOrderAction(
     
     // Correctly handle negative totals (from Cash Out)
     const finalAmountTendered = total < 0 ? 0 : amountTendered;
-    const changeToBalance = settlementType === 'add_to_balance' ? (finalAmountTendered - total) : 0;
+    let changeToBalance = 0;
+
+    if (settlementType === 'add_to_balance') {
+      if (total < 0) {
+        // If it's a cash out, the "balance" is what the store owes the customer, which is a negative value for the customer's debt.
+        // We shouldn't add negative value to balance, it should be paid out.
+        // This case is generally handled by the pay_order button being primary.
+        // But if `add_to_balance` is called, we assume it's a debt to the store.
+        changeToBalance = Math.abs(total);
+      } else {
+        changeToBalance = finalAmountTendered - total;
+      }
+    }
 
     const totalBalanceUpdate = changeToBalance - balanceUsed;
     
@@ -430,18 +447,18 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
 }
 
 export async function deleteCustomerAction(id: string, user: { userId: string, userName: string }) {
-    const orders = await getOrdersByCustomerId(id);
-    if (orders.length > 0) {
-        throw new Error('Cannot delete a customer with existing orders.');
+    const deletedCustomer = await deleteCustomer(id);
+    if(deletedCustomer) {
+        await logActivity({
+            type: 'Customer',
+            action: 'Deleted',
+            details: `Customer "${deletedCustomer.name}" was deleted.`,
+            targetId: id,
+            ...user,
+        });
     }
-    const customerRef = ref(db, `customers/${id}`);
-    const snapshot = await get(customerRef);
-    if (snapshot.exists()) {
-        const deletedCustomer = { id, ...snapshot.val() };
-        await remove(customerRef);
-        return deletedCustomer;
-    }
-    return null;
+    revalidatePath('/admin/customers');
+    revalidatePath('/admin/activity-logs');
 }
 
 
@@ -552,16 +569,6 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
   }
   const oldTransaction: CashTransaction = { id, ...oldTransactionSnapshot.val() };
   
-  // Create a full transaction object for report reversal by merging old data with new
-  const fullNewDataForReport: CashTransaction = {
-      ...oldTransaction,
-      ...validatedFields.data,
-      amount: validatedFields.data.amount ?? oldTransaction.amount,
-      fee: validatedFields.data.fee ?? oldTransaction.fee,
-      // Ensure other required fields are present
-  };
-
-
   const newTransaction = await updateCashTransaction(id, validatedFields.data, user);
   
   // Reverse old transaction from reports
