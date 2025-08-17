@@ -798,7 +798,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                   return "Invalid Date";
                 })()}
                 <br />
-                Ref: {selectedTransaction.reference}
+                <span className="font-semibold text-base text-foreground">{selectedTransaction.reference}</span>
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">
