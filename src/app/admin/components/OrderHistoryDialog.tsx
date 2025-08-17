@@ -46,6 +46,11 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
     }
     return items.filter(item => item.category === category);
   }
+  
+  const formatDescription = (description?: string): string => {
+    if (!description) return '-';
+    return description.split('(')[0].trim();
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -90,6 +95,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                           <TableHeader>
                             <TableRow>
                               <TableHead>Item</TableHead>
+                              {(category === 'E-loading' || category === 'Other Service') && <TableHead>Description</TableHead>}
                               {category === 'Printing' && <TableHead>Dimensions</TableHead>}
                               <TableHead>Quantity</TableHead>
                               <TableHead className="text-right">Subtotal</TableHead>
@@ -99,6 +105,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                             {relevantItems.map(item => (
                               <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
+                                {(category === 'E-loading' || category === 'Other Service') && <TableCell>{formatDescription(item.description)}</TableCell>}
                                 {category === 'Printing' && <TableCell>{item.dimensions !== 'N/A' ? item.dimensions : '-'}</TableCell>}
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
