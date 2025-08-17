@@ -116,6 +116,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
   const [viewMode, setViewMode] = React.useState<'grid' | 'grid'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<any | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = React.useState(false);
   const { toast } = useToast();
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
   const { user, loading: authLoading } = useAuth();
@@ -810,12 +811,21 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                  {selectedTransaction.receiptImageUrl && (
                     <div>
                         <h4 className="font-semibold mb-2 text-muted-foreground">Receipt</h4>
-                        <a href={selectedTransaction.receiptImageUrl} target="_blank" rel="noopener noreferrer" className="block relative aspect-video bg-muted rounded-md overflow-hidden border">
-                            <Image src={selectedTransaction.receiptImageUrl} alt="Transaction Receipt" layout="fill" objectFit="contain" />
+                        <div
+                            className="relative h-32 w-32 rounded-md overflow-hidden border-2 border-dashed cursor-pointer"
+                            onClick={() => setIsImageModalOpen(true)}
+                        >
+                            <Image
+                                src={selectedTransaction.receiptImageUrl}
+                                alt="Transaction Receipt"
+                                fill
+                                sizes="128px"
+                                className="object-cover"
+                            />
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                                 <FileImage className="h-8 w-8 text-white" />
                             </div>
-                        </a>
+                        </div>
                     </div>
                 )}
                 <div className="space-y-2">
@@ -960,6 +970,24 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {selectedTransaction?.receiptImageUrl && (
+          <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+            <DialogContent className="max-w-4xl h-[90vh]">
+              <DialogHeader>
+                  <DialogTitle>Receipt Preview</DialogTitle>
+              </DialogHeader>
+              <div className="relative w-full h-full">
+                <Image
+                    src={selectedTransaction.receiptImageUrl}
+                    alt="Transaction Receipt"
+                    fill
+                    className="object-contain"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
       )}
     </div>
   );

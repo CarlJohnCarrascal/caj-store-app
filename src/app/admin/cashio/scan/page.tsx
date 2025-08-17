@@ -58,6 +58,7 @@ export default function ScanImagePage() {
   const [isClaimed, setIsClaimed] = useState<boolean>(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchAccounts() {
@@ -511,6 +512,26 @@ export default function ScanImagePage() {
                  </DialogHeader>
                  <ScrollArea className="max-h-[60vh] -mx-6">
                     <div className="space-y-6 py-4 px-6">
+                        {duplicateTransaction.receiptImageUrl && (
+                            <div>
+                                <h4 className="font-semibold mb-2 text-muted-foreground">Receipt</h4>
+                                <div
+                                    className="relative h-32 w-32 rounded-md overflow-hidden border-2 border-dashed cursor-pointer"
+                                    onClick={() => setIsImageModalOpen(true)}
+                                >
+                                    <Image
+                                        src={duplicateTransaction.receiptImageUrl}
+                                        alt="Transaction Receipt"
+                                        fill
+                                        sizes="128px"
+                                        className="object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                        <FileImage className="h-8 w-8 text-white" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
                                 <span className="text-muted-foreground">Amount</span>
@@ -607,6 +628,24 @@ export default function ScanImagePage() {
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
                 </DialogFooter>
+            </DialogContent>
+          </Dialog>
+      )}
+
+      {duplicateTransaction?.receiptImageUrl && (
+          <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+            <DialogContent className="max-w-4xl h-[90vh]">
+              <DialogHeader>
+                  <DialogTitle>Receipt Preview</DialogTitle>
+              </DialogHeader>
+              <div className="relative w-full h-full">
+                <Image
+                    src={duplicateTransaction.receiptImageUrl}
+                    alt="Transaction Receipt"
+                    fill
+                    className="object-contain"
+                />
+              </div>
             </DialogContent>
           </Dialog>
       )}
