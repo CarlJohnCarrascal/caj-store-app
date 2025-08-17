@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -81,7 +81,6 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                              <Button asChild variant="link" size="sm" className="p-0 h-auto z-10 relative">
                                 <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()}>View Full</Link>
                              </Button>
-                             <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                           </div>
                        </div>
                     </AccordionTrigger>
@@ -91,6 +90,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                           <TableHeader>
                             <TableRow>
                               <TableHead>Item</TableHead>
+                              {category === 'Printing' && <TableHead>Dimensions</TableHead>}
                               <TableHead>Quantity</TableHead>
                               <TableHead className="text-right">Subtotal</TableHead>
                             </TableRow>
@@ -99,6 +99,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                             {relevantItems.map(item => (
                               <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
+                                {category === 'Printing' && <TableCell>{item.dimensions !== 'N/A' ? item.dimensions : '-'}</TableCell>}
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
                               </TableRow>
