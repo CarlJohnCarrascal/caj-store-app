@@ -67,6 +67,8 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                 {orders.map((order) => {
                   const relevantItems = filterItemsByCategory(order.items);
                   if (relevantItems.length === 0) return null;
+                  
+                  const relevantTotal = relevantItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
                   return (
                   <AccordionItem value={order.id} key={order.id}>
@@ -74,7 +76,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                        <div className="grid grid-cols-4 items-center w-full text-sm text-left pr-4">
                           <span>{format(new Date(order.createdAt), 'PPp')}</span>
                           <span className="truncate">{order.customerName}</span>
-                          <span className="font-medium text-right">₱{order.total.toFixed(2)}</span>
+                          <span className="font-medium text-right">₱{relevantTotal.toFixed(2)}</span>
                           <div className="flex justify-end items-center gap-2">
                              <Button asChild variant="link" size="sm" className="p-0 h-auto z-10 relative">
                                 <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()}>View Full</Link>
