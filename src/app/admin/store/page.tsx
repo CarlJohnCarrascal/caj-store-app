@@ -10,7 +10,7 @@ import ProductListItem from '@/components/ProductListItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, LayoutGrid, List, SlidersHorizontal, ScanBarcode } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ScanBarcode, History } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import OrderHistoryDialog from '../components/OrderHistoryDialog';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -56,6 +57,7 @@ export default function StorePage() {
   
   const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   useEffect(() => {
     // Load from cache first
@@ -188,6 +190,10 @@ export default function StorePage() {
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Products</h1>
         <div className="flex w-full md:w-auto gap-2">
+           <Button variant="outline" onClick={() => setIsHistoryOpen(true)}>
+             <History className="h-5 w-5 md:mr-2" />
+             <span className="hidden md:inline">History</span>
+           </Button>
           <div className="relative flex-grow">
             <Input
               placeholder="Search or scan barcode..."
@@ -348,6 +354,12 @@ export default function StorePage() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    
+    <OrderHistoryDialog 
+        isOpen={isHistoryOpen} 
+        onOpenChange={setIsHistoryOpen}
+        category="Store"
+    />
     </>
   );
 }

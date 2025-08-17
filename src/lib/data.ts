@@ -3,7 +3,7 @@
 'use server';
 
 import { db, storage } from './firebase';
-import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
+import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction, limitToLast } from 'firebase/database';
 import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
 import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
@@ -501,7 +501,7 @@ export async function updateCollection(updatedCollection: Omit<Collection, 'cust
     const { id, ...data } = updatedCollection;
     const collectionRef = ref(db, `collections/${id}`);
     const snapshot = await get(collectionRef);
-    if(snapshot.exists()) {
+    if(snapshot.exists()){
       const existingData = snapshot.val();
       const dataToSave = {
         ...existingData,
@@ -566,6 +566,28 @@ export async function getOrdersByCustomerId(customerId: string): Promise<Order[]
     const orders = snapshotToArray<Order>(snapshot);
     const ordersWithDates = orders.map(order => ({ ...order, createdAt: order.createdAt }));
     return ordersWithDates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function getRecentOrdersByCategory(category: string, limit: number = 20): Promise<Order[]> {
+    const ordersRef = ref(db, 'orders');
+    const q = query(ordersRef, limitToLast(limit * 5)); // Fetch more to filter client-side
+    const snapshot = await get(q);
+    if (!snapshot.exists()) {
+        return [];
+    }
+    
+    const allRecentOrders = snapshotToArray<Order>(snapshot);
+    
+    const filteredOrders = allRecentOrders.filter(order => {
+        if (category === 'Store') {
+            return order.items.some(item => !['Printing', 'E-loading', 'Other Service', 'CashIO', 'Financial'].includes(item.category));
+        }
+        return order.items.some(item => item.category === category);
+    });
+
+    return filteredOrders
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
 }
 
 
@@ -780,8 +802,10 @@ export async function updateSalesReports(order: Order) {
 
   for (const item of order.items) {
     let category = 'Store'; // Default category
-    if (['CashIO', 'Printing', 'E-loading', 'Other Service'].includes(item.category)) {
+    if (['Printing', 'E-loading', 'Other Service'].includes(item.category)) {
       category = item.category;
+    } else if (item.category === 'CashIO') {
+      category = 'CashIO';
     }
     servicesInOrder.add(category);
 

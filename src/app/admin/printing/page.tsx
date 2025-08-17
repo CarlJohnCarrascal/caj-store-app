@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
-import { Hash, Ruler, ScanLine, Trash2, Plus, Minus } from 'lucide-react';
+import { Hash, Ruler, ScanLine, Trash2, Plus, Minus, History } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import OrderHistoryDialog from '../components/OrderHistoryDialog';
 
 const printingServices = [
   "Xerox",
@@ -34,6 +35,7 @@ export default function PrintingPage() {
   const [quantity, setQuantity] = useState('1');
   const [size, setSize] = useState('');
   const [pricePerItem, setPricePerItem] = useState('');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const printingCartItems = cartItems.filter(item => item.category === 'Printing');
 
@@ -98,6 +100,13 @@ export default function PrintingPage() {
 
   return (
     <div className="space-y-8">
+       <div className="flex justify-end">
+          <Button variant="outline" onClick={() => setIsHistoryOpen(true)}>
+             <History className="mr-2 h-4 w-4" />
+             View History
+          </Button>
+      </div>
+
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -268,6 +277,12 @@ export default function PrintingPage() {
             </CardContent>
         </Card>
       )}
+
+      <OrderHistoryDialog 
+        isOpen={isHistoryOpen} 
+        onOpenChange={setIsHistoryOpen}
+        category="Printing"
+      />
     </div>
   );
 }
