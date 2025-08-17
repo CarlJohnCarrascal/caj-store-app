@@ -60,7 +60,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { deleteCashTransactionAction } from '@/lib/actions';
-import { getStoreData, setStoreData, deleteItem, getReportData } from '@/lib/offline';
+import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 import Image from 'next/image';
 
 
@@ -413,7 +413,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-red-600">
                 <ArrowDown className="h-5 w-5" />
-                <span className="font-semibold text-lg">₱{(overallReport?.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+ <span className="font-semibold text-xl">₱{(overallReport?.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex items-center gap-2 text-green-600">
                 <ArrowUp className="h-5 w-5" />
@@ -787,7 +787,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                 <span>{selectedTransaction.transactionType}</span>
               </DialogTitle>
               <DialogDescription>
-                Transaction Date: {(() => {
+                {(() => {
                   if (!isMounted || !selectedTransaction.transactionDate) return 'Loading date...';
                   try {
                     const date = new Date(selectedTransaction.transactionDate);
@@ -798,7 +798,11 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                   return "Invalid Date";
                 })()}
                 <br />
-                <span className="font-semibold text-base text-foreground">{selectedTransaction.reference}</span>
+                <span className="font-bold text-xl text-base text-foreground">
+                    {(selectedTransaction.reference && selectedTransaction.reference.length === 13)
+                    ? `${selectedTransaction.reference.slice(0, 4)}-${selectedTransaction.reference.slice(4, 7)}-${selectedTransaction.reference.slice(7)}`
+                    : selectedTransaction.reference}
+                </span>
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">
