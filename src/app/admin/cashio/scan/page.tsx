@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
 import { getCashTransactionByReference, getAccounts } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
-import { Product, Account } from '@/lib/types';
+import { Product, Account, CashTransaction } from '@/lib/types';
 import Image from 'next/image';
 
 type TransactionType = 'Cash In' | 'Cash Out';
@@ -48,7 +48,7 @@ export default function ScanImagePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [rawExtractionResult, setRawExtractionResult] = useState<string | null>(null);
-  const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
+  const [duplicateTransaction, setDuplicateTransaction] = useState<CashTransaction | null>(null);
   const [isClaimed, setIsClaimed] = useState<boolean>(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
@@ -119,7 +119,7 @@ export default function ScanImagePage() {
     setIsProcessing(true);
     setExtractedData(null);
     setRawExtractionResult(null);
-    setIsDuplicate(null);
+    setDuplicateTransaction(null);
     setIsClaimed(false);
 
     try {
@@ -159,13 +159,13 @@ export default function ScanImagePage() {
         
         if (data.reference) {
             const duplicateTx = await getCashTransactionByReference(data.reference);
-            setIsDuplicate(!!duplicateTx);
+            setDuplicateTransaction(duplicateTx);
 
             if (duplicateTx && transactionType === 'Cash Out' && duplicateTx.status === 'Claimed') {
                 setIsClaimed(true);
             }
         } else {
-            setIsDuplicate(false);
+            setDuplicateTransaction(null);
         }
         
         toast({ title: 'Extraction Successful', description: 'Review the extracted details below.' });
@@ -281,13 +281,13 @@ export default function ScanImagePage() {
     setTransactionType(null);
     setExtractedData(null);
     setRawExtractionResult(null);
-    setIsDuplicate(null);
+    setDuplicateTransaction(null);
     setPreviewImage(null);
     setIsClaimed(false);
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const canAddToOrder = isDuplicate && !isClaimed && transactionType !== 'Cash In';
+  const canAddToOrder = !!duplicateTransaction && !isClaimed && transactionType !== 'Cash In';
 
 
   return (
@@ -404,7 +404,7 @@ export default function ScanImagePage() {
 
                 {!isProcessing && (
                     <>
-                        {isDuplicate !== null && (
+                        {duplicateTransaction !== null ? (
                              isClaimed ? (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />
@@ -414,17 +414,24 @@ export default function ScanImagePage() {
                                     </AlertDescription>
                                 </Alert>
                             ) : (
-                                <Alert variant={isDuplicate ? "destructive" : "default"}>
-                                    {isDuplicate ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                                    <AlertTitle>{isDuplicate ? "Transaction Found" : "New Transaction"}</AlertTitle>
+                                <Alert variant="destructive">
+                                    <XCircle className="h-4 w-4" />
+                                    <AlertTitle>Transaction Found</AlertTitle>
                                     <AlertDescription>
-                                        {isDuplicate
-                                            ? "This reference number already exists in your records."
-                                            : "This reference number appears to be new."
-                                        }
+                                        This reference number already exists in your records.
                                     </AlertDescription>
                                 </Alert>
                             )
+                        ) : (
+                           extractedData && (
+                            <Alert>
+                                <CheckCircle className="h-4 w-4" />
+                                <AlertTitle>New Transaction</AlertTitle>
+                                <AlertDescription>
+                                    This reference number appears to be new.
+                                </AlertDescription>
+                            </Alert>
+                           )
                         )}
 
                         <div className="space-y-2 rounded-md border p-4 text-sm">
@@ -446,9 +453,17 @@ export default function ScanImagePage() {
                         {canAddToOrder ? (
                             <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
                         ) : (
-                            <Button className="w-full" size="lg" onClick={submitTransaction} disabled={isDuplicate || isProcessing}>
+                            <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
                                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
                                 Add Transaction
+                            </Button>
+                        )}
+                        {duplicateTransaction && (
+                             <Button asChild variant="secondary" className="w-full">
+                                <Link href={`/admin/cashio/edit/${duplicateTransaction.id}`} target="_blank">
+                                    <Info className="mr-2 h-4 w-4" />
+                                    View Existing Transaction Details
+                                </Link>
                             </Button>
                         )}
                     </>
