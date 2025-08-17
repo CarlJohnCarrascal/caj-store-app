@@ -634,11 +634,11 @@ export default function ScanImagePage() {
 
       {duplicateTransaction?.receiptImageUrl && (
           <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-            <DialogContent className="max-w-4xl h-[90vh] p-0">
-               <DialogHeader className="p-6">
-                  <DialogTitle>Receipt Preview</DialogTitle>
+            <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
+              <DialogHeader className="p-6 pb-0 flex-shrink-0">
+                <DialogTitle>Receipt Preview</DialogTitle>
               </DialogHeader>
-              <div className="relative w-full h-full">
+              <div className="relative flex-1 w-full h-full p-6 pt-2">
                 <Image
                     src={duplicateTransaction.receiptImageUrl}
                     alt="Transaction Receipt"
