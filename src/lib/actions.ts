@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './lib/types';
 import { ref, get, update, remove } from 'firebase/database';
 import { db } from './firebase';
@@ -244,7 +244,6 @@ export async function processOrderAction(
                         
                         if (item.fromScanned) {
                             const matchingImage = imageDataUris.find(img => img.reference === cashTx.reference);
-                            console.log("log server match image ", matchingImage);
                             if (matchingImage) {
                                 const fileName = `${cashTx.reference || Date.now()}.jpg`;
                                 const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
@@ -306,15 +305,7 @@ export async function processOrderAction(
     let changeToBalance = 0;
 
     if (settlementType === 'add_to_balance') {
-      if (total < 0) {
-        // If it's a cash out, the "balance" is what the store owes the customer, which is a negative value for the customer's debt.
-        // We shouldn't add negative value to balance, it should be paid out.
-        // This case is generally handled by the pay_order button being primary.
-        // But if `add_to_balance` is called, we assume it's a debt to the store.
-        changeToBalance = Math.abs(total);
-      } else {
-        changeToBalance = finalAmountTendered - total;
-      }
+      changeToBalance = finalAmountTendered - total;
     }
 
     const totalBalanceUpdate = changeToBalance - balanceUsed;
@@ -639,6 +630,26 @@ export async function deleteCashTransactionAction(id: string, user: { userId: st
     revalidatePath('/admin/reports/cashio');
 }
 
+export async function deleteReceiptImageAction(transactionId: string, user: { userId: string, userName:string }) {
+  const transaction = await getCashTransactionById(transactionId);
+  if (!transaction || !transaction.receiptImageUrl) {
+    throw new Error("No receipt image found for this transaction.");
+  }
+
+  await deleteReceiptImage(transactionId, transaction.receiptImageUrl);
+
+  await logActivity({
+    type: 'CashIO',
+    action: 'Updated',
+    details: `Receipt image for transaction Ref: ${transaction.reference} was deleted.`,
+    targetId: transactionId,
+    ...user,
+  });
+  
+  revalidatePath(`/admin/cashio/edit/${transactionId}`);
+  revalidatePath('/admin/activity-logs');
+}
+
 const collectionSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     value: z.string().min(1, 'Value is required'),
@@ -862,5 +873,3 @@ export async function regenerateCashIOReportsAction(user: { userId: string; user
     revalidatePath('/admin/reports/cashio');
     revalidatePath('/admin/activity-logs');
 }
-
-    

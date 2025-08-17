@@ -435,6 +435,19 @@ export async function finalizeReceiptImage(dataUrl: string, folder: 'cashin' | '
     return downloadURL;
 }
 
+export async function deleteReceiptImage(transactionId: string, imageUrl: string): Promise<void> {
+    // 1. Delete from storage
+    const imageStorageRef = storageRef(storage, imageUrl);
+    await deleteObject(imageStorageRef);
+
+    // 2. Remove from database
+    const transactionRef = ref(db, `cashTransactions/${transactionId}`);
+    await update(transactionRef, {
+        receiptImageUrl: null
+    });
+}
+
+
 // =======================
 // Collection Functions
 // =======================
@@ -1108,4 +1121,3 @@ export async function regenerateCashIOReports(): Promise<void> {
     const reportsRef = ref(db, 'cashIOReports');
     await set(reportsRef, finalReportObject);
 }
-
