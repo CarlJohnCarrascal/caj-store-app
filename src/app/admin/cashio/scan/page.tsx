@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -18,6 +18,12 @@ import { getCashTransactionByReference, getAccounts } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product, Account, CashTransaction } from '@/lib/types';
 import Image from 'next/image';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { format } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 type TransactionType = 'Cash In' | 'Cash Out';
 
@@ -51,6 +57,7 @@ export default function ScanImagePage() {
   const [duplicateTransaction, setDuplicateTransaction] = useState<CashTransaction | null>(null);
   const [isClaimed, setIsClaimed] = useState<boolean>(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchAccounts() {
@@ -459,12 +466,10 @@ export default function ScanImagePage() {
                             </Button>
                         )}
                         {duplicateTransaction && (
-                             <Button asChild variant="secondary" className="w-full">
-                                <Link href={`/admin/cashio/edit/${duplicateTransaction.id}`} target="_blank">
-                                    <Info className="mr-2 h-4 w-4" />
-                                    View Existing Transaction Details
-                                </Link>
-                            </Button>
+                             <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}>
+                                 <Info className="mr-2 h-4 w-4" />
+                                 View Existing Transaction Details
+                             </Button>
                         )}
                     </>
                 )}
@@ -472,6 +477,92 @@ export default function ScanImagePage() {
           )}
         </CardContent>
       </Card>
+      
+      {duplicateTransaction && (
+          <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+            <DialogContent className="sm:max-w-md">
+                 <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        {duplicateTransaction.transactionType === 'Cash In' ? (
+                        <ArrowUp className="h-6 w-6 text-green-600" />
+                        ) : (
+                        <ArrowDown className="h-6 w-6 text-red-600" />
+                        )}
+                        <span>{duplicateTransaction.transactionType}</span>
+                    </DialogTitle>
+                     <DialogDescription>
+                        {(() => {
+                        if (!duplicateTransaction.transactionDate) return 'Loading date...';
+                        try {
+                            const date = new Date(duplicateTransaction.transactionDate);
+                            if (!isNaN(date.getTime())) {
+                            return format(date, 'PPpp');
+                            }
+                        } catch(e) {}
+                        return "Invalid Date";
+                        })()}
+                        <br />
+                        <span className="font-bold text-xl text-base text-foreground">
+                            {(duplicateTransaction.reference && duplicateTransaction.reference.length === 13)
+                            ? `${duplicateTransaction.reference.slice(0, 4)}-${duplicateTransaction.reference.slice(4, 7)}-${duplicateTransaction.reference.slice(7)}`
+                            : duplicateTransaction.reference}
+                        </span>
+                    </DialogDescription>
+                 </DialogHeader>
+                 <ScrollArea className="max-h-[60vh] -mx-6">
+                    <div className="space-y-6 py-4 px-6">
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
+                                <span className="text-muted-foreground">Amount</span>
+                                <p className="text-2xl font-bold break-all">
+                                ₱{duplicateTransaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                            </div>
+                            <div className="flex justify-between items-center text-sm px-1">
+                                <span className="text-muted-foreground">Fee</span>
+                                <span>₱{duplicateTransaction.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm px-1">
+                                <span className="text-muted-foreground">Status</span>
+                                <Badge
+                                    variant={'default'}
+                                    className={cn(
+                                    {
+                                        'bg-green-600 hover:bg-green-700': duplicateTransaction.status === 'Delivered' || duplicateTransaction.status === 'Claimed',
+                                        'bg-cyan-500 hover:bg-cyan-600': duplicateTransaction.status === 'Available',
+                                        'bg-amber-500 hover:bg-amber-600': duplicateTransaction.status === 'Processing',
+                                    }
+                                    )}
+                                >
+                                    {duplicateTransaction.status}
+                                </Badge>
+                            </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-4 text-sm">
+                            <h4 className="font-semibold mb-2 text-muted-foreground">{duplicateTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
+                            <div className="pl-2 space-y-2 border-l">
+                                <div className="flex items-start gap-3">
+                                    <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                    <p className="font-medium break-words">{duplicateTransaction.accountName}</p>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <Wallet className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                    <p className="font-mono break-all">{duplicateTransaction.accountNumber}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
+      )}
     </div>
   );
 }
+
