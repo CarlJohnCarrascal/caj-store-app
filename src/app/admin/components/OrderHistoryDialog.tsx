@@ -1,14 +1,17 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getRecentOrdersByCategory } from '@/lib/data';
 import { Order } from '@/lib/types';
 import Link from 'next/link';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 
 interface OrderHistoryDialogProps {
   isOpen: boolean;
@@ -53,28 +56,47 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
             </div>
           ) : orders.length > 0 ? (
             <ScrollArea className="h-96">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Details</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>{format(new Date(order.createdAt), 'PPp')}</TableCell>
-                      <TableCell>{order.customerName}</TableCell>
-                      <TableCell className="text-right">₱{order.total.toFixed(2)}</TableCell>
-                       <TableCell className="text-right">
-                         <Link href={`/admin/orders/${order.id}`} className="text-primary hover:underline text-sm">View</Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <Accordion type="multiple" className="w-full">
+                {orders.map((order) => (
+                  <AccordionItem value={order.id} key={order.id}>
+                    <AccordionTrigger className="hover:no-underline group">
+                       <div className="grid grid-cols-4 items-center w-full text-sm text-left pr-4">
+                          <span>{format(new Date(order.createdAt), 'PPp')}</span>
+                          <span className="truncate">{order.customerName}</span>
+                          <span className="font-medium text-right">₱{order.total.toFixed(2)}</span>
+                          <div className="flex justify-end items-center gap-2">
+                             <Button asChild variant="link" size="sm" className="p-0 h-auto z-10 relative">
+                                <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()}>View Full</Link>
+                             </Button>
+                             <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          </div>
+                       </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="bg-muted/50 p-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Item</TableHead>
+                              <TableHead>Quantity</TableHead>
+                              <TableHead className="text-right">Subtotal</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {order.items.map(item => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.name}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </ScrollArea>
           ) : (
             <div className="text-center py-16 text-muted-foreground">
