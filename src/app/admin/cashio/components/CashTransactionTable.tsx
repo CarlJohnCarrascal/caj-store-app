@@ -276,7 +276,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
         material: 'N/A',
         dimensions: 'N/A',
         originalTransactionId: transaction.id,
-        tempImageDataUri: transaction.tempImageDataUri
+        fromScanned: transaction.fromScanned
     };
     
     addToCart(transactionAsProduct, 1);
@@ -797,6 +797,8 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
                   } catch(e) {}
                   return "Invalid Date";
                 })()}
+                <br />
+                Ref: {selectedTransaction.reference}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">

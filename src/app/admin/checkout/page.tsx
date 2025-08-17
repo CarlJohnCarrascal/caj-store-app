@@ -148,9 +148,8 @@ export default function CheckoutPage() {
       try {
         const imageDataUris: { image: string, reference: string }[] = [];
         const scannedItems = cartItems.filter(item => item.fromScanned && item.category === 'CashIO' && item.originalTransactionId);
-
         for (const item of scannedItems) {
-            const storedItemRaw = localStorage.getItem('temp_receipt_image_' + item.originalTransactionId);
+            const storedItemRaw = localStorage.getItem("temp_receipt_image_" + item.id.split("-")[1]);            
             if (storedItemRaw) {
                 const storedItem = JSON.parse(storedItemRaw);
                 imageDataUris.push(storedItem);

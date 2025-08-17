@@ -230,10 +230,6 @@ export default function ScanImagePage() {
             }
         });
 
-        if (rawExtractionResult) {
-            queryParams.set('message', rawExtractionResult);
-        }
-
         router.push(`/admin/cashio/new?${queryParams.toString()}`);
 
     } catch (error: any) {

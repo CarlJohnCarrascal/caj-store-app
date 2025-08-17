@@ -244,6 +244,7 @@ export async function processOrderAction(
                         
                         if (item.fromScanned) {
                             const matchingImage = imageDataUris.find(img => img.reference === cashTx.reference);
+                            console.log("log server match image ", matchingImage);
                             if (matchingImage) {
                                 const fileName = `${cashTx.reference || Date.now()}.jpg`;
                                 const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
