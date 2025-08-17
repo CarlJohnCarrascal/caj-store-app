@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getRecentOrdersByCategory } from '@/lib/data';
-import { Order } from '@/lib/types';
+import { Order, CartItem } from '@/lib/types';
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,13 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
       fetchHistory();
     }
   }, [isOpen, category]);
+  
+  const filterItemsByCategory = (items: CartItem[]): CartItem[] => {
+    if (category === 'Store') {
+        return items.filter(item => !['Printing', 'E-loading', 'Other Service', 'CashIO', 'Financial'].includes(item.category));
+    }
+    return items.filter(item => item.category === category);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -57,7 +64,11 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
           ) : orders.length > 0 ? (
             <ScrollArea className="h-96">
               <Accordion type="multiple" className="w-full">
-                {orders.map((order) => (
+                {orders.map((order) => {
+                  const relevantItems = filterItemsByCategory(order.items);
+                  if (relevantItems.length === 0) return null;
+
+                  return (
                   <AccordionItem value={order.id} key={order.id}>
                     <AccordionTrigger className="hover:no-underline group">
                        <div className="grid grid-cols-4 items-center w-full text-sm text-left pr-4">
@@ -83,7 +94,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {order.items.map(item => (
+                            {relevantItems.map(item => (
                               <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
@@ -95,7 +106,8 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                ))}
+                  )}
+                )}
               </Accordion>
             </ScrollArea>
           ) : (
