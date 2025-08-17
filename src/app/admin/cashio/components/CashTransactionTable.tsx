@@ -974,18 +974,15 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
 
       {selectedTransaction?.receiptImageUrl && (
           <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-            <DialogContent className="max-w-4xl h-[90vh]">
-              <DialogHeader>
-                  <DialogTitle>Receipt Preview</DialogTitle>
-              </DialogHeader>
-              <div className="relative w-full h-full">
-                <Image
-                    src={selectedTransaction.receiptImageUrl}
-                    alt="Transaction Receipt"
-                    fill
-                    className="object-contain"
-                />
-              </div>
+            <DialogContent className="max-w-3xl h-[80vh] p-0">
+                <div className="relative w-full h-full">
+                    <Image
+                        src={selectedTransaction.receiptImageUrl}
+                        alt="Transaction Receipt"
+                        fill
+                        className="object-contain"
+                    />
+                </div>
             </DialogContent>
           </Dialog>
       )}
