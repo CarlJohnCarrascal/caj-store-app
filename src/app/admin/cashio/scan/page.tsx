@@ -541,16 +541,64 @@ export default function ScanImagePage() {
                         
                         <Separator />
                         
-                        <div className="space-y-4 text-sm">
-                            <h4 className="font-semibold mb-2 text-muted-foreground">{duplicateTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
-                            <div className="pl-2 space-y-2 border-l">
-                                <div className="flex items-start gap-3">
-                                    <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
-                                    <p className="font-medium break-words">{duplicateTransaction.accountName}</p>
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="font-semibold mb-2 text-muted-foreground">{duplicateTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
+                                <div className="pl-2 space-y-2 text-sm border-l">
+                                    <div className="flex items-start gap-3">
+                                        <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                        <p className="font-medium break-words">{duplicateTransaction.accountName}</p>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <Wallet className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                        <p className="font-mono break-all">{duplicateTransaction.accountNumber}</p>
+                                    </div>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <Wallet className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
-                                    <p className="font-mono break-all">{duplicateTransaction.accountNumber}</p>
+                            </div>
+
+                            {duplicateTransaction.customerId && (
+                                <div>
+                                    <h4 className="font-semibold mb-2 text-muted-foreground">Processed By (Store Customer)</h4>
+                                    <div className="pl-2 space-y-2 text-sm border-l">
+                                        <div className="flex items-start gap-3">
+                                            <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                            <p className="font-medium break-words">{duplicateTransaction.customerName}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <h4 className="font-semibold mb-2 text-muted-foreground">Our Account</h4>
+                                <div className="pl-2 space-y-2 text-sm border-l">
+                                    <div className="flex items-start gap-3">
+                                        <Landmark className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
+                                        <p className="break-words">{duplicateTransaction.ourAccountName} via {duplicateTransaction.paymentMethod}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-semibold mb-2 text-muted-foreground">Details</h4>
+                                <div className="pl-2 space-y-2 text-sm border-l">
+                                    <div className="flex items-start gap-3">
+                                        <Hash className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
+                                        <p className="font-mono break-all">{duplicateTransaction.reference}</p>
+                                    </div>
+                                    {duplicateTransaction.createdAt && (
+                                      <div className="flex items-start gap-3">
+                                        <Clock className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                                        <p className="text-muted-foreground">
+                                          Created: {format(new Date(duplicateTransaction.createdAt), 'PPp')}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {duplicateTransaction.message && (
+                                        <div className="flex items-start gap-3">
+                                            <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
+                                            <p className="text-muted-foreground break-words">{duplicateTransaction.message}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -565,4 +613,3 @@ export default function ScanImagePage() {
     </div>
   );
 }
-
