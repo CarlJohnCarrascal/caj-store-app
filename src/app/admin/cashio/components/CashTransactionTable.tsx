@@ -60,7 +60,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { deleteCashTransactionAction } from '@/lib/actions';
-import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
+import { getStoreData, setStoreData, deleteItem, getReportData } from '@/lib/offline';
 import Image from 'next/image';
 
 
