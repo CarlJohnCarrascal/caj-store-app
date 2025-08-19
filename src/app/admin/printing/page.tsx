@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,11 @@ export default function PrintingPage() {
     }
     fetchPrices();
   }, []);
+  
+  const uniqueSizes = useMemo(() => {
+    return [...new Set(printingPrices.map(p => p.size))];
+  }, [printingPrices]);
+
 
   useEffect(() => {
     if (!service || !size || !colorType) {
@@ -201,15 +206,19 @@ export default function PrintingPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="size">Size</Label>
-                <div className="relative">
+                 <div className="relative">
                   <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="size" 
-                    placeholder="e.g. A4, Large" 
-                    value={size} 
-                    onChange={(e) => setSize(e.target.value)} 
-                    className="pl-9"
-                  />
+                    <Input 
+                        id="size" 
+                        placeholder="e.g. A4, Large" 
+                        value={size} 
+                        onChange={(e) => setSize(e.target.value)} 
+                        className="pl-9"
+                        list="sizes-datalist"
+                    />
+                    <datalist id="sizes-datalist">
+                        {uniqueSizes.map(s => <option key={s} value={s} />)}
+                    </datalist>
                 </div>
               </div>
                <div className="space-y-2">
