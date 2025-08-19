@@ -2,11 +2,11 @@
 'use client';
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Product, Account, Customer, CashTransaction, Collection, Order, Expense, AppUser, FeeThreshold } from './types';
+import { Product, Account, Customer, CashTransaction, Collection, Order, Expense, AppUser, FeeThreshold, PrintingPrice } from './types';
 import { getCurrentPHTISOString } from './utils';
 
 const DB_NAME = 'caj-store-db';
-const DB_VERSION = 5; // Incremented version to trigger upgrade
+const DB_VERSION = 6; // Incremented version to trigger upgrade
 
 // Define all the object stores
 export const STORE_NAMES = {
@@ -19,6 +19,7 @@ export const STORE_NAMES = {
   expenses: 'expenses',
   users: 'users',
   feeThresholds: 'feeThresholds',
+  printingPrices: 'printingPrices',
   activityLogs: 'activityLogs',
   lastUpdate: 'lastUpdate',
   salesReports: 'salesReports',
@@ -48,6 +49,7 @@ interface CajStoreDB extends DBSchema {
   expenses: { key: string; value: Expense };
   users: { key: string; value: AppUser };
   feeThresholds: { key: string; value: FeeThreshold };
+  printingPrices: { key: string; value: PrintingPrice };
   activityLogs: { key: string; value: any };
   lastUpdate: { key: string; value: LastUpdate };
   salesReports: { key: string; value: any };
@@ -94,6 +96,11 @@ const initDB = () => {
               if (!productStore.indexNames.contains('by_barcode')) {
                   productStore.createIndex('by_barcode', 'barcode', { unique: true });
               }
+          }
+      }
+      if (oldVersion < 6) {
+          if (!db.objectStoreNames.contains('printingPrices')) {
+              db.createObjectStore('printingPrices', { keyPath: 'id' });
           }
       }
     },

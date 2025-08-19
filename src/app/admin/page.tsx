@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone, Wrench, ShoppingCart, Receipt, BarChart, LogOut, User as UserIcon, DollarSign } from 'lucide-react';
+import { Package, Printer, Store, ArrowRightLeft, Landmark, Users, Library, History, Smartphone, Wrench, ShoppingCart, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
@@ -116,6 +116,20 @@ export default function AdminDashboard() {
               </CardDescription>
               <Button asChild className="w-full mt-4">
                   <Link href="/admin/products">Manage Products</Link>
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-medium">Printing Prices</CardTitle>
+              <Printer className="h-6 w-6 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Set and manage prices for your various printing services.
+              </CardDescription>
+              <Button asChild className="w-full mt-4">
+                  <Link href="/admin/printing/prices">Manage Prices</Link>
               </Button>
             </CardContent>
           </Card>

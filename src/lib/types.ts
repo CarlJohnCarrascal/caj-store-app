@@ -117,7 +117,7 @@ export interface Order {
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System' | 'PrintingPrice';
   action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange';
   timestamp: Date;
   details: string;
@@ -148,6 +148,18 @@ export interface FeeThreshold {
   createdBy?: ChangeTracker;
   updatedBy?: ChangeTracker;
 }
+
+export interface PrintingPrice {
+  id: string;
+  service: string;
+  size: string;
+  type: 'Color' | 'Black & White' | 'N/A';
+  price: number;
+  notes?: string;
+  createdBy?: ChangeTracker;
+  updatedBy?: ChangeTracker;
+}
+
 
 export interface ProductReportData {
   totalQuantity: number;

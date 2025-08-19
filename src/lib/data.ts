@@ -5,7 +5,7 @@
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction, limitToLast } from 'firebase/database';
 import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -745,6 +745,46 @@ export async function deleteFeeThreshold(id: string): Promise<void> {
   const thresholdRef = ref(db, `feeThresholds/${id}`);
   await remove(thresholdRef);
 }
+
+// ========================
+// Printing Price Functions
+// ========================
+
+export async function getPrintingPrices(): Promise<PrintingPrice[]> {
+  const snapshot = await get(ref(db, 'printingPrices'));
+  return snapshotToArray<PrintingPrice>(snapshot);
+}
+
+export async function addPrintingPrice(price: Omit<PrintingPrice, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<PrintingPrice> {
+  const newPriceRef = push(ref(db, 'printingPrices'));
+  const dataToSave = {
+    ...price,
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+  };
+  await set(newPriceRef, dataToSave);
+  return { ...dataToSave, id: newPriceRef.key! };
+}
+
+export async function updatePrintingPrice(id: string, priceData: Omit<PrintingPrice, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
+  const priceRef = ref(db, `printingPrices/${id}`);
+  const snapshot = await get(priceRef);
+  if (snapshot.exists()) {
+    const dataToSave = {
+      ...snapshot.val(),
+      ...priceData,
+      updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+    };
+    await set(priceRef, dataToSave);
+  } else {
+    throw new Error('Printing price not found');
+  }
+}
+
+export async function deletePrintingPrice(id: string): Promise<void> {
+  const priceRef = ref(db, `printingPrices/${id}`);
+  await remove(priceRef);
+}
+
 
 // ========================
 // Product Reporting Functions

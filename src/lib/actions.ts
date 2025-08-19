@@ -4,8 +4,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById } from './data';
-import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser } from './lib/types';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice } from './data';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice } from './lib/types';
 import { ref, get, update, remove } from 'firebase/database';
 import { db } from './firebase';
 
@@ -886,6 +886,73 @@ export async function deleteFeeThresholdAction(id: string, user: { userId: strin
     revalidatePath('/admin/cashio-fees');
     revalidatePath('/admin/activity-logs');
 }
+
+const printingPriceSchema = z.object({
+    service: z.string().min(1, 'Service is required'),
+    size: z.string().min(1, 'Size is required'),
+    type: z.enum(['Color', 'Black & White', 'N/A']),
+    price: z.coerce.number().min(0, 'Price must be a non-negative number'),
+    notes: z.string().optional(),
+});
+
+export async function addPrintingPriceAction(data: FormData) {
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
+
+    const validatedFields = printingPriceSchema.safeParse(rawData);
+    if (!validatedFields.success) {
+        throw new Error('Invalid printing price data.');
+    }
+
+    const newPrice = await addPrintingPrice(validatedFields.data as Omit<PrintingPrice, 'id'>, user);
+    await logActivity({
+        type: 'PrintingPrice',
+        action: 'Created',
+        details: `Printing price for ${newPrice.service} (${newPrice.size}) was created.`,
+        targetId: newPrice.id,
+        ...user,
+    });
+    
+    revalidatePath('/admin/printing/prices');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function updatePrintingPriceAction(id: string, data: FormData) {
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
+    
+    const validatedFields = printingPriceSchema.safeParse(rawData);
+    if (!validatedFields.success) {
+        throw new Error('Invalid printing price data.');
+    }
+
+    await updatePrintingPrice(id, validatedFields.data, user);
+    await logActivity({
+        type: 'PrintingPrice',
+        action: 'Updated',
+        details: `Printing price for ${validatedFields.data.service} (${validatedFields.data.size}) was updated.`,
+        targetId: id,
+        ...user,
+    });
+
+    revalidatePath('/admin/printing/prices');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function deletePrintingPriceAction(id: string, user: { userId: string, userName: string }) {
+    await deletePrintingPrice(id);
+    await logActivity({
+        type: 'PrintingPrice',
+        action: 'Deleted',
+        details: 'A printing price was deleted.',
+        targetId: id,
+        ...user,
+    });
+
+    revalidatePath('/admin/printing/prices');
+    revalidatePath('/admin/activity-logs');
+}
+
 
 export async function regenerateCashIOReportsAction(user: { userId: string; userName: string }) {
     const actor = await getUserById(user.userId);
