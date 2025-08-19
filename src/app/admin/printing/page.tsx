@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
@@ -8,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
-import { Product } from '@/lib/types';
-import { Hash, Ruler, ScanLine, Trash2, Plus, Minus, History } from 'lucide-react';
+import { Product, PrintingPrice } from '@/lib/types';
+import { getPrintingPrices } from '@/lib/data';
+import { Hash, Ruler, ScanLine, Trash2, Plus, Minus, History, Palette } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import OrderHistoryDialog from '../components/OrderHistoryDialog';
@@ -34,8 +36,34 @@ export default function PrintingPage() {
   const [service, setService] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [size, setSize] = useState('');
+  const [colorType, setColorType] = useState('N/A');
   const [pricePerItem, setPricePerItem] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [printingPrices, setPrintingPrices] = useState<PrintingPrice[]>([]);
+
+  useEffect(() => {
+    async function fetchPrices() {
+        const prices = await getPrintingPrices();
+        setPrintingPrices(prices);
+    }
+    fetchPrices();
+  }, []);
+
+  useEffect(() => {
+    if (!service || !size || !colorType) {
+        return;
+    }
+
+    const foundPrice = printingPrices.find(p => 
+        p.service.toLowerCase() === service.toLowerCase() &&
+        p.size.toLowerCase() === size.toLowerCase() &&
+        p.type === colorType
+    );
+
+    if (foundPrice) {
+        setPricePerItem(String(foundPrice.price));
+    }
+  }, [service, size, colorType, printingPrices]);
 
   const printingCartItems = cartItems.filter(item => item.category === 'Printing');
 
@@ -52,7 +80,7 @@ export default function PrintingPage() {
     const priceValue = parseFloat(pricePerItem);
     const quantityValue = parseInt(quantity, 10);
 
-    if (isNaN(priceValue) || priceValue <= 0) {
+    if (isNaN(priceValue) || priceValue < 0) { // Allow 0 for free items
       toast({
         variant: 'destructive',
         title: 'Invalid Price',
@@ -70,11 +98,15 @@ export default function PrintingPage() {
       return;
     }
 
+    let descriptionParts = [];
+    if(size) descriptionParts.push(`Size: ${size}`);
+    if(colorType !== 'N/A') descriptionParts.push(`Type: ${colorType}`);
+
     const customProduct: Product = {
       id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${size || 'na'}-${Date.now()}`,
       name: `Printing: ${service}`,
       price: priceValue,
-      description: size ? `Size: ${size}` : '',
+      description: descriptionParts.join(' | '),
       group: 'Services',
       show: false,
       category: 'Printing',
@@ -91,6 +123,7 @@ export default function PrintingPage() {
     setQuantity('1');
     setSize('');
     setPricePerItem('');
+    setColorType('N/A');
 
     toast({
         title: 'Service Added to Order',
@@ -119,20 +152,35 @@ export default function PrintingPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="service-type">Service Type</Label>
-              <Select value={service} onValueChange={setService}>
-                <SelectTrigger id="service-type">
-                  <SelectValue placeholder="Select a printing service" />
-                </SelectTrigger>
-                <SelectContent>
-                  {printingServices.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="service-type">Service Type</Label>
+                <Select value={service} onValueChange={setService}>
+                  <SelectTrigger id="service-type">
+                    <SelectValue placeholder="Select a printing service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {printingServices.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="color-type">Type</Label>
+                   <Select value={colorType} onValueChange={setColorType}>
+                      <SelectTrigger id="color-type">
+                          <SelectValue placeholder="Select a type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="N/A">N/A</SelectItem>
+                          <SelectItem value="Color">Color</SelectItem>
+                          <SelectItem value="Black & White">Black & White</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -152,7 +200,7 @@ export default function PrintingPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="size">Size (Optional)</Label>
+                <Label htmlFor="size">Size</Label>
                 <div className="relative">
                   <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -200,7 +248,7 @@ export default function PrintingPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Service</TableHead>
-                            <TableHead>Size</TableHead>
+                            <TableHead>Details</TableHead>
                             <TableHead className="text-center">Quantity</TableHead>
                             <TableHead className="text-right">Price/Item</TableHead>
                             <TableHead className="text-right">Total</TableHead>
@@ -211,7 +259,7 @@ export default function PrintingPage() {
                         {printingCartItems.map(item => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name.replace('Printing: ', '')}</TableCell>
-                                <TableCell>{item.dimensions === 'N/A' ? '-' : item.dimensions}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">{item.description}</TableCell>
                                 <TableCell>
                                     <div className="flex items-center justify-center gap-2">
                                         <Button
