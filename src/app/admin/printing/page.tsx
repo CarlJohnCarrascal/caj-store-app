@@ -36,6 +36,7 @@ export default function PrintingPage() {
   const [service, setService] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [size, setSize] = useState('');
+  const [selectedSize, setSelectedSize] = useState('custom');
   const [colorType, setColorType] = useState('N/A');
   const [pricePerItem, setPricePerItem] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -49,35 +50,50 @@ export default function PrintingPage() {
     fetchPrices();
   }, []);
   
-  const uniqueSizes = useMemo(() => {
-    return [...new Set(printingPrices.map(p => p.size))];
-  }, [printingPrices]);
-
+  const availableSizes = useMemo(() => {
+    if (!service) return [];
+    const sizesForService = printingPrices
+        .filter(p => p.service.toLowerCase() === service.toLowerCase())
+        .map(p => p.size);
+    return ['custom', ...Array.from(new Set(sizesForService))];
+  }, [service, printingPrices]);
 
   useEffect(() => {
-    if (!service || !size || !colorType) {
+    const finalSize = selectedSize === 'custom' ? size : selectedSize;
+
+    if (!service || !finalSize || !colorType) {
+        setPricePerItem('');
         return;
     }
 
     const foundPrice = printingPrices.find(p => 
         p.service.toLowerCase() === service.toLowerCase() &&
-        p.size.toLowerCase() === size.toLowerCase() &&
+        p.size.toLowerCase() === finalSize.toLowerCase() &&
         p.type === colorType
     );
 
-    if (foundPrice) {
-        setPricePerItem(String(foundPrice.price));
+    setPricePerItem(foundPrice ? String(foundPrice.price) : '');
+  }, [service, size, selectedSize, colorType, printingPrices]);
+
+  const handleSizeSelectionChange = (value: string) => {
+    setSelectedSize(value);
+    if (value !== 'custom') {
+        setSize(value); // Pre-fill the size input for consistency, though it will be hidden
+    } else {
+        setSize(''); // Clear custom size when switching to custom
     }
-  }, [service, size, colorType, printingPrices]);
+  }
 
   const printingCartItems = cartItems.filter(item => item.category === 'Printing');
 
   const handleAddToCart = () => {
-    if (!service || !quantity || !pricePerItem) {
+    const finalSize = selectedSize === 'custom' ? size : selectedSize;
+
+    if (!service || !quantity || !pricePerItem || !finalSize) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
-        description: 'Please select a service, and enter a quantity and price per item.',
+        description: 'Please fill out all required printing details.',
       });
       return;
     }
@@ -104,11 +120,11 @@ export default function PrintingPage() {
     }
 
     let descriptionParts = [];
-    if(size) descriptionParts.push(`Size: ${size}`);
+    if(finalSize) descriptionParts.push(`Size: ${finalSize}`);
     if(colorType !== 'N/A') descriptionParts.push(`Type: ${colorType}`);
 
     const customProduct: Product = {
-      id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${size || 'na'}-${Date.now()}`,
+      id: `print-${service.replace(/\s+/g, '-').toLowerCase()}-${finalSize || 'na'}-${Date.now()}`,
       name: `Printing: ${service}`,
       price: priceValue,
       description: descriptionParts.join(' | '),
@@ -117,16 +133,18 @@ export default function PrintingPage() {
       category: 'Printing',
       stock: 999,
       material: 'N/A',
-      dimensions: size || 'N/A',
+      dimensions: finalSize || 'N/A',
       image: 'https://placehold.co/600x600.png',
       unit: 'each',
     };
 
     addToCart(customProduct, quantityValue);
 
+    // Reset form
     setService('');
     setQuantity('1');
     setSize('');
+    setSelectedSize('custom');
     setPricePerItem('');
     setColorType('N/A');
 
@@ -188,7 +206,23 @@ export default function PrintingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="size-select">Size</Label>
+                <Select value={selectedSize} onValueChange={handleSizeSelectionChange} disabled={!service}>
+                  <SelectTrigger id="size-select">
+                    <SelectValue placeholder="Select a size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSizes.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s === 'custom' ? 'Custom Size' : s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="quantity">Quantity</Label>
                 <div className="relative">
@@ -204,24 +238,26 @@ export default function PrintingPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="size">Size</Label>
-                 <div className="relative">
-                  <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        id="size" 
-                        placeholder="e.g. A4, Large" 
-                        value={size} 
-                        onChange={(e) => setSize(e.target.value)} 
-                        className="pl-9"
-                        list="sizes-datalist"
-                    />
-                    <datalist id="sizes-datalist">
-                        {uniqueSizes.map(s => <option key={s} value={s} />)}
-                    </datalist>
+              
+              {selectedSize === 'custom' ? (
+                 <div className="space-y-2">
+                    <Label htmlFor="size">Custom Size</Label>
+                    <div className="relative">
+                        <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            id="size" 
+                            placeholder="e.g. 12x18in" 
+                            value={size} 
+                            onChange={(e) => setSize(e.target.value)} 
+                            className="pl-9"
+                        />
+                    </div>
                 </div>
-              </div>
-               <div className="space-y-2">
+              ) : <div />}
+
+            </div>
+
+             <div className="space-y-2">
                 <Label htmlFor="price">Price per Item</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span>
@@ -235,7 +271,6 @@ export default function PrintingPage() {
                   />
                 </div>
               </div>
-            </div>
 
             <Button onClick={handleAddToCart} className="w-full" size="lg">
               Add to Order
