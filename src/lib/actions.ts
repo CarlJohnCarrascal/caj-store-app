@@ -402,7 +402,11 @@ export async function addCustomerAction(data: FormData): Promise<Customer> {
   return newCustomer;
 }
 
-export async function updateCustomerBalanceAction(customerId: string, amount: number, user: { userId: string, userName: string }) {
+export async function createFinancialTransactionOrderAction(
+    customerId: string, 
+    amount: number, // Positive for payment, negative for adding to balance
+    user: { userId: string, userName: string }
+) {
     if (!customerId || customerId === 'unknown') {
         throw new Error('Cannot update balance for an unknown customer.');
     }
@@ -410,31 +414,58 @@ export async function updateCustomerBalanceAction(customerId: string, amount: nu
         throw new Error('Invalid amount provided.');
     }
 
-    const updatedCustomer = await updateCustomerBalance(customerId, amount);
-    if (!updatedCustomer) {
+    const customer = await getCustomerById(customerId);
+    if (!customer) {
         throw new Error('Customer not found.');
     }
-    
-    const absAmount = Math.abs(amount).toFixed(2);
-    let details = '';
-    if (amount > 0) {
-        // This is a payment from the customer
-        details = `Payment of ₱${absAmount} was recorded for ${updatedCustomer.name}.`;
-    } else {
-        // This is adding to the customer's debt
-        details = `₱${absAmount} was added to ${updatedCustomer.name}'s balance (debt).`;
-    }
+
+    const settlementType = amount > 0 ? 'pay_order' : 'add_to_balance';
+    const total = -amount; // If payment is 100 (positive), total is -100. If adding 100 to balance (negative), total is 100.
+    const description = amount > 0 ? 'Customer Payment' : 'Balance Adjustment';
+
+    const financialItem: CartItem = {
+        id: `financial-${Date.now()}`,
+        name: description,
+        price: total,
+        quantity: 1,
+        category: 'Financial',
+        group: 'Financial',
+        show: false,
+        stock: 0,
+        unit: 'each',
+        description: `Amount: ₱${Math.abs(amount).toFixed(2)}`,
+    };
+
+    const orderPayload: Omit<Order, 'id'> = {
+        customerId: customer.id,
+        customerName: customer.name,
+        items: [financialItem],
+        subtotal: total,
+        discount: 0,
+        total: total,
+        amountTendered: amount > 0 ? amount : 0, // Tendered amount is the payment
+        settlementType,
+        applyCustomerBalance: false,
+        initialCustomerBalance: customer.balance,
+        newCustomerBalance: customer.balance - total,
+        createdAt: '', // will be set by addOrder
+    };
+
+    const newOrder = await addOrder(orderPayload, user);
+
+    await updateCustomerBalance(customerId, -total); // update balance by -total (which is +amount)
 
     await logActivity({
-        type: 'Customer',
-        action: 'Updated',
-        details: details,
-        targetId: customerId,
+        type: 'Order',
+        action: 'Created',
+        details: `Financial transaction of ₱${amount.toFixed(2)} for ${customer.name} recorded as order.`,
+        targetId: newOrder.id,
         ...user,
     });
-
+    
     revalidatePath(`/admin/customers/${customerId}`);
     revalidatePath('/admin/customers');
+    revalidatePath('/admin/orders');
     revalidatePath('/admin/activity-logs');
 }
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { updateCustomerBalanceAction } from '@/lib/actions';
+import { createFinancialTransactionOrderAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
 import { Landmark, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,21 +52,22 @@ export default function CustomerActionButtons({ customer, className }: CustomerA
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
     }
+    // Amount is positive for payments from customer, negative for adding to their balance (debt)
     const amount = dialogType === 'payment' ? data.amount : -data.amount;
 
     startTransition(async () => {
       try {
-        await updateCustomerBalanceAction(customer.id, amount, { userId: user.uid, userName: user.displayName || user.email! });
+        await createFinancialTransactionOrderAction(customer.id, amount, { userId: user.uid, userName: user.displayName || user.email! });
         toast({
           title: 'Success',
-          description: `Customer balance updated successfully.`,
+          description: `Customer balance updated and transaction recorded.`,
         });
         setIsDialogOpen(false);
-      } catch (error) {
+      } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Failed to update customer balance.',
+          description: error.message || 'Failed to update customer balance.',
         });
       }
     });
