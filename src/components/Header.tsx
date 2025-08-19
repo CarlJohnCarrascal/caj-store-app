@@ -107,6 +107,9 @@ export default function Header() {
                                   <Link href="/admin/orders" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <ShoppingCart className="h-5 w-5 text-muted-foreground" /><span>Orders</span>
                                   </Link>
+                                   <Link href="/admin/printing/prices" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Printer className="h-5 w-5 text-muted-foreground" /><span>Printing Prices</span>
+                                  </Link>
                                   <Link href="/admin/cashio-fees" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <DollarSign className="h-5 w-5 text-muted-foreground" /><span>CashIO Fees</span>
                                   </Link>
@@ -211,6 +214,7 @@ export default function Header() {
                     <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild><Link href="/admin/printing/prices" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing Prices</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/cashio-fees" className="flex items-center gap-2 cursor-pointer"><DollarSign className="h-4 w-4" /> CashIO Fees</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
