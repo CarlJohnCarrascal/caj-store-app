@@ -50,6 +50,7 @@ export default function OrderList() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [settlementFilter, setSettlementFilter] = useState('all');
+  const [serviceFilter, setServiceFilter] = useState('all');
   const [date, setDate] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
     to: new Date(),
@@ -91,6 +92,13 @@ export default function OrderList() {
         return order.settlementType === settlementFilter;
       })
       .filter(order => {
+        if (serviceFilter === 'all') return true;
+        if (serviceFilter === 'Store') {
+             return order.items.some(item => !['Printing', 'E-loading', 'Other Service', 'CashIO', 'Financial'].includes(item.category));
+        }
+        return order.items.some(item => item.category === serviceFilter);
+      })
+      .filter(order => {
         if (!searchTerm) return true;
         const lowercasedTerm = searchTerm.toLowerCase();
         return (
@@ -111,7 +119,7 @@ export default function OrderList() {
             return false;
         }
       });
-  }, [orders, searchTerm, settlementFilter, date]);
+  }, [orders, searchTerm, settlementFilter, serviceFilter, date]);
 
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
 
@@ -122,7 +130,7 @@ export default function OrderList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [itemsPerPage, searchTerm, settlementFilter, date]);
+  }, [itemsPerPage, searchTerm, settlementFilter, serviceFilter, date]);
 
   if (isLoading) {
     return (
@@ -175,7 +183,7 @@ export default function OrderList() {
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 pt-0 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 pt-0 items-end">
                 <div className="relative flex-grow w-full">
                   <Input
                     id="search"
@@ -194,6 +202,19 @@ export default function OrderList() {
                     <SelectItem value="all">All Settlements</SelectItem>
                     <SelectItem value="pay_order">Paid</SelectItem>
                     <SelectItem value="add_to_balance">To Balance</SelectItem>
+                  </SelectContent>
+                </Select>
+                 <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Services</SelectItem>
+                    <SelectItem value="Store">Store</SelectItem>
+                    <SelectItem value="Printing">Printing</SelectItem>
+                    <SelectItem value="CashIO">CashIO</SelectItem>
+                    <SelectItem value="E-loading">E-loading</SelectItem>
+                    <SelectItem value="Other Service">Other Service</SelectItem>
                   </SelectContent>
                 </Select>
                 <div>
