@@ -49,6 +49,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
   
   const formatDescription = (description?: string): string => {
     if (!description) return '-';
+    // This will remove the " (Cost: ₱..., Fee: ₱...)" part
     return description.split(' (')[0].trim();
   }
 
@@ -91,28 +92,49 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="bg-muted/50 p-4">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Item</TableHead>
-                              {(category === 'E-loading' || category === 'Other Service' || category === 'CashIO') && <TableHead>Description</TableHead>}
-                              {category === 'Printing' && <TableHead>Dimensions</TableHead>}
-                              <TableHead>Quantity</TableHead>
-                              <TableHead className="text-right">Subtotal</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {relevantItems.map(item => (
-                              <TableRow key={item.id}>
-                                <TableCell className="font-medium">{item.name}</TableCell>
-                                {(category === 'E-loading' || category === 'Other Service' || category === 'CashIO') && <TableCell>{formatDescription(item.description)}</TableCell>}
-                                {category === 'Printing' && <TableCell>{item.dimensions !== 'N/A' ? item.dimensions : '-'}</TableCell>}
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                         {category === 'CashIO' ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                    <TableHead>Transaction</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead className="text-right">Subtotal</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {relevantItems.map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">{item.name.split(':')[0]}</TableCell>
+                                        <TableCell>{formatDescription(item.description)}</TableCell>
+                                        <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                         ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                    <TableHead>Item</TableHead>
+                                    {(category === 'E-loading' || category === 'Other Service') && <TableHead>Description</TableHead>}
+                                    {category === 'Printing' && <TableHead>Dimensions</TableHead>}
+                                    <TableHead>Quantity</TableHead>
+                                    <TableHead className="text-right">Subtotal</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {relevantItems.map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                        {(category === 'E-loading' || category === 'Other Service') && <TableCell>{formatDescription(item.description)}</TableCell>}
+                                        {category === 'Printing' && <TableCell>{item.dimensions !== 'N/A' ? item.dimensions : '-'}</TableCell>}
+                                        <TableCell>{item.quantity}</TableCell>
+                                        <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                         )}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
