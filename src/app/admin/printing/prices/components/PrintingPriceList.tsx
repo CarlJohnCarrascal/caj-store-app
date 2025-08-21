@@ -17,9 +17,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { deletePrintingPriceAction } from '@/lib/actions';
-import { Pencil, Trash2, PlusCircle } from 'lucide-react';
+import { Pencil, Trash2, PlusCircle, Search } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -27,6 +27,8 @@ import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import PrintingPriceForm from './PrintingPriceForm';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -50,6 +52,10 @@ export default function PrintingPriceList() {
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPrice, setEditingPrice] = useState<PrintingPrice | undefined>(undefined);
+  
+  const [serviceFilter, setServiceFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sizeSearch, setSizeSearch] = useState('');
 
   useEffect(() => {
     const loadFromCache = async () => {
@@ -74,10 +80,17 @@ export default function PrintingPriceList() {
 
     return () => unsubscribe();
   }, []);
+  
+  const services = useMemo(() => ['all', ...new Set(prices.map(p => p.service))], [prices]);
+  const types = ['all', 'Color', 'Black & White', 'N/A'];
 
-  const sortedPrices = useMemo(() => {
-    return [...prices].sort((a, b) => a.service.localeCompare(b.service) || a.size.localeCompare(b.size));
-  }, [prices]);
+  const filteredAndSortedPrices = useMemo(() => {
+    return prices
+      .filter(price => serviceFilter === 'all' || price.service === serviceFilter)
+      .filter(price => typeFilter === 'all' || price.type === typeFilter)
+      .filter(price => !sizeSearch || price.size.toLowerCase().includes(sizeSearch.toLowerCase()))
+      .sort((a, b) => a.service.localeCompare(b.service) || a.size.localeCompare(b.size));
+  }, [prices, serviceFilter, typeFilter, sizeSearch]);
 
   const handleDelete = (id: string) => {
     if (!user) {
@@ -117,13 +130,42 @@ export default function PrintingPriceList() {
   return (
     <>
     <Card>
-      <div className="flex items-center justify-between border-b p-4">
-        <h2 className="text-xl font-semibold">Printing Prices</h2>
-        <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Price
-        </Button>
-      </div>
+      <CardHeader>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold">Printing Prices</h2>
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-grow w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by size..."
+                        value={sizeSearch}
+                        onChange={(e) => setSizeSearch(e.target.value)}
+                        className="pl-9 w-full"
+                    />
+                </div>
+                <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {services.map(s => <SelectItem key={s} value={s}>{s === 'all' ? 'All Services' : s}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                 <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                         {types.map(t => <SelectItem key={t} value={t}>{t === 'all' ? 'All Types' : t}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <Button onClick={handleAddNew} className="w-full sm:w-auto flex-shrink-0">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add New
+                </Button>
+            </div>
+        </div>
+      </CardHeader>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
@@ -137,8 +179,8 @@ export default function PrintingPriceList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedPrices.length > 0 ? (
-              sortedPrices.map((price) => (
+            {filteredAndSortedPrices.length > 0 ? (
+              filteredAndSortedPrices.map((price) => (
                 <TableRow key={price.id}>
                   <TableCell className="font-medium">{price.service}</TableCell>
                   <TableCell>{price.size}</TableCell>
@@ -182,7 +224,7 @@ export default function PrintingPriceList() {
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  No printing prices defined.
+                  No printing prices found for the selected filters.
                 </TableCell>
               </TableRow>
             )}
@@ -207,3 +249,5 @@ export default function PrintingPriceList() {
     </>
   );
 }
+
+      
