@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useTransition, useEffect } from 'react';
@@ -49,6 +50,7 @@ export default function CollectionList() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('all');
+  const [selectedCollectionName, setSelectedCollectionName] = useState('all');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -111,6 +113,10 @@ export default function CollectionList() {
          customerName: customerMap.get(collection.customerId) || 'Unknown Customer',
      }));
   }, [collections, customers, isLoading]);
+  
+  const uniqueCollectionNames = useMemo(() => {
+    return ['all', ...Array.from(new Set(collections.map(c => c.name)))];
+  }, [collections]);
 
   const filteredCollections = useMemo(() => {
     return collectionsWithCustomerNames
@@ -119,10 +125,16 @@ export default function CollectionList() {
         return collection.customerId === selectedCustomer;
       })
       .filter(collection => {
+          if(selectedCollectionName === 'all') return true;
+          return collection.name === selectedCollectionName;
+      })
+      .filter(collection => {
         if (!searchTerm) return true;
-        return collection.name.toLowerCase().includes(searchTerm.toLowerCase());
+        // Search term now filters within the selected dropdowns
+        return collection.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               collection.note?.toLowerCase().includes(searchTerm.toLowerCase());
       });
-  }, [collectionsWithCustomerNames, searchTerm, selectedCustomer]);
+  }, [collectionsWithCustomerNames, searchTerm, selectedCustomer, selectedCollectionName]);
 
   const handleCopy = (value: string) => {
     navigator.clipboard.writeText(value);
@@ -200,23 +212,35 @@ export default function CollectionList() {
         <div className="relative flex-grow w-full md:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder="Search by collection name..."
+            placeholder="Search by value or note..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 w-full"
           />
         </div>
-        <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder="Filter by customer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Customers</SelectItem>
-            {customers.map(customer => (
-              <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex w-full md:w-auto md:flex-row flex-col gap-2">
+            <Select value={selectedCollectionName} onValueChange={setSelectedCollectionName}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Filter by name" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueCollectionNames.map(name => (
+                  <SelectItem key={name} value={name}>{name === 'all' ? 'All Names' : name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Filter by customer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Customers</SelectItem>
+                {customers.map(customer => (
+                  <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+        </div>
       </div>
       <CardContent className="p-0">
         <Table>
@@ -289,3 +313,4 @@ export default function CollectionList() {
     </Card>
   );
 }
+
