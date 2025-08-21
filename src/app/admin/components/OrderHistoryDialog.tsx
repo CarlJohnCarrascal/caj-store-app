@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Loader2, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare, ArrowUp, ArrowDown, FileImage } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 
 interface OrderHistoryDialogProps {
@@ -28,6 +29,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<CashTransaction | null>(null);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -207,6 +209,26 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] -mx-6">
                 <div className="space-y-6 py-4 px-6">
+                    {selectedTransaction.receiptImageUrl && (
+                        <div>
+                            <h4 className="font-semibold mb-2 text-muted-foreground">Receipt</h4>
+                            <div
+                                className="relative h-32 w-32 rounded-md overflow-hidden border-2 border-dashed cursor-pointer"
+                                onClick={() => setIsImageModalOpen(true)}
+                            >
+                                <Image
+                                    src={selectedTransaction.receiptImageUrl}
+                                    alt="Transaction Receipt"
+                                    fill
+                                    sizes="128px"
+                                    className="object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                    <FileImage className="h-8 w-8 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
                             <span className="text-muted-foreground">Amount</span>
@@ -295,6 +317,24 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
             )}
         </DialogContent>
       </Dialog>
+      
+      {selectedTransaction?.receiptImageUrl && (
+          <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+            <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
+              <DialogHeader className="p-6 pb-0 flex-shrink-0">
+                <DialogTitle>Receipt Preview</DialogTitle>
+              </DialogHeader>
+              <div className="relative flex-1 w-full h-full p-6 pt-2">
+                <Image
+                    src={selectedTransaction.receiptImageUrl}
+                    alt="Transaction Receipt"
+                    fill
+                    className="object-contain"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+      )}
     </>
   );
 }
