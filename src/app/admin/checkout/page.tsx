@@ -148,11 +148,16 @@ export default function CheckoutPage() {
       try {
         const imageDataUris: { image: string, reference: string }[] = [];
         const scannedItems = cartItems.filter(item => item.fromScanned && item.category === 'CashIO' && item.originalTransactionId);
+        
         for (const item of scannedItems) {
-            const storedItemRaw = localStorage.getItem("temp_receipt_image_" + item.id.split("-")[1]);            
-            if (storedItemRaw) {
-                const storedItem = JSON.parse(storedItemRaw);
-                imageDataUris.push(storedItem);
+            const referenceMatch = item.description?.match(/Ref: (\S+)/);
+            if(referenceMatch && referenceMatch[1]){
+                const reference = referenceMatch[1];
+                const storedItemRaw = localStorage.getItem("temp_receipt_image_" + reference);
+                if (storedItemRaw) {
+                    const storedItem = JSON.parse(storedItemRaw);
+                    imageDataUris.push(storedItem);
+                }
             }
         }
         
@@ -175,7 +180,10 @@ export default function CheckoutPage() {
         
         // Clean up local storage after successful processing
         for (const item of scannedItems) {
-            localStorage.removeItem('temp_receipt_image_' + item.originalTransactionId);
+           const referenceMatch = item.description?.match(/Ref: (\S+)/);
+            if(referenceMatch && referenceMatch[1]){
+                localStorage.removeItem('temp_receipt_image_' + referenceMatch[1]);
+            }
         }
 
         toast({

@@ -256,6 +256,15 @@ export default function ScanImagePage() {
         return;
     }
 
+    if (previewImage && extractedData.reference) {
+      const receiptData = {
+          image: previewImage,
+          reference: extractedData.reference,
+          date: new Date().toISOString(),
+      }
+          localStorage.setItem('temp_receipt_image_' + extractedData.reference, JSON.stringify(receiptData));
+    }
+
     const finalPrice = existingTx.transactionType === 'Cash In' 
         ? existingTx.amount + existingTx.fee 
         : -(existingTx.amount - existingTx.fee);
@@ -273,6 +282,7 @@ export default function ScanImagePage() {
         image: 'https://placehold.co/600x600.png',
         material: 'N/A',
         dimensions: 'N/A',
+        fromScanned: true,
         originalTransactionId: existingTx.id
     };
     
