@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Product } from '@/lib/types';
 import Link from 'next/link';
-import { Pencil, Trash2, Search, SlidersHorizontal } from 'lucide-react';
+import { Pencil, Trash2, Search, SlidersHorizontal, ScanBarcode } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { deleteProductAction } from '@/lib/actions';
@@ -37,6 +37,8 @@ import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import BarcodeScanner from '@/components/BarcodeScanner';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -61,6 +63,7 @@ export default function ProductTable() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ category: 'all', group: 'all' });
   const [sortOrder, setSortOrder] = useState('name-asc');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
 
   useEffect(() => {
@@ -151,6 +154,12 @@ export default function ProductTable() {
       }
     });
   };
+
+  const onBarcodeScanned = (barcode: string) => {
+    setSearchTerm(barcode);
+    setIsScannerOpen(false);
+    toast({ title: 'Barcode Scanned!', description: `Searching for: ${barcode}` });
+  };
   
   if (isLoading) {
     return (
@@ -162,18 +171,25 @@ export default function ProductTable() {
   }
 
   return (
+    <>
     <div className="space-y-4">
         <Card className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="sm:col-span-2 md:col-span-1">
-                    <div className="relative">
-                        <Input
-                        placeholder="Search products..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                        />
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <div className="flex gap-2">
+                        <div className="relative flex-grow">
+                          <Input
+                          placeholder="Search products..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                          />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <Button variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
+                          <ScanBarcode className="h-5 w-5" />
+                          <span className="sr-only">Scan Barcode</span>
+                        </Button>
                     </div>
                 </div>
                 <Select onValueChange={handleFilterChange('category')} defaultValue="all">
@@ -284,5 +300,14 @@ export default function ProductTable() {
           </TableBody>
         </Table>
     </div>
+    <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Scan Barcode</DialogTitle>
+          </DialogHeader>
+          <BarcodeScanner onResult={onBarcodeScanned} onCancel={() => setIsScannerOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
