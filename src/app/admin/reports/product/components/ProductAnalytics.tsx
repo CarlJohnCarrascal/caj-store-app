@@ -44,15 +44,31 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 
 const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData; periodName: string; productMap: Map<string, Product> }) => {
     
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No product data available for this period.</p></div>;
+    }
+    
     const summary = useMemo(() => {
-        if (!data) return { totalSales: 0, totalQuantity: 0, totalOrders: 0 };
-        return Object.values(data).reduce((acc, product) => {
+        if (!data) return { totalSales: 0, totalQuantity: 0, totalOrders: 0, averageSales: 0 };
+        const totals = Object.values(data).reduce((acc, product) => {
             acc.totalSales += product.totalSales || 0;
             acc.totalQuantity += product.totalQuantity || 0;
             acc.totalOrders += product.totalOrders || 0;
             return acc;
         }, { totalSales: 0, totalQuantity: 0, totalOrders: 0 });
-    }, [data]);
+
+        const periodCount = Object.keys(data).length > 0 ? 1 : 0; // Simplified for aggregated views
+        if (['Weekly', 'Monthly', 'Yearly'].includes(periodName) && data) {
+            const numPeriods = Object.keys(data).length; // This is incorrect for aggregated data. Need to refactor if period-by-period view is needed.
+        }
+
+        return {
+            ...totals,
+            // Average calculation is tricky here as data is pre-aggregated for the whole period.
+            // We'd need the raw daily/weekly data to do a proper average.
+            // For now, we'll omit the average for product reports.
+        };
+    }, [data, periodName]);
     
     const topProductsBySales = useMemo(() => {
         if (!data) return [];
@@ -66,10 +82,6 @@ const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData;
             .slice(0, 10); // Top 10
     }, [data, productMap]);
 
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No product data available for this period.</p></div>;
-    }
-    
     return (
         <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-3">

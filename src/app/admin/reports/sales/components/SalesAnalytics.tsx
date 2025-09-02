@@ -79,7 +79,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             const dateA = new Date(a.key);
             const dateB = new Date(b.key);
             if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-                return dateB.getTime() - dateA.getTime();
+                return dateB.getTime() - a.getTime();
             }
         } catch(e) {
             // Fallback for any parsing error
@@ -151,19 +151,22 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
 
   const summary = useMemo(() => {
     if (!sortedData || sortedData.length === 0) {
-        return { totalSales: 0, totalOrders: 0 };
+        return { totalSales: 0, totalOrders: 0, averageSales: 0, averageOrders: 0 };
     }
 
-    if (sortedData.length === 1 && periodName !== "Last 30 Days") {
-        return sortedData[0];
-    }
-
-    return sortedData.reduce((acc, entry) => {
+    const totals = sortedData.reduce((acc, entry) => {
         acc.totalSales += entry.totalSales || 0;
         acc.totalOrders += entry.totalOrders || 0;
         return acc;
     }, { totalSales: 0, totalOrders: 0 });
-  }, [sortedData, periodName]);
+
+    const periodCount = sortedData.length;
+    return {
+        ...totals,
+        averageSales: totals.totalSales / periodCount,
+        averageOrders: totals.totalOrders / periodCount,
+    };
+  }, [sortedData]);
   
   const handleLegendClick = (e: any) => {
     const dataKey = e.dataKey;
@@ -182,6 +185,9 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     );
   }
 
+  const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
+  const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
@@ -192,7 +198,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₱{summary.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            {periodName === "Last 30 Days" && <p className="text-xs text-muted-foreground">Total for the last 30 days</p>}
+            {showAverage && <p className="text-xs text-muted-foreground">₱{summary.averageSales.toFixed(2)} avg/{avgPeriodName}</p>}
           </CardContent>
         </Card>
         <Card>
@@ -202,7 +208,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalOrders.toLocaleString()}</div>
-            {periodName === "Last 30 Days" && <p className="text-xs text-muted-foreground">Total for the last 30 days</p>}
+            {showAverage && <p className="text-xs text-muted-foreground">{summary.averageOrders.toFixed(1)} avg/{avgPeriodName}</p>}
           </CardContent>
         </Card>
       </div>
@@ -240,10 +246,11 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
               {allServices.map(service => (
                 <Bar 
                   key={service} 
-                  dataKey={service} 
-                  fill={`var(--color-${service})`} 
+                  dataKey={service.replace(/ /g, '_')} 
+                  stackId="a"
+                  fill={`var(--color-${service.replace(/ /g, '_')})`} 
                   radius={2} 
-                  hide={hiddenServices.includes(service)}
+                  hide={hiddenServices.includes(service.replace(/ /g, '_'))}
                 />
               ))}
             </BarChart>

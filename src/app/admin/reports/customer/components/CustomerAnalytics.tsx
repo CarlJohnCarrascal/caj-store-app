@@ -76,6 +76,10 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+    
     const chartData = useMemo(() => {
         return sortedData.map(entry => ({
             name: entry.key,
@@ -86,20 +90,24 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
 
     const summary = useMemo(() => {
         if (!sortedData || sortedData.length === 0) {
-            return { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0 };
+            return { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0, averageOrderValue: 0, averageOrders: 0, averageNewCustomers: 0 };
         }
     
-        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
-            return { ...sortedData[0], totalOrderValue: sortedData[0].totalOrderValue || 0 };
-        }
-    
-        return sortedData.reduce((acc, entry) => {
+        const totals = sortedData.reduce((acc, entry) => {
             acc.newCustomerCount += entry.newCustomerCount || 0;
             acc.totalOrders += entry.totalOrders || 0;
             acc.totalOrderValue += entry.totalOrderValue || 0;
             return acc;
         }, { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0 });
-    }, [sortedData, periodName]);
+
+        const periodCount = sortedData.length;
+        return {
+            ...totals,
+            averageOrderValue: totals.totalOrderValue / periodCount,
+            averageOrders: totals.totalOrders / periodCount,
+            averageNewCustomers: totals.newCustomerCount / periodCount,
+        };
+    }, [sortedData]);
 
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
@@ -120,10 +128,6 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         }
     };
 
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-
     const allActiveCustomers = useMemo(() => {
         const aggregatedCustomers: { [id: string]: ActiveCustomerData & { id: string, name: string } } = {};
         sortedData.forEach(period => {
@@ -139,6 +143,9 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         return Object.values(aggregatedCustomers).sort((a, b) => b.totalValue - a.totalValue);
     }, [sortedData, customerMap]);
 
+    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+
     return (
         <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-3">
@@ -149,6 +156,7 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">₱{summary.totalOrderValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">₱{summary.averageOrderValue.toFixed(2)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
                 <Card>
@@ -158,6 +166,7 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{summary.totalOrders.toLocaleString()}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">{summary.averageOrders.toFixed(1)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
                 <Card>
@@ -167,6 +176,7 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">+{summary.newCustomerCount.toLocaleString()}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">{summary.averageNewCustomers.toFixed(1)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
             </div>

@@ -43,6 +43,14 @@ type ReportEntry = {
     totalTransactions: number;
     customers: { [customerId: string]: CustomerCashIOData };
     byAccount?: { [accountId: string]: AccountCashIOData };
+    cashIn?: number;
+    cashOut?: number;
+    cashInFee?: number;
+    cashOutFee?: number;
+    cashInTotal?: number;
+    cashOutTotal?: number;
+    totalAmount?: number;
+    totalFee?: number;
 };
 
 type ReportPeriodData = {
@@ -96,16 +104,16 @@ const totalAmountChartConfig = {
 
 const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string>; accountMap: Map<string, string> }) => {
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-
     const sortedData = useMemo(() => {
         if (!data) return [];
         const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+
     const feeChartData = useMemo(() => {
         return sortedData.map(entry => ({
             name: entry.key,
@@ -124,14 +132,14 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
 
     const summary = useMemo(() => {
         if (!sortedData || sortedData.length === 0) {
-            return { totalTransactions: 0, cashIn: 0, cashOut: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0 };
+            return { totalTransactions: 0, cashIn: 0, cashOut: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, averageTransactions: 0, averageFee: 0 };
         }
         
         if (sortedData.length === 1 && periodName !== "Last 30 Days") {
-            return sortedData[0];
+            return { ...sortedData[0], averageTransactions: sortedData[0].totalTransactions, averageFee: sortedData[0].totalFee || 0 };
         }
     
-        return sortedData.reduce((acc, entry) => {
+        const totals = sortedData.reduce((acc, entry) => {
             acc.totalTransactions += entry.totalTransactions || 0;
             acc.totalFee += entry.totalFee || 0;
             acc.cashInTotal += entry.cashInTotal || 0;
@@ -149,6 +157,13 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             cashOutTotal: 0,
             totalAmount: 0,
         });
+
+        const periodCount = sortedData.length;
+        return {
+            ...totals,
+            averageTransactions: totals.totalTransactions / periodCount,
+            averageFee: totals.totalFee / periodCount,
+        };
     }, [sortedData, periodName]);
 
     const formatXAxis = (value: string) => {
@@ -201,6 +216,9 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
         });
         return Object.values(aggregatedAccounts).sort((a, b) => (b.cashInFee + b.cashOutFee) - (a.cashInFee + a.cashOutFee));
     }, [data, accountMap]);
+    
+    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
 
     return (
         <div className="space-y-6">
@@ -212,6 +230,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{(summary.totalTransactions || 0).toLocaleString()}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">{summary.averageTransactions.toFixed(1)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
                 <Card>
@@ -221,6 +240,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">₱{(summary.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">₱{summary.averageFee.toFixed(2)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
                 <Card>

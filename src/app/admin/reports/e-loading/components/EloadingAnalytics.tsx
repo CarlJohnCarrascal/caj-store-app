@@ -42,15 +42,15 @@ const chartConfig = {
 const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName: string }) => {
     const [hiddenSeries, setHiddenSeries] = useState<string[]>([]);
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-
     const sortedData = useMemo(() => {
         if (!data) return [];
         const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
+
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
 
     const chartData = useMemo(() => {
         return sortedData.map(entry => ({
@@ -62,16 +62,10 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     
     const summary = useMemo(() => {
         if (!sortedData || sortedData.length === 0) {
-            return { totalCost: 0, totalFee: 0, totalOrders: 0 };
+            return { totalCost: 0, totalFee: 0, totalOrders: 0, averageFee: 0, averageCost: 0 };
         }
     
-        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
-            const entry = sortedData[0];
-            const totalOrders = entry.byServiceType ? Object.values(entry.byServiceType).reduce((acc, s) => acc + s.count, 0) : 0;
-            return { totalCost: entry.totalCost, totalFee: entry.totalFee, totalOrders };
-        }
-    
-        return sortedData.reduce((acc, entry) => {
+        const totals = sortedData.reduce((acc, entry) => {
             acc.totalCost += entry.totalCost || 0;
             acc.totalFee += entry.totalFee || 0;
             if(entry.byServiceType) {
@@ -79,7 +73,14 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             }
             return acc;
         }, { totalCost: 0, totalFee: 0, totalOrders: 0 });
-    }, [sortedData, periodName]);
+
+        const periodCount = sortedData.length;
+        return {
+            ...totals,
+            averageFee: totals.totalFee / periodCount,
+            averageCost: totals.totalCost / periodCount,
+        };
+    }, [sortedData]);
 
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
@@ -125,6 +126,9 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         );
     };
 
+    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+
     return (
         <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-3">
@@ -135,6 +139,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">₱{(summary.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">₱{summary.averageFee.toFixed(2)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
                 <Card>
@@ -144,6 +149,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">₱{(summary.totalCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        {showAverage && <p className="text-xs text-muted-foreground">₱{summary.averageCost.toFixed(2)} avg/{avgPeriodName}</p>}
                     </CardContent>
                 </Card>
                  <Card>
