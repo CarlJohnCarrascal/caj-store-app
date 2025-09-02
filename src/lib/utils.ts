@@ -82,20 +82,35 @@ export function calculateFee(amount: number, thresholds: FeeThreshold[]): number
     return 0;
   }
 
-  // Sort by the 'from' value to ensure we check in the correct order
   const sortedThresholds = [...thresholds].sort((a, b) => a.from - b.from);
   
+  // Find the threshold that applies to the total amount
   const applicableThreshold = sortedThresholds.find(t => amount >= t.from && amount <= t.to);
 
-  if (applicableThreshold) {
-    if (applicableThreshold.type === 'per_thousand_flat') {
-      // This calculates the fee proportionally based on the amount.
-      // E.g., amount=2500, fee=20 per 1000 -> (2500 / 1000) * 20 = 50
-      return (amount / 1000) * applicableThreshold.fee;
-    }
-    // Default is 'fixed'
-    return applicableThreshold.fee;
+  if (!applicableThreshold) {
+    return 0; // Return 0 if no threshold matches
   }
   
-  return 0; // Return 0 if no threshold matches
+  if (applicableThreshold.type === 'per_thousand_flat') {
+      const thousands = Math.floor(amount / 1000);
+      const remainder = amount % 1000;
+
+      // Fee for the 'thousands' part
+      const thousandsFee = thousands * applicableThreshold.fee;
+      
+      // Fee for the 'remainder' part
+      let remainderFee = 0;
+      if (remainder > 0) {
+          // Find the 'fixed' fee for the remainder
+          const remainderThreshold = sortedThresholds.find(t => remainder >= t.from && remainder <= t.to && t.type === 'fixed');
+          if (remainderThreshold) {
+              remainderFee = remainderThreshold.fee;
+          }
+      }
+      
+      return thousandsFee + remainderFee;
+  }
+  
+  // Default is 'fixed' type
+  return applicableThreshold.fee;
 }
