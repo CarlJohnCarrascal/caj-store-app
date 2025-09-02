@@ -104,13 +104,15 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                     return (
                     <AccordionItem value={order.id} key={order.id}>
                       <AccordionTrigger className="hover:no-underline group">
-                         <div className="grid grid-cols-4 items-center w-full text-sm text-left pr-4">
-                            <span>{format(new Date(order.createdAt), 'PPp')}</span>
-                            <span className="truncate">{order.customerName}</span>
-                            <span className="font-medium text-right">₱{relevantTotal.toFixed(2)}</span>
-                            <div className="flex justify-end items-center gap-2">
+                         <div className="grid grid-cols-2 md:grid-cols-4 items-center w-full text-sm text-left pr-4 gap-y-2 gap-x-4">
+                            <div className="col-span-2 md:col-span-1">
+                                <p className="font-medium">{order.customerName}</p>
+                                <p className="text-xs text-muted-foreground">{format(new Date(order.createdAt), 'PPp')}</p>
+                            </div>
+                            <span className="font-semibold text-lg md:text-sm md:text-right md:font-medium">₱{relevantTotal.toFixed(2)}</span>
+                            <div className="col-span-2 md:col-span-2 flex justify-end items-center gap-2">
                                <Button asChild variant="link" size="sm" className="p-0 h-auto z-10 relative">
-                                  <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()}>View Full</Link>
+                                  <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()}>View Full Order</Link>
                                </Button>
                             </div>
                          </div>
