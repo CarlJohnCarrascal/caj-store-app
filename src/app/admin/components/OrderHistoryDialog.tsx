@@ -118,40 +118,28 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                          </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="bg-muted/50 p-4">
+                        <div className="bg-muted/50 p-4 space-y-4">
                            {category === 'CashIO' ? (
-                              <Table>
-                                  <TableHeader>
-                                      <TableRow>
-                                      <TableHead>Transaction</TableHead>
-                                      <TableHead>Description</TableHead>
-                                      <TableHead className="text-right">Subtotal</TableHead>
-                                      <TableHead className="text-right">Actions</TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {relevantItems.map(item => (
-                                      <TableRow key={item.id}>
-                                          <TableCell className="font-medium">{item.name.split(':')[0]}</TableCell>
-                                          <TableCell>{formatDescription(item.description)}</TableCell>
-                                          <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
-                                           <TableCell className="text-right">
+                                relevantItems.map(item => (
+                                    <div key={item.id} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center text-sm border-b last:border-b-0 pb-4 last:pb-0">
+                                        <div className="font-medium">{item.name.split(':')[0]}</div>
+                                        <div className="sm:col-span-2 text-muted-foreground break-words">{formatDescription(item.description)}</div>
+                                        <div className="flex items-center justify-between sm:justify-end gap-2">
+                                            <span className="font-semibold">₱{(item.price * item.quantity).toFixed(2)}</span>
                                             {item.originalTransactionId && (
                                                 <Button
                                                     variant="outline"
-                                                    size="sm"
+                                                    size="icon"
+                                                    className="h-8 w-8"
                                                     onClick={() => handleViewDetails(item.originalTransactionId!)}
                                                     disabled={isFetchingDetails}
                                                 >
-                                                    <Info className="mr-2 h-3 w-3" />
-                                                    Details
+                                                    <Info className="h-4 w-4" />
                                                 </Button>
                                             )}
-                                           </TableCell>
-                                      </TableRow>
-                                      ))}
-                                  </TableBody>
-                              </Table>
+                                        </div>
+                                    </div>
+                                ))
                            ) : (
                               <Table>
                                   <TableHeader>
