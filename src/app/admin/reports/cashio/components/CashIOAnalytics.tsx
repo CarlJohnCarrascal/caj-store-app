@@ -39,7 +39,7 @@ type AccountCashIOData = {
     cashOutFee: number;
 };
 
-type ReportEntry = CustomerCashIOData & {
+type ReportEntry = {
     totalTransactions: number;
     customers: { [customerId: string]: CustomerCashIOData };
     byAccount?: { [accountId: string]: AccountCashIOData };
@@ -95,6 +95,11 @@ const totalAmountChartConfig = {
 
 
 const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string>; accountMap: Map<string, string> }) => {
+    
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+
     const sortedData = useMemo(() => {
         if (!data) return [];
         const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
@@ -165,10 +170,6 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
         }
     };
 
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-
     const customerBreakdown = useMemo(() => {
         const aggregatedCustomers: { [id: string]: CustomerCashIOData & { id: string, name: string } } = {};
         sortedData.forEach(period => {
@@ -186,7 +187,6 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     }, [sortedData, customerMap]);
 
     const accountBreakdown = useMemo(() => {
-        if (!data) return [];
         const aggregatedAccounts: { [id: string]: AccountCashIOData & { id: string, name: string } } = {};
         Object.values(data).forEach(period => {
             Object.entries(period.byAccount || {}).forEach(([id, stats]) => {
