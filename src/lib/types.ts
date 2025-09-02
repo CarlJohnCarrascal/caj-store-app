@@ -32,7 +32,7 @@ export interface Product {
   image?: string;
   unit: 'each' | 'kg';
   originalTransactionId?: string;
-  fromScanned?: boolean;
+  fromScanned?: string;
   createdBy?: ChangeTracker;
   updatedBy?: ChangeTracker;
 }
@@ -80,7 +80,7 @@ export interface CashTransaction {
   customerId?: string;
   status: 'Delivered' | 'Available' | 'Claimed' | 'Processing';
   receiptImageUrl?: string;
-  fromScanned?: boolean;
+  fromScanned?: string;
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
   createdBy?: ChangeTracker;

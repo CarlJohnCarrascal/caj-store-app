@@ -36,6 +36,7 @@ interface ExtractedData {
     accountUsedId?: string;
     fromScanned?: boolean;
     [key: string]: any;
+    id?: string;
 }
 
 export default function ScanImagePage() {
@@ -130,6 +131,7 @@ export default function ScanImagePage() {
     setDuplicateTransaction(null);
     setIsClaimed(false);
 
+
     try {
         const result = await extractTransactionDetailsFromImage({ imageDataUri });
 
@@ -162,7 +164,8 @@ export default function ScanImagePage() {
                 data.accountNumber = 'N/A';
             }
         }
-        
+        data['id'] = new Date().getTime().toString();
+
         setExtractedData(data);
         
         if (data.reference) {
@@ -212,24 +215,36 @@ export default function ScanImagePage() {
     }
   };
 
+  const saveScanImage = async (img, id) => {
+    
+    const receipts = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
+    
+    const receiptData = {
+        image: img,
+        reference: id,
+        date: new Date().toISOString(),
+    }
+
+    receipts.push(id);
+    localStorage.setItem('temp_receipt_id_list', JSON.stringify(receipts));
+    localStorage.setItem('temp_receipt_image_' + id, JSON.stringify(receiptData));
+  }
+
   const submitTransaction = async () => {
     if (!extractedData) return;
     setIsProcessing(true);
 
     try {
         const queryParams = new URLSearchParams();
-        queryParams.set('fromScanned', 'true');
+        
+        queryParams.set('fromScanned', extractedData.id);
+        
         if(transactionType) {
             queryParams.set('transactionType', transactionType);
         }
         
         if (previewImage && extractedData.reference) {
-            const receiptData = {
-                image: previewImage,
-                reference: extractedData.reference,
-                date: new Date().toISOString(),
-            };
-            localStorage.setItem('temp_receipt_image_' + extractedData.reference, JSON.stringify(receiptData));
+          saveScanImage(previewImage, extractedData.id);
         }
         
         Object.entries(extractedData).forEach(([key, value]) => {
@@ -257,12 +272,7 @@ export default function ScanImagePage() {
     }
 
     if (previewImage && extractedData.reference) {
-      const receiptData = {
-          image: previewImage,
-          reference: extractedData.reference,
-          date: new Date().toISOString(),
-      }
-          localStorage.setItem('temp_receipt_image_' + extractedData.reference, JSON.stringify(receiptData));
+      saveScanImage(previewImage, extractedData.id);
     }
 
     const finalPrice = existingTx.transactionType === 'Cash In' 
@@ -282,7 +292,7 @@ export default function ScanImagePage() {
         image: 'https://placehold.co/600x600.png',
         material: 'N/A',
         dimensions: 'N/A',
-        fromScanned: true,
+        fromScanned: extractedData.id,
         originalTransactionId: existingTx.id
     };
     
