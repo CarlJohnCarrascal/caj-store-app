@@ -62,6 +62,7 @@ import {
 import { deleteCashTransactionAction } from '@/lib/actions';
 import { getStoreData, setStoreData, deleteItem, getReportData } from '@/lib/offline';
 import Image from 'next/image';
+import { Label } from '@/components/ui/label';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -373,13 +374,6 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     return sorted;
   }, [filteredTransactions, sort]);
   
-  const handleSort = (key: string) => {
-    setSort(prev => ({
-        key,
-        order: prev.key === key && prev.order === 'asc' ? 'desc' : 'asc'
-    }));
-  }
-
   const paginatedTransactions = sortedTransactions.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
@@ -448,92 +442,125 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 pt-0 items-center">
-               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="date"
-                    variant={"outline"}
-                    disabled={isFetching}
-                    className={cn(
-                      "justify-start text-left font-normal w-full col-span-2 md:col-span-1",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    <span className="truncate">
-                      {date?.from ? (
-                        date.to ? (
-                          <>
-                            {format(date.from, "LLL dd, y")} -{" "}
-                            {format(date.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(date.from, "LLL dd, y")
-                        )
-                      ) : (
-                        "Pick a date range"
-                      )}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <Select onValueChange={setType} defaultValue="all">
-                <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Cash In">Cash In</SelectItem>
-                  <SelectItem value="Cash Out">Cash Out</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select onValueChange={setMethod} defaultValue="all">
-                <SelectTrigger><SelectValue placeholder="All Methods" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Methods</SelectItem>
-                  <SelectItem value="Gcash">Gcash</SelectItem>
-                  <SelectItem value="Maya">Maya</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select onValueChange={setAccountUsed} defaultValue="all">
-                <SelectTrigger><SelectValue placeholder="All Accounts" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Accounts</SelectItem>
-                  {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.accountName}</SelectItem>)}
-                </SelectContent>
-              </Select>
-
-              <Select onValueChange={setStatus} defaultValue="all">
-                <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Processing">Processing</SelectItem>
-                  <SelectItem value="Delivered">Delivered</SelectItem>
-                  <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="Claimed">Claimed</SelectItem>
-                </SelectContent>
-              </Select>
-               <div className="flex items-center gap-2 justify-self-end col-span-full lg:col-span-1">
-                  <span className="text-sm text-muted-foreground">View:</span>
-                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
-                    <LayoutGrid className="h-5 w-5" />
-                  </Button>
-                  <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
-                    <List className="h-5 w-5" />
-                  </Button>
+            <div className="p-4 pt-0 space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                <div className="col-span-2 md:col-span-1">
+                  <Label>Date Range</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="date"
+                        variant={"outline"}
+                        disabled={isFetching}
+                        className={cn(
+                          "justify-start text-left font-normal w-full",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <span className="truncate">
+                          {date?.from ? (
+                            date.to ? (
+                              <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format(date.from, "LLL dd, y")
+                            )
+                          ) : (
+                            "Pick a date range"
+                          )}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                 <div>
+                    <Label>Type</Label>
+                    <Select onValueChange={setType} defaultValue="all">
+                        <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="Cash In">Cash In</SelectItem>
+                        <SelectItem value="Cash Out">Cash Out</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div>
+                    <Label>Method</Label>
+                    <Select onValueChange={setMethod} defaultValue="all">
+                        <SelectTrigger><SelectValue placeholder="All Methods" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="all">All Methods</SelectItem>
+                        <SelectItem value="Gcash">Gcash</SelectItem>
+                        <SelectItem value="Maya">Maya</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div>
+                    <Label>Account</Label>
+                    <Select onValueChange={setAccountUsed} defaultValue="all">
+                        <SelectTrigger><SelectValue placeholder="All Accounts" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="all">All Accounts</SelectItem>
+                        {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.accountName}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                 </div>
+                <div>
+                    <Label>Status</Label>
+                    <Select onValueChange={setStatus} defaultValue="all">
+                        <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="Processing">Processing</SelectItem>
+                        <SelectItem value="Delivered">Delivered</SelectItem>
+                        <SelectItem value="Available">Available</SelectItem>
+                        <SelectItem value="Claimed">Claimed</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+              </div>
+              <Separator />
+               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Label htmlFor="sort-by" className="text-sm flex-shrink-0">Sort by:</Label>
+                    <Select onValueChange={(value) => {
+                        const [key, order] = value.split('-');
+                        setSort({ key, order: order as 'asc' | 'desc' });
+                    }} defaultValue={`${sort.key}-${sort.order}`}>
+                        <SelectTrigger id="sort-by" className="w-full sm:w-[220px]">
+                            <SelectValue placeholder="Sort by..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="transactionDate-desc">Transaction Date (Newest)</SelectItem>
+                            <SelectItem value="transactionDate-asc">Transaction Date (Oldest)</SelectItem>
+                            <SelectItem value="createdAt-desc">Creation Date (Newest)</SelectItem>
+                            <SelectItem value="createdAt-asc">Creation Date (Oldest)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2 justify-self-end">
+                      <span className="text-sm text-muted-foreground">View:</span>
+                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                        <LayoutGrid className="h-5 w-5" />
+                      </Button>
+                      <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
+                        <List className="h-5 w-5" />
+                      </Button>
+                    </div>
                 </div>
             </div>
           </AccordionContent>
@@ -613,17 +640,13 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
           <TableHeader>
             <TableRow>
               <TableHead>
-                <Button variant="ghost" onClick={() => handleSort('transactionDate')}>
-                  Date <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
+                Date
               </TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Customer / Details</TableHead>
               <TableHead>Reference</TableHead>
               <TableHead className='text-right'>
-                 <Button variant="ghost" onClick={() => handleSort('amount')}>
-                  Amount <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
+                 Amount
               </TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
