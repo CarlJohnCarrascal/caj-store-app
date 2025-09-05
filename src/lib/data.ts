@@ -427,7 +427,8 @@ export async function deleteCashTransaction(id: string): Promise<CashTransaction
 // Image Upload Function
 // =======================
 export async function finalizeReceiptImage(dataUrl: string, folder: 'cashin' | 'cashout', fileName: string): Promise<string> {
-    const path = `cashio/${folder}/${fileName}`;
+  const mainfolder = process.env.IMAGE_FOLDER;
+  const path = `${mainfolder}/${folder}/${fileName}`;
     const imageRef = storageRef(storage, path);
     // Directly upload the data URL string
     const snapshot = await uploadString(imageRef, dataUrl, 'data_url');

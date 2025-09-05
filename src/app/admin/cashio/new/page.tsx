@@ -46,12 +46,10 @@ function NewCashTransactionForm() {
     // Override defaults with any parameters from the URL
     const extractedData: { [key: string]: any } = {};
     for (const [key, value] of searchParams.entries()) {
-      if (key === 'fromScanned') {
-        extractedData[key] = value === 'true';
-      } else {
         extractedData[key] = value;
-      }
     }
+
+    console.log("passed extracted image data:", extractedData);      
     
     setInitialTransaction({ ...transactionDefaults, ...extractedData });
 
@@ -60,6 +58,8 @@ function NewCashTransactionForm() {
   if (!initialTransaction) {
     return <div>Loading...</div>;
   }
+
+  console.log("initial transaction:", initialTransaction);
 
   return (
     <div>

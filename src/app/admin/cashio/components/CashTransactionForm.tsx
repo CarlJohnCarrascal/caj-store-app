@@ -31,7 +31,7 @@ import { extractTransactionDetails } from '@/ai/flows/extract-transaction-detail
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
-import { getFeeThresholds, isReferenceNumberDuplicate } from '@/lib/data';
+import { getFeeThresholds, isReferenceNumberDuplicate, finalizeReceiptImage } from '@/lib/data';
 import { calculateFee } from '@/lib/utils';
 
 
@@ -47,7 +47,7 @@ const formSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional(),
   datetime: z.string().optional(),
-  fromScanned: z.boolean().optional(),
+  fromScanned: z.string().optional(),
 });
 
 type CashTransactionFormValues = z.infer<typeof formSchema>;
@@ -79,16 +79,16 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
       status: 'Processing',
       accountName: '',
       accountNumber: '',
-      amount: 0,
-      fee: 0,
       reference: '',
       message: '',
+      fromScanned: '',
+      amount: 0,
+      fee: 0,
       datetime: '',
-      fromScanned: false,
-      ...transaction,
       amount: transaction?.amount ? Number(transaction.amount) : 0,
       fee: transaction?.fee ? Number(transaction.fee) : 0,
       datetime: transaction?.datetime ? (transaction.datetime as any).slice(0, 16) : '',
+      ...transaction,
     },
   });
   
@@ -278,7 +278,27 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         formData.append('userId', user.uid);
         formData.append('userName', user.displayName || user.email!);
 
+        let imageUrl = '';
+
+        //upload image
+        if (data.fromScanned) {
+          const storedItemRaw = localStorage.getItem("temp_receipt_image_" + data.fromScanned);
+          if (storedItemRaw) {
+            const storedItem = JSON.parse(storedItemRaw);
+            const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
+            imageUrl = await finalizeReceiptImage(storedItem.image, folder, data.reference);
+            formData.append('receiptImageUrl', imageUrl);
+          }
+        }
+
         await addCashTransactionAction(formData);
+
+        // Clean up local storage after successful processing
+        const temp_reciept_list = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
+        for (const item of temp_reciept_list) {
+          localStorage.removeItem('temp_receipt_image_' + item);
+        }
+        localStorage.removeItem('temp_receipt_id_list');
 
         toast({ title: 'Success', description: 'Transaction saved successfully.' });
         router.push('/admin/cashio');
@@ -316,7 +336,29 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         formData.append('userId', user.uid);
         formData.append('userName', user.displayName || user.email!);
 
+        let imageUrl = '';
+
+        //upload image
+        if (data.fromScanned) {
+          const storedItemRaw = localStorage.getItem("temp_receipt_image_" + data.fromScanned);
+          if (storedItemRaw) {
+            const storedItem = JSON.parse(storedItemRaw);
+
+            const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
+            imageUrl = await finalizeReceiptImage(storedItem.image, folder, data.reference);
+            formData.append('receiptImageUrl', imageUrl);
+          }
+        }
+
         const newTransaction = await addCashTransactionAction(formData);
+        
+        // Clean up local storage after successful processing
+        const temp_reciept_list = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
+        for (const item of temp_reciept_list) {
+                localStorage.removeItem('temp_receipt_image_' + item);
+        }
+        localStorage.removeItem('temp_receipt_id_list');
+
 
         const finalPrice = newTransaction.transactionType === 'Cash In' ? newTransaction.amount + newTransaction.fee : -(newTransaction.amount - newTransaction.fee);
 
@@ -330,11 +372,10 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
             show: false,
             stock: 1,
             unit: 'each',
-            image: 'https://placehold.co/600x600.png',
+            image: imageUrl,
             material: 'N/A',
             dimensions: 'N/A',
-            originalTransactionId: newTransaction.id,
-            fromScanned: newTransaction.fromScanned,
+            originalTransactionId: newTransaction.id
         };
         
         addToCart(transactionAsProduct, 1);

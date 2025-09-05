@@ -65,6 +65,8 @@ export default function CheckoutPage() {
   const [amountTendered, setAmountTendered] = useState('');
   const [applyBalance, setApplyBalance] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
+  const [activeInput, setActiveInput] = useState<'tendered' | 'discount'>('tendered');
+
 
   useEffect(() => {
     const customersRef = ref(db, 'customers');
@@ -146,21 +148,6 @@ export default function CheckoutPage() {
 
     startTransition(async () => {
       try {
-        const imageDataUris: { image: string, reference: string }[] = [];
-        const scannedItems = cartItems.filter(item => item.fromScanned && item.category === 'CashIO' && item.originalTransactionId);
-        
-        for (const item of scannedItems) {
-            const referenceMatch = item.description?.match(/Ref: (\S+)/);
-            if(referenceMatch && referenceMatch[1]){
-                const reference = referenceMatch[1];
-                const storedItemRaw = localStorage.getItem("temp_receipt_image_" + item.fromScanned);
-                if (storedItemRaw) {
-                    const storedItem = JSON.parse(storedItemRaw);
-                    storedItem.reference = reference;
-                    imageDataUris.push(storedItem);
-                }
-            }
-        }
         
         const orderPayload = {
           customerId: customerForAction.id,
@@ -177,14 +164,7 @@ export default function CheckoutPage() {
           userName: user.displayName || user.email!,
         };
 
-        await processOrderAction(orderPayload, imageDataUris);
-        
-        // Clean up local storage after successful processing
-        const temp_reciept_list = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
-        for (const item of temp_reciept_list) {
-                localStorage.removeItem('temp_receipt_image_' + item);
-        }
-        localStorage.removeItem('temp_receipt_id_list');
+        await processOrderAction(orderPayload);
 
         toast({
           title: 'Order Processed!',
@@ -229,8 +209,28 @@ export default function CheckoutPage() {
     )
   }
 
+  const handleKeypadInput = (char: string) => {
+    const setter = activeInput === 'tendered' ? setAmountTendered : setDiscount;
+    setter(prev => prev + char);
+  };
+  
+  const handleKeypadAction = (action: 'exact' | 'clear' | 'del') => {
+    const setter = activeInput === 'tendered' ? setAmountTendered : setDiscount;
+    if (action === 'exact') {
+        setter(finalTotal.toFixed(2));
+    } else if (action === 'clear') {
+        setter('');
+    } else if (action === 'del') {
+        setter(prev => prev.slice(0, -1));
+    }
+  };
+
+  const toggleActiveInput = () => {
+    setActiveInput(prev => prev === 'tendered' ? 'discount' : 'tendered');
+  };
+
   return (
-    <div className="grid lg:grid-cols-3 gap-8">
+    <div className="grid lg:grid-cols-4 gap-8">
       <div className="lg:col-span-2 space-y-8">
         <Card>
           <CardHeader>
@@ -284,6 +284,8 @@ export default function CheckoutPage() {
                     placeholder="0.00"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
+                    onFocus={() => setActiveInput('discount')}
+                    className={cn(activeInput === 'discount' && 'ring-2 ring-primary')}
                   />
                 </div>
                  <div className="space-y-2">
@@ -294,6 +296,8 @@ export default function CheckoutPage() {
                     placeholder="0.00"
                     value={amountTendered}
                     onChange={(e) => setAmountTendered(e.target.value)}
+                    onFocus={() => setActiveInput('tendered')}
+                    className={cn(activeInput === 'tendered' && 'ring-2 ring-primary')}
                   />
                 </div>
               </div>
@@ -313,11 +317,35 @@ export default function CheckoutPage() {
                     />
                 </div>
               )}
+              <div className="grid grid-cols-1 gap-2 flex justify-between">
+                <div className='grid grid-cols-4 gap-2 mt-2'>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadAction('exact')}>Exact</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadAction('clear')}>Clear</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadAction('del')}>Del</Button>
+                  <Button variant="outline" size="sm" onClick={toggleActiveInput}>
+                    {activeInput === 'tendered' ? 'Tendered' : 'Discount'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('7')}>7</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('8')}>8</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('9')}>9</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('4')}>4</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('5')}>5</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('6')}>6</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('1')}>1</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('2')}>2</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('3')}>3</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('-')}>-</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('0')}>0</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('.')}>.</Button>
+                </div>
+              </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-2">
         <Card className="sticky top-20">
           <CardHeader>
             <CardTitle>Order Summary</CardTitle>

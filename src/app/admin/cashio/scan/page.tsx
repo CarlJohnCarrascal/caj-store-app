@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { extractTransactionDetailsFromImage } from '@/ai/flows/extract-transaction-details-from-image';
-import { getCashTransactionByReference, getAccounts } from '@/lib/data';
+import { getCashTransactionByReference, getAccounts, finalizeReceiptImage, updateCashTransaction } from '@/lib/data';
 import { useCart } from '@/hooks/use-cart';
 import { Product, Account, CashTransaction } from '@/lib/types';
 import Image from 'next/image';
@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 
 type TransactionType = 'Cash In' | 'Cash Out';
@@ -34,9 +35,10 @@ interface ExtractedData {
     accountNumber?: string;
     datetime?: string;
     accountUsedId?: string;
-    fromScanned?: boolean;
+    fromScanned?: string;
     [key: string]: any;
-    id?: string;
+    imageId?: string;
+    image?: string;
 }
 
 export default function ScanImagePage() {
@@ -60,6 +62,8 @@ export default function ScanImagePage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  
+  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchAccounts() {
@@ -164,7 +168,6 @@ export default function ScanImagePage() {
                 data.accountNumber = 'N/A';
             }
         }
-        data['id'] = new Date().getTime().toString();
 
         setExtractedData(data);
         
@@ -215,7 +218,7 @@ export default function ScanImagePage() {
     }
   };
 
-  const saveScanImage = async (img, id) => {
+  const saveScanImage = async (img: string, id: string) => {
     
     const receipts = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
     
@@ -237,19 +240,24 @@ export default function ScanImagePage() {
     try {
         const queryParams = new URLSearchParams();
         
-        queryParams.set('fromScanned', extractedData.id);
         
         if(transactionType) {
             queryParams.set('transactionType', transactionType);
         }
+
+        extractedData['imageId'] = new Date().getTime().toString();
         
-        if (previewImage && extractedData.reference) {
-          saveScanImage(previewImage, extractedData.id);
+        if (previewImage) {
+          queryParams.set('fromScanned', extractedData.imageId);
+          saveScanImage(previewImage, extractedData.imageId);
         }
         
         Object.entries(extractedData).forEach(([key, value]) => {
             if (key !== 'transactionType' && value) {
-                queryParams.set(key, String(value));
+                if (key === 'datetime') {
+                  const localDateTime = value.slice(0, 16);
+                  queryParams.set(key, localDateTime);
+                }else queryParams.set(key, String(value));
             }
         });
 
@@ -271,9 +279,14 @@ export default function ScanImagePage() {
         return;
     }
 
-    if (previewImage && extractedData.reference) {
-      saveScanImage(previewImage, extractedData.id);
+    let imageUrl = '';
+    //upload image
+    if (previewImage) {
+      const folder = existingTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
+      imageUrl = await finalizeReceiptImage(previewImage, folder, existingTx.reference);
     }
+    
+    await updateCashTransaction(existingTx.id, { receiptImageUrl: imageUrl }, { userId: user.uid , userName: user.displayName });
 
     const finalPrice = existingTx.transactionType === 'Cash In' 
         ? existingTx.amount + existingTx.fee 
@@ -289,10 +302,10 @@ export default function ScanImagePage() {
         show: false,
         stock: 1,
         unit: 'each',
-        image: 'https://placehold.co/600x600.png',
+        image: imageUrl,
         material: 'N/A',
         dimensions: 'N/A',
-        fromScanned: extractedData.id,
+        fromScanned: extractedData.imageId,
         originalTransactionId: existingTx.id
     };
     

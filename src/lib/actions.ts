@@ -206,8 +206,7 @@ function getCostAndFeeFromDescription(description: string): { cost: number, fee:
 
 
 export async function processOrderAction(
-    orderData: z.infer<typeof processOrderSchema>,
-    imageDataUris: { image: string, reference: string }[] = []
+    orderData: z.infer<typeof processOrderSchema>
 ) {
     const validatedOrder = processOrderSchema.safeParse(orderData);
     if (!validatedOrder.success) {
@@ -240,21 +239,10 @@ export async function processOrderAction(
                     const cashTx = await getCashTransactionById(item.originalTransactionId);
                     if (cashTx) {
                         const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
-                        let finalImageUrl = cashTx.receiptImageUrl || '';
-                        
-                        if (item.fromScanned) {
-                            const matchingImage = imageDataUris.find(img => img.reference === cashTx.reference);
-                            if (matchingImage) {
-                                const fileName = `${cashTx.reference || Date.now()}.jpg`;
-                                const folder = cashTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-                                finalImageUrl = await finalizeReceiptImage(matchingImage.image, folder, fileName);
-                            }
-                        }
                         
                         updatedTransaction = await updateCashTransaction(cashTx.id, { 
                             status: finalStatus,
                             customerId,
-                            receiptImageUrl: finalImageUrl,
                         }, user);
 
                         await logActivity({
