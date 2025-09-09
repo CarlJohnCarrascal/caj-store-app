@@ -47,7 +47,8 @@ const formSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional(),
   datetime: z.string().optional(),
-  fromScanned: z.string().optional(),
+  fromScanned: z.string().optional(), // Now optional
+  receiptImageUrl: z.string().optional(), // Ensure receiptImageUrl is in schema
 });
 
 type CashTransactionFormValues = z.infer<typeof formSchema>;
@@ -85,6 +86,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
       amount: 0,
       fee: 0,
       datetime: '',
+      receiptImageUrl: '',
       amount: transaction?.amount ? Number(transaction.amount) : 0,
       fee: transaction?.fee ? Number(transaction.fee) : 0,
       datetime: transaction?.datetime ? (transaction.datetime as any).slice(0, 16) : '',
@@ -254,7 +256,6 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     }
   };
 
-
   const onSave = (data: CashTransactionFormValues) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
@@ -294,11 +295,9 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         await addCashTransactionAction(formData);
 
         // Clean up local storage after successful processing
-        const temp_reciept_list = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
-        for (const item of temp_reciept_list) {
-          localStorage.removeItem('temp_receipt_image_' + item);
+        if (data.fromScanned) {
+            localStorage.removeItem('temp_receipt_image_' + data.fromScanned);
         }
-        localStorage.removeItem('temp_receipt_id_list');
 
         toast({ title: 'Success', description: 'Transaction saved successfully.' });
         router.push('/admin/cashio');
@@ -343,7 +342,6 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
           const storedItemRaw = localStorage.getItem("temp_receipt_image_" + data.fromScanned);
           if (storedItemRaw) {
             const storedItem = JSON.parse(storedItemRaw);
-
             const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
             imageUrl = await finalizeReceiptImage(storedItem.image, folder, data.reference);
             formData.append('receiptImageUrl', imageUrl);
@@ -353,11 +351,9 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         const newTransaction = await addCashTransactionAction(formData);
         
         // Clean up local storage after successful processing
-        const temp_reciept_list = JSON.parse(localStorage.getItem('temp_receipt_id_list') || '[]');
-        for (const item of temp_reciept_list) {
-                localStorage.removeItem('temp_receipt_image_' + item);
+        if (data.fromScanned) {
+            localStorage.removeItem('temp_receipt_image_' + data.fromScanned);
         }
-        localStorage.removeItem('temp_receipt_id_list');
 
 
         const finalPrice = newTransaction.transactionType === 'Cash In' ? newTransaction.amount + newTransaction.fee : -(newTransaction.amount - newTransaction.fee);
@@ -375,7 +371,8 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
             image: imageUrl,
             material: 'N/A',
             dimensions: 'N/A',
-            originalTransactionId: newTransaction.id
+            originalTransactionId: newTransaction.id,
+            fromScanned: data.fromScanned
         };
         
         addToCart(transactionAsProduct, 1);

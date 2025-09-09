@@ -533,6 +533,7 @@ const cashTransactionSchema = z.object({
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
   fromScanned: z.coerce.boolean().optional(),
+  receiptImageUrl: z.string().optional(),
 });
 
 export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {

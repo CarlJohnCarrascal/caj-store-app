@@ -164,7 +164,7 @@ export default function ScanImagePage() {
             if (matchedAccount) {
                 data.accountUsedId = matchedAccount.id;
                 data['Account Used'] = matchedAccount.accountName;
-                data.accountName = 'N/A';
+          			data.accountName = 'N/A';
                 data.accountNumber = 'N/A';
             }
         }

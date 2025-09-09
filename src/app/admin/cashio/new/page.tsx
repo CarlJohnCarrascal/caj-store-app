@@ -24,7 +24,7 @@ function NewCashTransactionForm() {
 
   useEffect(() => {
     // Create a base object for the new transaction with defaults
-    const transactionDefaults = {
+    const transactionDefaults: any = {
       transactionType: 'Cash In',
       paymentMethod: 'Gcash',
       status: 'Processing',
@@ -35,7 +35,8 @@ function NewCashTransactionForm() {
       reference: '',
       message: '',
       datetime: '',
-      fromScanned: false,
+      fromScanned: '',
+      receiptImageUrl: '',
     };
 
     const lastUsedAccountId = typeof window !== 'undefined' ? localStorage.getItem('lastUsedAccountId') : null;
@@ -48,8 +49,6 @@ function NewCashTransactionForm() {
     for (const [key, value] of searchParams.entries()) {
         extractedData[key] = value;
     }
-
-    console.log("passed extracted image data:", extractedData);      
     
     setInitialTransaction({ ...transactionDefaults, ...extractedData });
 
@@ -58,8 +57,6 @@ function NewCashTransactionForm() {
   if (!initialTransaction) {
     return <div>Loading...</div>;
   }
-
-  console.log("initial transaction:", initialTransaction);
 
   return (
     <div>

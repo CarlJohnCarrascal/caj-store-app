@@ -130,11 +130,11 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    className="h-8 w-8"
+                                                    className="h-8 w-28"
                                                     onClick={() => handleViewDetails(item.originalTransactionId!)}
                                                     disabled={isFetchingDetails}
                                                 >
-                                                    <Info className="h-4 w-4" />
+                                                    <Info className="h-4 w-4" /> Details
                                                 </Button>
                                             )}
                                         </div>
