@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -19,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 interface CustomerActionButtonsProps {
   customer: Customer;
   className?: string;
+  onUpdate: () => void;
 }
 
 const formSchema = z.object({
@@ -27,7 +29,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function CustomerActionButtons({ customer, className }: CustomerActionButtonsProps) {
+export default function CustomerActionButtons({ customer, className, onUpdate }: CustomerActionButtonsProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,6 +65,7 @@ export default function CustomerActionButtons({ customer, className }: CustomerA
           description: `Customer balance updated and transaction recorded.`,
         });
         setIsDialogOpen(false);
+        onUpdate(); // Trigger refresh on parent
       } catch (error: any) {
         toast({
           variant: 'destructive',

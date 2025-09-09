@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { addCustomerAction } from '@/lib/actions';
+import { addCustomerAction, updateCustomerAction } from '@/lib/actions';
 import { useTransition } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -67,10 +68,14 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
         formData.append('userName', user.displayName || user.email!);
 
         if (customer) {
-          // TODO: Implement update customer action
+          const updatedCustomer = await updateCustomerAction(customer.id, formData);
           toast({ title: 'Success', description: 'Customer updated successfully.' });
-          router.push('/admin/customers');
-          router.refresh();
+          if (onSuccess) {
+            onSuccess(updatedCustomer);
+          } else {
+            router.push('/admin/customers');
+            router.refresh();
+          }
         } else {
           const newCustomer = await addCustomerAction(formData);
           toast({ title: 'Success', description: 'Customer added successfully.' });
@@ -82,8 +87,8 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
             router.refresh();
           }
         }
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };
@@ -128,7 +133,7 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
                  <FormField control={form.control} name="balance" render={({ field }) => (
                   <FormItem>
                       <FormLabel>Initial Balance</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} /></FormControl>
+                      <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} disabled={!!customer} /></FormControl>
                       <FormMessage />
                   </FormItem>
                 )} />

@@ -5,7 +5,7 @@
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction, limitToLast } from 'firebase/database';
 import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
-import type { Product, Account, Customer, CashTransaction, Collection, ActivityLog, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -201,6 +201,23 @@ export async function addCustomer(customer: Omit<Customer, 'id'>, createdBy: Omi
   await set(newCustomerRef, dataToSave);
   return { ...dataToSave, id: newCustomerRef.key! };
 }
+
+export async function updateCustomer(id: string, customerData: Omit<Customer, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Customer> {
+    const customerRef = ref(db, `customers/${id}`);
+    const snapshot = await get(customerRef);
+    if(snapshot.exists()){
+      const existingData = snapshot.val();
+      const dataToSave = {
+          ...existingData,
+          ...customerData,
+          updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+      };
+      await set(customerRef, dataToSave);
+      return { ...dataToSave, id };
+    }
+    throw new Error('Customer not found');
+}
+
 
 export async function updateCustomerBalance(customerId: string, amount: number): Promise<Customer | null> {
     const customerRef = ref(db, `customers/${customerId}`);

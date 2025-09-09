@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice } from './lib/types';
 import { ref, get, update, remove } from 'firebase/database';
 import { db } from './firebase';
@@ -390,6 +390,33 @@ export async function addCustomerAction(data: FormData): Promise<Customer> {
   return newCustomer;
 }
 
+export async function updateCustomerAction(id: string, data: FormData): Promise<Customer> {
+    const user = getUserFromFormData(data);
+    const rawData = Object.fromEntries(data.entries());
+
+    const validatedFields = customerSchema.safeParse(rawData);
+    if (!validatedFields.success) {
+        throw new Error('Invalid customer data.');
+    }
+    
+    const updatedData = validatedFields.data as Omit<Customer, 'id'>;
+
+    const updatedCustomer = await updateCustomer(id, updatedData, user);
+    
+    await logActivity({
+        type: 'Customer',
+        action: 'Updated',
+        details: `Customer "${updatedCustomer.name}" was updated.`,
+        targetId: updatedCustomer.id,
+        ...user,
+    });
+    
+    revalidatePath('/admin/customers');
+    revalidatePath(`/admin/customers/${id}`);
+    revalidatePath('/admin/activity-logs');
+    return updatedCustomer;
+}
+
 export async function createFinancialTransactionOrderAction(
     customerId: string, 
     amount: number, // Positive for payment, negative for adding to balance
@@ -532,7 +559,7 @@ const cashTransactionSchema = z.object({
   reference: z.string().min(1, 'Reference is required.'),
   message: z.string().optional().default(''),
   datetime: z.string().optional(),
-  fromScanned: z.coerce.boolean().optional(),
+  fromScanned: z.string().optional(),
   receiptImageUrl: z.string().optional(),
 });
 
