@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -49,11 +49,8 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-
      const chartData = useMemo(() => {
+        if (!sortedData) return [];
         return sortedData.map(entry => ({
             name: entry.key,
             totalCost: entry.totalCost || 0,
@@ -81,6 +78,10 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         };
     }, [sortedData]);
 
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+    
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
         try {
@@ -109,8 +110,8 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         );
     };
 
-    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
-    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+    const showAverage = ['Weekly', 'Monthly', 'Yearly', 'Last 30 Days'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
 
     return (
         <div className="space-y-6">
@@ -172,6 +173,7 @@ export default function OtherServiceAnalytics() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        let unsubscribeReports: Unsubscribe | null = null;
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('otherServiceReports');
             if (cachedReports) {
@@ -182,7 +184,7 @@ export default function OtherServiceAnalytics() {
         loadFromCache();
 
         const reportsRef = ref(db, 'otherServiceReports');
-        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(reportsRef, (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('otherServiceReports', reportData);
@@ -192,7 +194,9 @@ export default function OtherServiceAnalytics() {
             setIsLoading(false);
         });
 
-        return () => unsubscribeReports();
+        return () => {
+            if (unsubscribeReports) unsubscribeReports();
+        };
     }, []);
     
     const last30DaysData = useMemo(() => {

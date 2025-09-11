@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -76,11 +76,8 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-    
     const chartData = useMemo(() => {
+        if (!sortedData) return [];
         return sortedData.map(entry => ({
             name: entry.key,
             newCustomerCount: entry.newCustomerCount || 0,
@@ -109,6 +106,26 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         };
     }, [sortedData]);
 
+    const allActiveCustomers = useMemo(() => {
+        if (!sortedData) return [];
+        const aggregatedCustomers: { [id: string]: ActiveCustomerData & { id: string, name: string } } = {};
+        sortedData.forEach(period => {
+            Object.entries(period.activeCustomers || {}).forEach(([id, stats]) => {
+                if (!aggregatedCustomers[id]) {
+                    aggregatedCustomers[id] = { ...stats, id, name: customerMap.get(id) || 'Unknown Customer' };
+                } else {
+                    aggregatedCustomers[id].orderCount += stats.orderCount;
+                    aggregatedCustomers[id].totalValue += stats.totalValue;
+                }
+            });
+        });
+        return Object.values(aggregatedCustomers).sort((a, b) => b.totalValue - a.totalValue);
+    }, [sortedData, customerMap]);
+
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+    
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
         try {
@@ -128,23 +145,8 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
         }
     };
 
-    const allActiveCustomers = useMemo(() => {
-        const aggregatedCustomers: { [id: string]: ActiveCustomerData & { id: string, name: string } } = {};
-        sortedData.forEach(period => {
-            Object.entries(period.activeCustomers || {}).forEach(([id, stats]) => {
-                if (!aggregatedCustomers[id]) {
-                    aggregatedCustomers[id] = { ...stats, id, name: customerMap.get(id) || 'Unknown Customer' };
-                } else {
-                    aggregatedCustomers[id].orderCount += stats.orderCount;
-                    aggregatedCustomers[id].totalValue += stats.totalValue;
-                }
-            });
-        });
-        return Object.values(aggregatedCustomers).sort((a, b) => b.totalValue - a.totalValue);
-    }, [sortedData, customerMap]);
-
-    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
-    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+    const showAverage = ['Weekly', 'Monthly', 'Yearly', 'Last 30 Days'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
 
     return (
         <div className="space-y-6">
@@ -249,6 +251,8 @@ export default function CustomerAnalytics() {
     useEffect(() => {
         let reportsLoaded = false;
         let customersLoaded = false;
+        let unsubscribeReports: Unsubscribe | null = null;
+        let unsubscribeCustomers: Unsubscribe | null = null;
 
         const checkLoading = () => {
             if(reportsLoaded && customersLoaded) setIsLoading(false);
@@ -273,7 +277,7 @@ export default function CustomerAnalytics() {
 
         // Listen for live updates
         const reportsRef = ref(db, 'customerReports');
-        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(reportsRef, (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('customerReports', reportData); // Update cache
@@ -286,7 +290,7 @@ export default function CustomerAnalytics() {
         });
 
         const customersRef = ref(db, 'customers');
-        const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+        unsubscribeCustomers = onValue(customersRef, (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList); // Update cache
@@ -299,8 +303,8 @@ export default function CustomerAnalytics() {
         });
 
         return () => {
-            unsubscribeReports();
-            unsubscribeCustomers();
+            if (unsubscribeReports) unsubscribeReports();
+            if (unsubscribeCustomers) unsubscribeCustomers();
         }
     }, []);
 

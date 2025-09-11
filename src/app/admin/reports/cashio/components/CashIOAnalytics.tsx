@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -110,11 +110,8 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-
     const feeChartData = useMemo(() => {
+        if (!sortedData) return [];
         return sortedData.map(entry => ({
             name: entry.key,
             cashInFee: entry.cashInFee || 0,
@@ -123,6 +120,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     }, [sortedData]);
 
     const totalAmountChartData = useMemo(() => {
+        if (!sortedData) return [];
         return sortedData.map(entry => ({
             name: entry.key,
             cashInTotal: entry.cashInTotal || 0,
@@ -165,7 +163,45 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             averageFee: totals.totalFee / periodCount,
         };
     }, [sortedData, periodName]);
+    
+    const customerBreakdown = useMemo(() => {
+        if (!sortedData) return [];
+        const aggregatedCustomers: { [id: string]: CustomerCashIOData & { id: string, name: string } } = {};
+        sortedData.forEach(period => {
+            Object.entries(period.customers || {}).forEach(([id, stats]) => {
+                if (!aggregatedCustomers[id]) {
+                    aggregatedCustomers[id] = { ...stats, id, name: customerMap.get(id) || 'Unknown Customer' };
+                } else {
+                    Object.keys(stats).forEach(key => {
+                        (aggregatedCustomers[id] as any)[key] = ((aggregatedCustomers[id] as any)[key] || 0) + (stats as any)[key];
+                    });
+                }
+            });
+        });
+        return Object.values(aggregatedCustomers).sort((a, b) => b.totalFee - a.totalFee);
+    }, [sortedData, customerMap]);
 
+    const accountBreakdown = useMemo(() => {
+        if (!data) return [];
+        const aggregatedAccounts: { [id: string]: AccountCashIOData & { id: string, name: string } } = {};
+        Object.values(data).forEach(period => {
+            Object.entries(period.byAccount || {}).forEach(([id, stats]) => {
+                if (!aggregatedAccounts[id]) {
+                    aggregatedAccounts[id] = { ...stats, id, name: accountMap.get(id) || 'Unknown Account' };
+                } else {
+                    Object.keys(stats).forEach(key => {
+                        (aggregatedAccounts[id] as any)[key] = ((aggregatedAccounts[id] as any)[key] || 0) + (stats as any)[key];
+                    });
+                }
+            });
+        });
+        return Object.values(aggregatedAccounts).sort((a, b) => (b.cashInFee + b.cashOutFee) - (a.cashInFee + a.cashOutFee));
+    }, [data, accountMap]);
+
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+    
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
         try {
@@ -184,41 +220,9 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             return value;
         }
     };
-
-    const customerBreakdown = useMemo(() => {
-        const aggregatedCustomers: { [id: string]: CustomerCashIOData & { id: string, name: string } } = {};
-        sortedData.forEach(period => {
-            Object.entries(period.customers || {}).forEach(([id, stats]) => {
-                if (!aggregatedCustomers[id]) {
-                    aggregatedCustomers[id] = { ...stats, id, name: customerMap.get(id) || 'Unknown Customer' };
-                } else {
-                    Object.keys(stats).forEach(key => {
-                        (aggregatedCustomers[id] as any)[key] = ((aggregatedCustomers[id] as any)[key] || 0) + (stats as any)[key];
-                    });
-                }
-            });
-        });
-        return Object.values(aggregatedCustomers).sort((a, b) => b.totalFee - a.totalFee);
-    }, [sortedData, customerMap]);
-
-    const accountBreakdown = useMemo(() => {
-        const aggregatedAccounts: { [id: string]: AccountCashIOData & { id: string, name: string } } = {};
-        Object.values(data).forEach(period => {
-            Object.entries(period.byAccount || {}).forEach(([id, stats]) => {
-                if (!aggregatedAccounts[id]) {
-                    aggregatedAccounts[id] = { ...stats, id, name: accountMap.get(id) || 'Unknown Account' };
-                } else {
-                    Object.keys(stats).forEach(key => {
-                        (aggregatedAccounts[id] as any)[key] = ((aggregatedAccounts[id] as any)[key] || 0) + (stats as any)[key];
-                    });
-                }
-            });
-        });
-        return Object.values(aggregatedAccounts).sort((a, b) => (b.cashInFee + b.cashOutFee) - (a.cashInFee + a.cashOutFee));
-    }, [data, accountMap]);
     
-    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
-    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+    const showAverage = ['Weekly', 'Monthly', 'Yearly', 'Last 30 Days'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
 
     return (
         <div className="space-y-6">
@@ -397,6 +401,9 @@ export default function CashIOAnalytics() {
         let reportsLoaded = false;
         let customersLoaded = false;
         let accountsLoaded = false;
+        let unsubscribeReports: Unsubscribe | null = null;
+        let unsubscribeCustomers: Unsubscribe | null = null;
+        let unsubscribeAccounts: Unsubscribe | null = null;
 
         const checkLoading = () => {
             if(reportsLoaded && customersLoaded && accountsLoaded) setIsLoading(false);
@@ -428,7 +435,7 @@ export default function CashIOAnalytics() {
 
         // Listen for live updates
         const reportsRef = ref(db, 'cashIOReports');
-        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(reportsRef, (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('cashIOReports', reportData); // Update cache
@@ -441,7 +448,7 @@ export default function CashIOAnalytics() {
         });
 
         const customersRef = ref(db, 'customers');
-        const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+        unsubscribeCustomers = onValue(customersRef, (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList); // Update cache
@@ -454,7 +461,7 @@ export default function CashIOAnalytics() {
         });
 
         const accountsRef = ref(db, 'accounts');
-        const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
+        unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
             const accountList = snapshotToArray<Account>(snapshot);
             setAccounts(accountList);
             setStoreData('accounts', accountList); // Update cache
@@ -467,9 +474,9 @@ export default function CashIOAnalytics() {
         });
 
         return () => {
-            unsubscribeReports();
-            unsubscribeCustomers();
-            unsubscribeAccounts();
+            if (unsubscribeReports) unsubscribeReports();
+            if (unsubscribeCustomers) unsubscribeCustomers();
+            if (unsubscribeAccounts) unsubscribeAccounts();
         }
     }, []);
 

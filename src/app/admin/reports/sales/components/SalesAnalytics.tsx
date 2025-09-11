@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -79,7 +79,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             const dateA = new Date(a.key);
             const dateB = new Date(b.key);
             if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-                return dateB.getTime() - a.getTime();
+                return dateB.getTime() - dateA.getTime();
             }
         } catch(e) {
             // Fallback for any parsing error
@@ -90,6 +90,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
   }, [data, periodName]);
   
   const allServices = useMemo(() => {
+    if (!sortedData) return [];
     return Array.from(new Set(sortedData.flatMap(d => d.byService ? Object.keys(d.byService) : [])));
   }, [sortedData]);
 
@@ -106,6 +107,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
   }, [allServices]);
 
   const serviceChartData = useMemo(() => {
+      if (!sortedData) return [];
       return sortedData.map(entry => {
           const serviceSales: { [key: string]: number } = {};
           allServices.forEach(service => {
@@ -119,11 +121,39 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
   }, [sortedData, allServices]);
 
   const chartData = useMemo(() => {
+    if (!sortedData) return [];
     return sortedData.map(entry => ({
       name: entry.key,
       totalSales: entry.totalSales,
     })).reverse(); // Reverse for chronological order in chart
   }, [sortedData]);
+  
+  const summary = useMemo(() => {
+    if (!sortedData || sortedData.length === 0) {
+        return { totalSales: 0, totalOrders: 0, averageSales: 0, averageOrders: 0 };
+    }
+
+    const totals = sortedData.reduce((acc, entry) => {
+        acc.totalSales += entry.totalSales || 0;
+        acc.totalOrders += entry.totalOrders || 0;
+        return acc;
+    }, { totalSales: 0, totalOrders: 0 });
+
+    const periodCount = sortedData.length;
+    return {
+        ...totals,
+        averageSales: totals.totalSales / periodCount,
+        averageOrders: totals.totalOrders / periodCount,
+    };
+  }, [sortedData]);
+
+  if (!data) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-lg text-muted-foreground">No data available for this period.</p>
+      </div>
+    );
+  }
   
   const formatXAxis = (value: string) => {
     if (!value || typeof value !== 'string') return '';
@@ -149,25 +179,6 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     }
   };
 
-  const summary = useMemo(() => {
-    if (!sortedData || sortedData.length === 0) {
-        return { totalSales: 0, totalOrders: 0, averageSales: 0, averageOrders: 0 };
-    }
-
-    const totals = sortedData.reduce((acc, entry) => {
-        acc.totalSales += entry.totalSales || 0;
-        acc.totalOrders += entry.totalOrders || 0;
-        return acc;
-    }, { totalSales: 0, totalOrders: 0 });
-
-    const periodCount = sortedData.length;
-    return {
-        ...totals,
-        averageSales: totals.totalSales / periodCount,
-        averageOrders: totals.totalOrders / periodCount,
-    };
-  }, [sortedData]);
-  
   const handleLegendClick = (e: any) => {
     const dataKey = e.dataKey;
     setHiddenServices(prev => 
@@ -177,16 +188,8 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     );
   };
 
-  if (!data) {
-    return (
-      <div className="text-center py-16">
-        <p className="text-lg text-muted-foreground">No data available for this period.</p>
-      </div>
-    );
-  }
-
-  const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
-  const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+  const showAverage = ['Weekly', 'Monthly', 'Yearly', 'Last 30 Days'].includes(periodName);
+  const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
 
   return (
     <div className="space-y-6">
@@ -274,6 +277,7 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             </TableHeader>
             <TableBody>
               {allServices.map(service => {
+                 if (!sortedData) return null;
                  const totalOrders = sortedData.reduce((sum, d) => sum + (d.byService[service]?.orders || 0), 0);
                  const totalSales = sortedData.reduce((sum, d) => sum + (d.byService[service]?.sales || 0), 0);
 
@@ -304,6 +308,7 @@ export default function SalesAnalytics() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let unsubscribe: Unsubscribe | null = null;
     // Load from cache first
     const loadFromCache = async () => {
         const cachedReports = await getReportData<AllReports>('salesReports');
@@ -315,7 +320,7 @@ export default function SalesAnalytics() {
     loadFromCache();
 
     const reportsRef = ref(db, 'salesReports');
-    const unsubscribe = onValue(reportsRef, (snapshot) => {
+    unsubscribe = onValue(reportsRef, (snapshot) => {
       const reportData = snapshot.exists() ? snapshot.val() : null;
       setReports(reportData);
       setReportData('salesReports', reportData); // Update cache
@@ -325,7 +330,11 @@ export default function SalesAnalytics() {
         setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
   }, []);
 
   const todayData = useMemo(() => {

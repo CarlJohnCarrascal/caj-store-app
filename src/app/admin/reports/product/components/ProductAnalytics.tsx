@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,10 +44,6 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 
 const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData; periodName: string; productMap: Map<string, Product> }) => {
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No product data available for this period.</p></div>;
-    }
-    
     const summary = useMemo(() => {
         if (!data) return { totalSales: 0, totalQuantity: 0, totalOrders: 0, averageSales: 0 };
         const totals = Object.values(data).reduce((acc, product) => {
@@ -57,18 +53,10 @@ const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData;
             return acc;
         }, { totalSales: 0, totalQuantity: 0, totalOrders: 0 });
 
-        const periodCount = Object.keys(data).length > 0 ? 1 : 0; // Simplified for aggregated views
-        if (['Weekly', 'Monthly', 'Yearly'].includes(periodName) && data) {
-            const numPeriods = Object.keys(data).length; // This is incorrect for aggregated data. Need to refactor if period-by-period view is needed.
-        }
-
         return {
-            ...totals,
-            // Average calculation is tricky here as data is pre-aggregated for the whole period.
-            // We'd need the raw daily/weekly data to do a proper average.
-            // For now, we'll omit the average for product reports.
+            ...totals
         };
-    }, [data, periodName]);
+    }, [data]);
     
     const topProductsBySales = useMemo(() => {
         if (!data) return [];
@@ -81,6 +69,10 @@ const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData;
             .sort((a, b) => b.totalSales - a.totalSales)
             .slice(0, 10); // Top 10
     }, [data, productMap]);
+
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No product data available for this period.</p></div>;
+    }
 
     return (
         <div className="space-y-6">
@@ -161,6 +153,8 @@ export default function ProductAnalytics() {
     useEffect(() => {
         let reportsLoaded = false;
         let productsLoaded = false;
+        let unsubscribeReports: Unsubscribe | null = null;
+        let unsubscribeProducts: Unsubscribe | null = null;
 
         const checkLoading = () => {
             if(reportsLoaded && productsLoaded) setIsLoading(false);
@@ -185,7 +179,7 @@ export default function ProductAnalytics() {
 
         // Listen for live updates
         const reportsRef = ref(db, 'productReports');
-        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(reportsRef, (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('productReports', reportData); // Update cache
@@ -198,7 +192,7 @@ export default function ProductAnalytics() {
         });
 
         const productsRef = ref(db, 'products');
-        const unsubscribeProducts = onValue(productsRef, (snapshot) => {
+        unsubscribeProducts = onValue(productsRef, (snapshot) => {
             const productList = snapshotToArray<Product>(snapshot);
             setProducts(productList);
             setStoreData('products', productList); // Update cache
@@ -211,8 +205,8 @@ export default function ProductAnalytics() {
         });
 
         return () => {
-            unsubscribeReports();
-            unsubscribeProducts();
+            if (unsubscribeReports) unsubscribeReports();
+            if (unsubscribeProducts) unsubscribeProducts();
         }
     }, []);
 

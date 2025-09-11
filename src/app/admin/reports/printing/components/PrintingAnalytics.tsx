@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,11 +43,8 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         return entries.sort((a, b) => b.key.localeCompare(a.key));
     }, [data]);
     
-    if (!data) {
-        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
-    }
-    
     const chartData = useMemo(() => {
+        if (!sortedData) return [];
         return sortedData.map(entry => ({
             name: entry.key,
             totalSales: entry.totalSales || 0,
@@ -75,6 +72,29 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
     }, [sortedData]);
 
 
+    const serviceTypeBreakdown = useMemo(() => {
+        if (!sortedData) return [];
+        const aggregated: PrintingReportData['byServiceType'] = {};
+        sortedData.forEach(period => {
+             Object.entries(period.byServiceType || {}).forEach(([name, stats]) => {
+                if (!aggregated[name]) {
+                    aggregated[name] = { count: 0, sales: 0, bySize: {} };
+                }
+                aggregated[name].count += stats.count;
+                aggregated[name].sales += stats.sales;
+                Object.entries(stats.bySize).forEach(([size, count]) => {
+                    aggregated[name].bySize[size] = (aggregated[name].bySize[size] || 0) + count;
+                });
+            });
+        });
+        return Object.entries(aggregated).map(([name, stats]) => ({ name, ...stats }))
+            .sort((a,b) => b.sales - a.sales);
+    }, [sortedData]);
+
+    if (!data) {
+        return <div className="text-center py-16"><p className="text-lg text-muted-foreground">No data available for this period.</p></div>;
+    }
+    
     const formatXAxis = (value: string) => {
         if (!value || typeof value !== 'string') return '';
         try {
@@ -94,26 +114,8 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         }
     };
     
-    const serviceTypeBreakdown = useMemo(() => {
-        const aggregated: PrintingReportData['byServiceType'] = {};
-        sortedData.forEach(period => {
-             Object.entries(period.byServiceType || {}).forEach(([name, stats]) => {
-                if (!aggregated[name]) {
-                    aggregated[name] = { count: 0, sales: 0, bySize: {} };
-                }
-                aggregated[name].count += stats.count;
-                aggregated[name].sales += stats.sales;
-                Object.entries(stats.bySize).forEach(([size, count]) => {
-                    aggregated[name].bySize[size] = (aggregated[name].bySize[size] || 0) + count;
-                });
-            });
-        });
-        return Object.entries(aggregated).map(([name, stats]) => ({ name, ...stats }))
-            .sort((a,b) => b.sales - a.sales);
-    }, [sortedData]);
-    
-    const showAverage = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
-    const avgPeriodName = periodName.replace('ly', '').toLowerCase();
+    const showAverage = ['Weekly', 'Monthly', 'Yearly', 'Last 30 Days'].includes(periodName);
+    const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
 
     return (
         <div className="space-y-6">
@@ -216,6 +218,7 @@ export default function PrintingAnalytics() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        let unsubscribeReports: Unsubscribe | null = null;
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('printingReports');
             if (cachedReports) {
@@ -226,7 +229,7 @@ export default function PrintingAnalytics() {
         loadFromCache();
 
         const reportsRef = ref(db, 'printingReports');
-        const unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(reportsRef, (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('printingReports', reportData);
@@ -236,7 +239,9 @@ export default function PrintingAnalytics() {
             setIsLoading(false);
         });
 
-        return () => unsubscribeReports();
+        return () => {
+            if (unsubscribeReports) unsubscribeReports();
+        };
     }, []);
     
     const last30DaysData = useMemo(() => {
