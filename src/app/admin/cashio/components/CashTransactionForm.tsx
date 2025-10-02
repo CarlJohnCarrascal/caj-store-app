@@ -379,8 +379,8 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         setCartCustomer({ name: newTransaction.accountName });
 
         toast({ title: 'Success', description: 'Transaction added to order.' });
-        form.reset();
         setCartOpen(true);
+        router.push('/admin/cashio');
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
