@@ -46,17 +46,25 @@ const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData;
     
     const summary = useMemo(() => {
         if (!data) return { totalSales: 0, totalQuantity: 0, totalOrders: 0, averageSales: 0 };
+        
+        const currentYear = new Date().getFullYear().toString();
+        const dataEntries = Object.entries(data);
+
+        // For weekly/monthly, we need to check the date key of the parent, which isn't available here.
+        // The aggregation happens before this component. So we just use the data as-is.
+        // The filtering logic will be applied in the parent component that calls ReportView.
+
         const totals = Object.values(data).reduce((acc, product) => {
             acc.totalSales += product.totalSales || 0;
             acc.totalQuantity += product.totalQuantity || 0;
-            acc.totalOrders += product.totalOrders || 0;
+            acc.totalOrders += product.totalOrders || 0; // This might count orders multiple times if an order has multiple products
             return acc;
         }, { totalSales: 0, totalQuantity: 0, totalOrders: 0 });
 
         return {
             ...totals
         };
-    }, [data]);
+    }, [data, periodName]);
     
     const topProductsBySales = useMemo(() => {
         if (!data) return [];
@@ -97,11 +105,11 @@ const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData;
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                        <CardTitle className="text-sm font-medium">Unique Products Sold</CardTitle>
                         <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{summary.totalOrders.toLocaleString()}</div>
+                        <div className="text-2xl font-bold">{Object.keys(data).length.toLocaleString()}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -151,70 +159,58 @@ export default function ProductAnalytics() {
     const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
     useEffect(() => {
-        let reportsLoaded = false;
-        let productsLoaded = false;
-        let unsubscribeReports: Unsubscribe | null = null;
-        let unsubscribeProducts: Unsubscribe | null = null;
+        let reportsUnsubscribe: Unsubscribe | null = null;
+        let productsUnsubscribe: Unsubscribe | null = null;
 
-        const checkLoading = () => {
-            if(reportsLoaded && productsLoaded) setIsLoading(false);
-        }
-        
-        // Load from cache first
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('productReports');
-            if (cachedReports) {
-                setReports(cachedReports);
-                reportsLoaded = true;
-            }
+            if (cachedReports) setReports(cachedReports);
 
             const cachedProducts = await getStoreData<Product>('products');
-            if (cachedProducts.length > 0) {
-                setProducts(cachedProducts);
-                productsLoaded = true;
-            }
-            checkLoading();
+            if (cachedProducts.length > 0) setProducts(cachedProducts);
+
+            if(cachedReports && cachedProducts.length > 0) setIsLoading(false);
         };
         loadFromCache();
 
-        // Listen for live updates
-        const reportsRef = ref(db, 'productReports');
-        unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        reportsUnsubscribe = onValue(ref(db, 'productReports'), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
-            setReportData('productReports', reportData); // Update cache
-            reportsLoaded = true;
-            checkLoading();
+            setReportData('productReports', reportData);
+            if(products.length > 0) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            reportsLoaded = true;
-            checkLoading();
+            if(products.length > 0) setIsLoading(false);
         });
 
-        const productsRef = ref(db, 'products');
-        unsubscribeProducts = onValue(productsRef, (snapshot) => {
+        productsUnsubscribe = onValue(ref(db, 'products'), (snapshot) => {
             const productList = snapshotToArray<Product>(snapshot);
             setProducts(productList);
-            setStoreData('products', productList); // Update cache
-            productsLoaded = true;
-            checkLoading();
+            setStoreData('products', productList);
+            if(reports) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            productsLoaded = true;
-            checkLoading();
+            if(reports) setIsLoading(false);
         });
 
         return () => {
-            if (unsubscribeReports) unsubscribeReports();
-            if (unsubscribeProducts) unsubscribeProducts();
-        }
+            if (reportsUnsubscribe) reportsUnsubscribe();
+            if (productsUnsubscribe) productsUnsubscribe();
+        };
     }, []);
 
-    const aggregateReportData = (periodData?: { [dateKey: string]: ReportPeriodData }): ReportPeriodData | undefined => {
+    const aggregateReportData = (periodData?: { [dateKey: string]: ReportPeriodData }, filterByCurrentYear = false): ReportPeriodData | undefined => {
         if (!periodData) return undefined;
 
+        const currentYear = new Date().getFullYear().toString();
+        const entriesToAggregate = filterByCurrentYear 
+            ? Object.entries(periodData).filter(([key]) => key.startsWith(currentYear))
+            : Object.entries(periodData);
+
+        if (entriesToAggregate.length === 0) return undefined;
+
         const aggregated: ReportPeriodData = {};
-        Object.values(periodData).forEach(dateEntry => {
+        entriesToAggregate.forEach(([, dateEntry]) => {
             Object.entries(dateEntry).forEach(([productId, stats]) => {
                 if (!aggregated[productId]) {
                     aggregated[productId] = { totalQuantity: 0, totalSales: 0, totalOrders: 0 };
@@ -253,8 +249,8 @@ export default function ProductAnalytics() {
         return aggregateReportData(Object.fromEntries(last30DaysEntries));
     }, [reports]);
 
-    const weeklyData = useMemo(() => aggregateReportData(reports?.weekly), [reports]);
-    const monthlyData = useMemo(() => aggregateReportData(reports?.monthly), [reports]);
+    const weeklyData = useMemo(() => aggregateReportData(reports?.weekly, true), [reports]);
+    const monthlyData = useMemo(() => aggregateReportData(reports?.monthly, true), [reports]);
     const yearlyData = useMemo(() => aggregateReportData(reports?.yearly), [reports]);
     const overallData = useMemo(() => aggregateReportData(reports?.overall), [reports]);
 

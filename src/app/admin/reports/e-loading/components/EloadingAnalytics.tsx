@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -62,7 +62,18 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             return { totalCost: 0, totalFee: 0, totalOrders: 0, averageFee: 0, averageCost: 0 };
         }
     
-        const totals = sortedData.reduce((acc, entry) => {
+        const currentYear = new Date().getFullYear().toString();
+        const dataForSummary = ['Weekly', 'Monthly'].includes(periodName)
+            ? sortedData.filter(d => d.key.startsWith(currentYear))
+            : sortedData;
+        
+        if (dataForSummary.length === 0 && (['Weekly', 'Monthly'].includes(periodName))) {
+            return { totalCost: 0, totalFee: 0, totalOrders: 0, averageFee: 0, averageCost: 0 };
+        }
+
+        const sourceForTotals = dataForSummary.length > 0 ? dataForSummary : sortedData;
+
+        const totals = sourceForTotals.reduce((acc, entry) => {
             acc.totalCost += entry.totalCost || 0;
             acc.totalFee += entry.totalFee || 0;
             if(entry.byServiceType) {
@@ -71,13 +82,13 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             return acc;
         }, { totalCost: 0, totalFee: 0, totalOrders: 0 });
 
-        const periodCount = sortedData.length;
+        const periodCount = sourceForTotals.length;
         return {
             ...totals,
             averageFee: totals.totalFee / periodCount,
             averageCost: totals.totalCost / periodCount,
         };
-    }, [sortedData]);
+    }, [sortedData, periodName]);
 
     const serviceTypeBreakdown = useMemo(() => {
         if (!sortedData) return [];
@@ -230,8 +241,7 @@ export default function EloadingAnalytics() {
         };
         loadFromCache();
 
-        const reportsRef = ref(db, 'eloadingReports');
-        unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(ref(db, 'eloadingReports'), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('eloadingReports', reportData);

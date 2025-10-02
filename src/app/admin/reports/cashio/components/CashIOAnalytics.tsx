@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import type { Customer, Account } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -133,11 +133,18 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             return { totalTransactions: 0, cashIn: 0, cashOut: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, averageTransactions: 0, averageFee: 0 };
         }
         
-        if (sortedData.length === 1 && periodName !== "Last 30 Days") {
-            return { ...sortedData[0], averageTransactions: sortedData[0].totalTransactions, averageFee: sortedData[0].totalFee || 0 };
+        const currentYear = new Date().getFullYear().toString();
+        const dataForSummary = ['Weekly', 'Monthly'].includes(periodName)
+            ? sortedData.filter(d => d.key.startsWith(currentYear))
+            : sortedData;
+
+        if (dataForSummary.length === 0 && (['Weekly', 'Monthly'].includes(periodName))) {
+             return { totalTransactions: 0, cashIn: 0, cashOut: 0, totalFee: 0, totalAmount: 0, cashInTotal: 0, cashOutTotal: 0, averageTransactions: 0, averageFee: 0 };
         }
-    
-        const totals = sortedData.reduce((acc, entry) => {
+        
+        const sourceForTotals = dataForSummary.length > 0 ? dataForSummary : sortedData;
+
+        const totals = sourceForTotals.reduce((acc, entry) => {
             acc.totalTransactions += entry.totalTransactions || 0;
             acc.totalFee += entry.totalFee || 0;
             acc.cashInTotal += entry.cashInTotal || 0;
@@ -156,7 +163,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             totalAmount: 0,
         });
 
-        const periodCount = sortedData.length;
+        const periodCount = sourceForTotals.length;
         return {
             ...totals,
             averageTransactions: totals.totalTransactions / periodCount,
@@ -398,86 +405,61 @@ export default function CashIOAnalytics() {
     const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.accountName])), [accounts]);
 
     useEffect(() => {
-        let reportsLoaded = false;
-        let customersLoaded = false;
-        let accountsLoaded = false;
-        let unsubscribeReports: Unsubscribe | null = null;
-        let unsubscribeCustomers: Unsubscribe | null = null;
-        let unsubscribeAccounts: Unsubscribe | null = null;
+        let reportsUnsubscribe: Unsubscribe | null = null;
+        let customersUnsubscribe: Unsubscribe | null = null;
+        let accountsUnsubscribe: Unsubscribe | null = null;
 
-        const checkLoading = () => {
-            if(reportsLoaded && customersLoaded && accountsLoaded) setIsLoading(false);
-        }
-        
-        // Load from cache first
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('cashIOReports');
-            if (cachedReports) {
-                setReports(cachedReports);
-                reportsLoaded = true;
-            }
+            if (cachedReports) setReports(cachedReports);
 
             const cachedCustomers = await getStoreData<Customer>('customers');
-            if (cachedCustomers.length > 0) {
-                setCustomers(cachedCustomers);
-                customersLoaded = true;
-            }
+            if (cachedCustomers.length > 0) setCustomers(cachedCustomers);
 
             const cachedAccounts = await getStoreData<Account>('accounts');
-            if (cachedAccounts.length > 0) {
-                setAccounts(cachedAccounts);
-                accountsLoaded = true;
+            if (cachedAccounts.length > 0) setAccounts(cachedAccounts);
+
+            if (cachedReports && cachedCustomers.length > 0 && cachedAccounts.length > 0) {
+                setIsLoading(false);
             }
-            
-            checkLoading();
         };
         loadFromCache();
 
-        // Listen for live updates
-        const reportsRef = ref(db, 'cashIOReports');
-        unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        reportsUnsubscribe = onValue(ref(db, 'cashIOReports'), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
-            setReportData('cashIOReports', reportData); // Update cache
-            reportsLoaded = true;
-            checkLoading();
+            setReportData('cashIOReports', reportData);
+            if (customers.length > 0 && accounts.length > 0) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            reportsLoaded = true;
-            checkLoading();
+            if (customers.length > 0 && accounts.length > 0) setIsLoading(false);
         });
 
-        const customersRef = ref(db, 'customers');
-        unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+        customersUnsubscribe = onValue(ref(db, 'customers'), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
-            setStoreData('customers', customerList); // Update cache
-            customersLoaded = true;
-            checkLoading();
+            setStoreData('customers', customerList);
+            if (reports && accounts.length > 0) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            customersLoaded = true;
-            checkLoading();
+            if (reports && accounts.length > 0) setIsLoading(false);
         });
 
-        const accountsRef = ref(db, 'accounts');
-        unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
+        accountsUnsubscribe = onValue(ref(db, 'accounts'), (snapshot) => {
             const accountList = snapshotToArray<Account>(snapshot);
             setAccounts(accountList);
-            setStoreData('accounts', accountList); // Update cache
-            accountsLoaded = true;
-            checkLoading();
+            setStoreData('accounts', accountList);
+            if (reports && customers.length > 0) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            accountsLoaded = true;
-            checkLoading();
+            if (reports && customers.length > 0) setIsLoading(false);
         });
 
         return () => {
-            if (unsubscribeReports) unsubscribeReports();
-            if (unsubscribeCustomers) unsubscribeCustomers();
-            if (unsubscribeAccounts) unsubscribeAccounts();
-        }
+            if (reportsUnsubscribe) reportsUnsubscribe();
+            if (customersUnsubscribe) customersUnsubscribe();
+            if (accountsUnsubscribe) accountsUnsubscribe();
+        };
     }, []);
 
     const todayData = useMemo(() => {

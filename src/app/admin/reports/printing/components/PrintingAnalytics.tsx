@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe } from 'firebase/database';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,7 +56,18 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             return { totalSales: 0, totalQuantity: 0, averageSales: 0 };
         }
     
-        const totals = sortedData.reduce((acc, entry) => {
+        const currentYear = new Date().getFullYear().toString();
+        const dataForSummary = ['Weekly', 'Monthly'].includes(periodName)
+            ? sortedData.filter(d => d.key.startsWith(currentYear))
+            : sortedData;
+
+        if (dataForSummary.length === 0 && (['Weekly', 'Monthly'].includes(periodName))) {
+            return { totalSales: 0, totalQuantity: 0, averageSales: 0 };
+        }
+        
+        const sourceForTotals = dataForSummary.length > 0 ? dataForSummary : sortedData;
+
+        const totals = sourceForTotals.reduce((acc, entry) => {
             acc.totalSales += entry.totalSales || 0;
             if(entry.byServiceType) {
               acc.totalQuantity += Object.values(entry.byServiceType).reduce((sum, s) => sum + s.count, 0);
@@ -64,12 +75,12 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
             return acc;
         }, { totalSales: 0, totalQuantity: 0 });
 
-        const periodCount = sortedData.length;
+        const periodCount = sourceForTotals.length;
         return {
             ...totals,
             averageSales: totals.totalSales / periodCount,
         };
-    }, [sortedData]);
+    }, [sortedData, periodName]);
 
 
     const serviceTypeBreakdown = useMemo(() => {
@@ -228,8 +239,7 @@ export default function PrintingAnalytics() {
         };
         loadFromCache();
 
-        const reportsRef = ref(db, 'printingReports');
-        unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        unsubscribeReports = onValue(ref(db, 'printingReports'), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('printingReports', reportData);

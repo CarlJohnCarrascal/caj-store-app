@@ -133,19 +133,30 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
         return { totalSales: 0, totalOrders: 0, averageSales: 0, averageOrders: 0 };
     }
 
-    const totals = sortedData.reduce((acc, entry) => {
+    const currentYear = new Date().getFullYear().toString();
+    const dataForSummary = ['Weekly', 'Monthly'].includes(periodName)
+        ? sortedData.filter(d => d.key.startsWith(currentYear))
+        : sortedData;
+
+    if (dataForSummary.length === 0 && (['Weekly', 'Monthly'].includes(periodName))) {
+        return { totalSales: 0, totalOrders: 0, averageSales: 0, averageOrders: 0 };
+    }
+    
+    const sourceForTotals = dataForSummary.length > 0 ? dataForSummary : sortedData;
+
+    const totals = sourceForTotals.reduce((acc, entry) => {
         acc.totalSales += entry.totalSales || 0;
         acc.totalOrders += entry.totalOrders || 0;
         return acc;
     }, { totalSales: 0, totalOrders: 0 });
 
-    const periodCount = sortedData.length;
+    const periodCount = sourceForTotals.length;
     return {
         ...totals,
-        averageSales: totals.totalSales / periodCount,
-        averageOrders: totals.totalOrders / periodCount,
+        averageSales: periodCount > 0 ? totals.totalSales / periodCount : 0,
+        averageOrders: periodCount > 0 ? totals.totalOrders / periodCount : 0,
     };
-  }, [sortedData]);
+  }, [sortedData, periodName]);
 
   if (!data) {
     return (
@@ -309,7 +320,7 @@ export default function SalesAnalytics() {
 
   useEffect(() => {
     let unsubscribe: Unsubscribe | null = null;
-    // Load from cache first
+    
     const loadFromCache = async () => {
         const cachedReports = await getReportData<AllReports>('salesReports');
         if (cachedReports) {
@@ -319,11 +330,10 @@ export default function SalesAnalytics() {
     };
     loadFromCache();
 
-    const reportsRef = ref(db, 'salesReports');
-    unsubscribe = onValue(reportsRef, (snapshot) => {
+    unsubscribe = onValue(ref(db, 'salesReports'), (snapshot) => {
       const reportData = snapshot.exists() ? snapshot.val() : null;
       setReports(reportData);
-      setReportData('salesReports', reportData); // Update cache
+      setReportData('salesReports', reportData);
       setIsLoading(false);
     }, (error) => {
         console.error("Firebase listener failed:", error);

@@ -90,21 +90,32 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
             return { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0, averageOrderValue: 0, averageOrders: 0, averageNewCustomers: 0 };
         }
     
-        const totals = sortedData.reduce((acc, entry) => {
+        const currentYear = new Date().getFullYear().toString();
+        const dataForSummary = ['Weekly', 'Monthly'].includes(periodName)
+            ? sortedData.filter(d => d.key.startsWith(currentYear))
+            : sortedData;
+
+        if (dataForSummary.length === 0 && (['Weekly', 'Monthly'].includes(periodName))) {
+            return { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0, averageOrderValue: 0, averageOrders: 0, averageNewCustomers: 0 };
+        }
+
+        const sourceForTotals = dataForSummary.length > 0 ? dataForSummary : sortedData;
+
+        const totals = sourceForTotals.reduce((acc, entry) => {
             acc.newCustomerCount += entry.newCustomerCount || 0;
             acc.totalOrders += entry.totalOrders || 0;
             acc.totalOrderValue += entry.totalOrderValue || 0;
             return acc;
         }, { newCustomerCount: 0, totalOrders: 0, totalOrderValue: 0 });
 
-        const periodCount = sortedData.length;
+        const periodCount = sourceForTotals.length;
         return {
             ...totals,
             averageOrderValue: totals.totalOrderValue / periodCount,
             averageOrders: totals.totalOrders / periodCount,
             averageNewCustomers: totals.newCustomerCount / periodCount,
         };
-    }, [sortedData]);
+    }, [sortedData, periodName]);
 
     const allActiveCustomers = useMemo(() => {
         if (!sortedData) return [];
@@ -249,63 +260,46 @@ export default function CustomerAnalytics() {
     const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
 
     useEffect(() => {
-        let reportsLoaded = false;
-        let customersLoaded = false;
-        let unsubscribeReports: Unsubscribe | null = null;
-        let unsubscribeCustomers: Unsubscribe | null = null;
+        let reportsUnsubscribe: Unsubscribe | null = null;
+        let customersUnsubscribe: Unsubscribe | null = null;
 
-        const checkLoading = () => {
-            if(reportsLoaded && customersLoaded) setIsLoading(false);
-        }
-        
-        // Load from cache first
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('customerReports');
-            if (cachedReports) {
-                setReports(cachedReports);
-                reportsLoaded = true;
-            }
+            if (cachedReports) setReports(cachedReports);
 
             const cachedCustomers = await getStoreData<Customer>('customers');
-            if (cachedCustomers.length > 0) {
-                setCustomers(cachedCustomers);
-                customersLoaded = true;
+            if (cachedCustomers.length > 0) setCustomers(cachedCustomers);
+            
+            if (cachedReports && cachedCustomers.length > 0) {
+                setIsLoading(false);
             }
-            checkLoading();
         };
         loadFromCache();
 
-        // Listen for live updates
-        const reportsRef = ref(db, 'customerReports');
-        unsubscribeReports = onValue(reportsRef, (snapshot) => {
+        reportsUnsubscribe = onValue(ref(db, 'customerReports'), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
-            setReportData('customerReports', reportData); // Update cache
-            reportsLoaded = true;
-            checkLoading();
+            setReportData('customerReports', reportData);
+            if (customers.length > 0) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            reportsLoaded = true;
-            checkLoading();
+            if (customers.length > 0) setIsLoading(false);
         });
 
-        const customersRef = ref(db, 'customers');
-        unsubscribeCustomers = onValue(customersRef, (snapshot) => {
+        customersUnsubscribe = onValue(ref(db, 'customers'), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
-            setStoreData('customers', customerList); // Update cache
-            customersLoaded = true;
-            checkLoading();
+            setStoreData('customers', customerList);
+            if (reports) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            customersLoaded = true;
-            checkLoading();
+            if (reports) setIsLoading(false);
         });
 
         return () => {
-            if (unsubscribeReports) unsubscribeReports();
-            if (unsubscribeCustomers) unsubscribeCustomers();
-        }
+            if (reportsUnsubscribe) reportsUnsubscribe();
+            if (customersUnsubscribe) customersUnsubscribe();
+        };
     }, []);
 
     const todayData = useMemo(() => {
