@@ -246,11 +246,11 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     const showAccountBreakdown = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
 
     const feeChart = (
-      <ChartContainer config={feeChartConfig} className="min-h-[200px] w-full h-[400px]">
+      <ChartContainer config={feeChartConfig} className="w-full h-[250px] sm:h-[400px]">
           <BarChart data={feeChartData} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
-              <YAxis tickFormatter={(value) => `₱${value}`} />
+              <YAxis tickFormatter={(value) => `₱${value > 1000 ? `${value / 1000}k` : value }`} />
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
               <Legend />
               <Bar dataKey="cashInFee" fill="var(--color-cashInFee)" radius={4} stackId="a" />
@@ -260,11 +260,11 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     );
 
     const amountChart = (
-      <ChartContainer config={totalAmountChartConfig} className="min-h-[200px] w-full h-[400px]">
+      <ChartContainer config={totalAmountChartConfig} className="w-full h-[250px] sm:h-[400px]">
           <BarChart data={totalAmountChartData} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
-              <YAxis tickFormatter={(value) => `₱${value}`} />
+              <YAxis tickFormatter={(value) => `₱${value > 1000 ? `${value / 1000}k` : value }`} />
               <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
               <Legend />
               <Bar dataKey="cashInTotal" fill="var(--color-cashInTotal)" radius={4} />
@@ -320,7 +320,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             </div>
 
             <Card>
-                <CardHeader className="flex items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <CardTitle>Fee Generation Trend</CardTitle>
                         <CardDescription>Total fees generated from cash in and cash out services.</CardDescription>
@@ -329,13 +329,13 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                         <Expand className="h-5 w-5" />
                     </Button>
                 </CardHeader>
-                <CardContent className="h-[250px]">
+                <CardContent>
                     {feeChart}
                 </CardContent>
             </Card>
 
             <Card>
-                <CardHeader className="flex items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <CardTitle>Total Amount Trend</CardTitle>
                         <CardDescription>Cash in vs. cash out amounts transacted.</CardDescription>
@@ -344,7 +344,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                         <Expand className="h-5 w-5" />
                     </Button>
                 </CardHeader>
-                <CardContent className="h-[250px]">
+                <CardContent>
                     {amountChart}
                 </CardContent>
             </Card>
@@ -358,17 +358,17 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     <Table>
                       <TableHeader>
                           <TableRow>
-                              <TableHead className="w-1/3">Account</TableHead>
+                              <TableHead className="w-1/3 pl-10">Account</TableHead>
                               <TableHead className="text-center">In/Out Count</TableHead>
                               <TableHead className="text-right">Cash In Amt</TableHead>
                               <TableHead className="text-right">Cash Out Amt</TableHead>
-                              <TableHead className="text-right">Total Fees</TableHead>
+                              <TableHead className="text-right pr-4">Total Fees</TableHead>
                           </TableRow>
                       </TableHeader>
                     </Table>
                     <Accordion type="multiple" className="w-full">
                         {accountBreakdown.map(account => (
-                            <AccordionItem value={account.id} key={account.id} className="border-b">
+                            <AccordionItem value={account.id} key={account.id} className="border-b last:border-b-0">
                                 <AccordionTrigger className="hover:no-underline group py-0 px-4">
                                      <Table className="w-full">
                                         <TableBody>
@@ -519,7 +519,7 @@ export default function CashIOAnalytics() {
               setReports(reportData);
               setReportData('cashIOReports', reportData);
             }
-            if (!customersUnsubscribe || !accountsUnsubscribe || (customers.length > 0 && accounts.length > 0)) {
+            if (customers.length > 0 && accounts.length > 0) {
                 setIsLoading(false);
             }
         }, (error) => {
@@ -531,7 +531,7 @@ export default function CashIOAnalytics() {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList);
-             if (!reportsUnsubscribe || !accountsUnsubscribe || (reports && accounts.length > 0)) {
+             if (reports && accounts.length > 0) {
                 setIsLoading(false);
             }
         }, (error) => {
@@ -543,7 +543,7 @@ export default function CashIOAnalytics() {
             const accountList = snapshotToArray<Account>(snapshot);
             setAccounts(accountList);
             setStoreData('accounts', accountList);
-            if (!reportsUnsubscribe || !customersUnsubscribe || (reports && customers.length > 0)) {
+            if (reports && customers.length > 0) {
                 setIsLoading(false);
             }
         }, (error) => {
