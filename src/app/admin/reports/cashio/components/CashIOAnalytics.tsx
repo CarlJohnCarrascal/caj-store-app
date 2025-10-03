@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft } from 'lucide-react';
+import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
 import type { Customer, Account } from '@/lib/types';
@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getReportPaths } from '@/lib/utils';
 import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Types for Cash IO Reports
 type CustomerCashIOData = {
@@ -190,18 +191,26 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
 
     const accountBreakdown = useMemo(() => {
         if (!data) return [];
-        const aggregatedAccounts: { [id: string]: AccountCashIOData & { id: string, name: string } } = {};
-        Object.values(data).forEach(period => {
+        const aggregatedAccounts: { [id: string]: AccountCashIOData & { id: string, name: string, periodData: { [periodKey: string]: AccountCashIOData } } } = {};
+        
+        Object.entries(data).forEach(([periodKey, period]) => {
             Object.entries(period.byAccount || {}).forEach(([id, stats]) => {
                 if (!aggregatedAccounts[id]) {
-                    aggregatedAccounts[id] = { ...stats, id, name: accountMap.get(id) || 'Unknown Account' };
+                    aggregatedAccounts[id] = { 
+                        ...stats, 
+                        id, 
+                        name: accountMap.get(id) || 'Unknown Account',
+                        periodData: { [periodKey]: stats }
+                    };
                 } else {
                     Object.keys(stats).forEach(key => {
                         (aggregatedAccounts[id] as any)[key] = ((aggregatedAccounts[id] as any)[key] || 0) + (stats as any)[key];
                     });
+                    aggregatedAccounts[id].periodData[periodKey] = stats;
                 }
             });
         });
+
         return Object.values(aggregatedAccounts).sort((a, b) => (b.cashInFee + b.cashOutFee) - (a.cashInFee + a.cashOutFee));
     }, [data, accountMap]);
 
@@ -230,6 +239,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     
     const showAverage = ['Weekly', 'Monthly', 'Yearly', 'Last 30 Days'].includes(periodName);
     const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
+    const showAccountBreakdown = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
 
     return (
         <div className="space-y-6">
@@ -322,30 +332,51 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     <CardDescription>Breakdown of transactions by your business accounts.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Account</TableHead>
-                                <TableHead className="text-center">Cash In (Count)</TableHead>
-                                <TableHead className="text-center">Cash Out (Count)</TableHead>
-                                <TableHead className="text-right">Cash In Amount</TableHead>
-                                <TableHead className="text-right">Cash Out Amount</TableHead>
-                                <TableHead className="text-right">Total Fees</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {accountBreakdown.map(account => (
-                                <TableRow key={account.id}>
-                                    <TableCell className="font-medium">{account.name}</TableCell>
-                                    <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="text-center">{(account.cashOutCount || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <Accordion type="multiple" className="w-full">
+                        {accountBreakdown.map(account => (
+                            <AccordionItem value={account.id} key={account.id}>
+                                <AccordionTrigger className="hover:no-underline group py-2">
+                                     <div className="grid grid-cols-6 items-center w-full text-left">
+                                        <div className="col-span-2 font-medium flex items-center gap-2">
+                                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                                            {account.name}
+                                        </div>
+                                        <div className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</div>
+                                        <div className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                        <div className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                        <div className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                     </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="bg-muted/50 p-4 pl-12">
+                                        <h4 className="font-semibold mb-2">Breakdown for {account.name}</h4>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Period</TableHead>
+                                                    <TableHead className="text-center">Cash In/Out</TableHead>
+                                                    <TableHead className="text-right">Cash In Amt</TableHead>
+                                                    <TableHead className="text-right">Cash Out Amt</TableHead>
+                                                    <TableHead className="text-right">Total Fees</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                            {Object.entries(account.periodData).sort(([keyA], [keyB]) => keyB.localeCompare(keyA)).map(([periodKey, stats]) => (
+                                                <TableRow key={periodKey}>
+                                                    <TableCell>{formatXAxis(periodKey)}</TableCell>
+                                                    <TableCell className="text-center">{stats.cashInCount}/{stats.cashOutCount}</TableCell>
+                                                    <TableCell className="text-right">₱{stats.cashInAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                    <TableCell className="text-right">₱{stats.cashOutAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                    <TableCell className="text-right">₱{(stats.cashInFee + stats.cashOutFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
                 </CardContent>
             </Card>
             
@@ -460,7 +491,7 @@ export default function CashIOAnalytics() {
             if (customersUnsubscribe) customersUnsubscribe();
             if (accountsUnsubscribe) accountsUnsubscribe();
         };
-    }, []);
+    }, [reports, customers.length, accounts.length]);
 
     const todayData = useMemo(() => {
         if (!reports?.daily) return undefined;
@@ -522,3 +553,4 @@ export default function CashIOAnalytics() {
         </Tabs>
     );
 }
+
