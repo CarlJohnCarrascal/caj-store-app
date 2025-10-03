@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -128,7 +128,7 @@ export default function ScanImagePage() {
   
   const processImage = async (imageDataUri: string) => {
     setPreviewImage(imageDataUri); 
-    setStep(3);
+    if (step !== 3) setStep(3);
     setIsProcessing(true);
     setExtractedData(null);
     setRawExtractionResult(null);
@@ -317,6 +317,14 @@ export default function ScanImagePage() {
     router.push('/admin/cashio');
   };
 
+  const handleRetryExtraction = () => {
+    if (previewImage) {
+      processImage(previewImage);
+    } else {
+      toast({ variant: 'destructive', title: 'No Image', description: 'There is no image to retry extraction on.' });
+    }
+  };
+
   const reset = () => {
     setStep(1);
     setTransactionType(null);
@@ -491,20 +499,26 @@ export default function ScanImagePage() {
                             )}
                         </div>
                         
-                        {canAddToOrder ? (
-                            <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
-                        ) : (
-                            <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
-                                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
-                                Add Transaction
+                        <div className="space-y-2">
+                            {canAddToOrder ? (
+                                <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
+                            ) : (
+                                <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
+                                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
+                                    Add Transaction
+                                </Button>
+                            )}
+                            <Button variant="outline" className="w-full" onClick={handleRetryExtraction} disabled={isProcessing}>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Retry Extraction
                             </Button>
-                        )}
-                        {duplicateTransaction && (
-                             <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}>
-                                 <Info className="mr-2 h-4 w-4" />
-                                 View Existing Transaction Details
-                             </Button>
-                        )}
+                            {duplicateTransaction && (
+                                <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}>
+                                    <Info className="mr-2 h-4 w-4" />
+                                    View Existing Transaction Details
+                                </Button>
+                            )}
+                        </div>
                     </>
                 )}
             </div>
