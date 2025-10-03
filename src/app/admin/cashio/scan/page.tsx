@@ -271,50 +271,56 @@ export default function ScanImagePage() {
 
   const handleAddToOrder = async () => {
     if (!extractedData?.reference) return;
+    setIsProcessing(true);
 
-    const existingTx = await getCashTransactionByReference(extractedData.reference);
+    try {
+      const existingTx = await getCashTransactionByReference(extractedData.reference);
 
-    if (!existingTx) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find the existing transaction to add to the order.'});
-        return;
+      if (!existingTx) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not find the existing transaction to add to the order.'});
+          return;
+      }
+
+      let imageUrl = '';
+      if (previewImage && user) {
+        const folder = existingTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
+        imageUrl = await finalizeReceiptImage(previewImage, folder, existingTx.reference);
+        await updateCashTransaction(existingTx.id, { receiptImageUrl: imageUrl }, { userId: user.uid , userName: user.displayName || 'user' });
+      }
+      
+      const finalPrice = existingTx.transactionType === 'Cash In' 
+          ? existingTx.amount + existingTx.fee 
+          : -(existingTx.amount - existingTx.fee);
+
+      const transactionAsProduct: Product = {
+          id: `cashio-${existingTx.reference}-${Date.now()}`,
+          name: `${existingTx.transactionType}: ${existingTx.accountName}`,
+          price: finalPrice,
+          description: `Ref: ${existingTx.reference} | Acct: ${existingTx.accountName} (${existingTx.accountNumber}) | Fee: ₱${existingTx.fee.toFixed(2)} | Amt: ₱${existingTx.amount.toFixed(2)}`,
+          group: 'Financial',
+          category: 'CashIO',
+          show: false,
+          stock: 1,
+          unit: 'each',
+          image: imageUrl,
+          material: 'N/A',
+          dimensions: 'N/A',
+          fromScanned: extractedData.imageId,
+          originalTransactionId: existingTx.id
+      };
+      
+      addToCart(transactionAsProduct, 1);
+      setCartCustomer({ name: existingTx.accountName });
+
+      toast({ title: 'Success', description: 'Transaction added to order.' });
+      setCartOpen(true);
+      router.push('/admin/cashio');
+
+    } catch(error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to add to order.' });
+    } finally {
+        setIsProcessing(false);
     }
-
-    let imageUrl = '';
-    //upload image
-    if (previewImage) {
-      const folder = existingTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-      imageUrl = await finalizeReceiptImage(previewImage, folder, existingTx.reference);
-    }
-    
-    await updateCashTransaction(existingTx.id, { receiptImageUrl: imageUrl }, { userId: user.uid , userName: user.displayName });
-
-    const finalPrice = existingTx.transactionType === 'Cash In' 
-        ? existingTx.amount + existingTx.fee 
-        : -(existingTx.amount - existingTx.fee);
-
-    const transactionAsProduct: Product = {
-        id: `cashio-${existingTx.reference}-${Date.now()}`,
-        name: `${existingTx.transactionType}: ${existingTx.accountName}`,
-        price: finalPrice,
-        description: `Ref: ${existingTx.reference} | Acct: ${existingTx.accountName} (${existingTx.accountNumber}) | Fee: ₱${existingTx.fee.toFixed(2)} | Amt: ₱${existingTx.amount.toFixed(2)}`,
-        group: 'Financial',
-        category: 'CashIO',
-        show: false,
-        stock: 1,
-        unit: 'each',
-        image: imageUrl,
-        material: 'N/A',
-        dimensions: 'N/A',
-        fromScanned: extractedData.imageId,
-        originalTransactionId: existingTx.id
-    };
-    
-    addToCart(transactionAsProduct, 1);
-    setCartCustomer({ name: existingTx.accountName });
-
-    toast({ title: 'Success', description: 'Transaction added to order.' });
-    setCartOpen(true);
-    router.push('/admin/cashio');
   };
 
   const handleRetryExtraction = () => {
@@ -501,7 +507,9 @@ export default function ScanImagePage() {
                         
                         <div className="space-y-2">
                             {canAddToOrder ? (
-                                <Button className="w-full" size="lg" onClick={handleAddToOrder}>Add to Order</Button>
+                                <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isProcessing}>
+                                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add to Order'}
+                                </Button>
                             ) : (
                                 <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
                                     {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
