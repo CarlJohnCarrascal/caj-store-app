@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft, ChevronRight } from 'lucide-react';
+import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft, ChevronRight, Expand } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
 import type { Customer, Account } from '@/lib/types';
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { getReportPaths } from '@/lib/utils';
 import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 // Types for Cash IO Reports
 type CustomerCashIOData = {
@@ -105,7 +106,9 @@ const totalAmountChartConfig = {
 
 
 const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string>; accountMap: Map<string, string> }) => {
-    
+    const [isFeeChartExpanded, setIsFeeChartExpanded] = useState(false);
+    const [isAmountChartExpanded, setIsAmountChartExpanded] = useState(false);
+
     const sortedData = useMemo(() => {
         if (!data) return [];
         const entries = Object.entries(data).map(([key, value]) => ({ key, ...value }));
@@ -242,7 +245,36 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     const avgPeriodName = periodName.replace('ly', '').toLowerCase().replace('last 30 days', 'day');
     const showAccountBreakdown = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
 
+    const feeChart = (
+      <ChartContainer config={feeChartConfig} className="min-h-[200px] w-full h-[400px]">
+          <BarChart data={feeChartData} accessibilityLayer>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+              <YAxis tickFormatter={(value) => `₱${value}`} />
+              <Tooltip cursor={false} content={<ChartTooltipContent />} />
+              <Legend />
+              <Bar dataKey="cashInFee" fill="var(--color-cashInFee)" radius={4} stackId="a" />
+              <Bar dataKey="cashOutFee" fill="var(--color-cashOutFee)" radius={4} stackId="a" />
+          </BarChart>
+      </ChartContainer>
+    );
+
+    const amountChart = (
+      <ChartContainer config={totalAmountChartConfig} className="min-h-[200px] w-full h-[400px]">
+          <BarChart data={totalAmountChartData} accessibilityLayer>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
+              <YAxis tickFormatter={(value) => `₱${value}`} />
+              <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+              <Legend />
+              <Bar dataKey="cashInTotal" fill="var(--color-cashInTotal)" radius={4} />
+              <Bar dataKey="cashOutTotal" fill="var(--color-cashOutTotal)" radius={4} />
+          </BarChart>
+      </ChartContainer>
+    );
+
     return (
+        <>
         <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
@@ -288,42 +320,32 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Fee Generation Trend</CardTitle>
-                    <CardDescription>Total fees generated from cash in and cash out services.</CardDescription>
+                <CardHeader className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Fee Generation Trend</CardTitle>
+                        <CardDescription>Total fees generated from cash in and cash out services.</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setIsFeeChartExpanded(true)}>
+                        <Expand className="h-5 w-5" />
+                    </Button>
                 </CardHeader>
-                <CardContent>
-                    <ChartContainer config={feeChartConfig} className="min-h-[200px] w-full">
-                        <BarChart data={feeChartData} accessibilityLayer>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
-                            <YAxis tickFormatter={(value) => `₱${value}`} />
-                            <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                            <Legend />
-                            <Bar dataKey="cashInFee" fill="var(--color-cashInFee)" radius={4} stackId="a" />
-                            <Bar dataKey="cashOutFee" fill="var(--color-cashOutFee)" radius={4} stackId="a" />
-                        </BarChart>
-                    </ChartContainer>
+                <CardContent className="h-[250px]">
+                    {feeChart}
                 </CardContent>
             </Card>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Total Amount Trend</CardTitle>
-                    <CardDescription>Cash in vs. cash out amounts transacted.</CardDescription>
+                <CardHeader className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Total Amount Trend</CardTitle>
+                        <CardDescription>Cash in vs. cash out amounts transacted.</CardDescription>
+                    </div>
+                     <Button variant="ghost" size="icon" onClick={() => setIsAmountChartExpanded(true)}>
+                        <Expand className="h-5 w-5" />
+                    </Button>
                 </CardHeader>
-                <CardContent>
-                    <ChartContainer config={totalAmountChartConfig} className="min-h-[200px] w-full">
-                        <BarChart data={totalAmountChartData} accessibilityLayer>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
-                            <YAxis tickFormatter={(value) => `₱${value}`} />
-                            <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                            <Legend />
-                            <Bar dataKey="cashInTotal" fill="var(--color-cashInTotal)" radius={4} />
-                            <Bar dataKey="cashOutTotal" fill="var(--color-cashOutTotal)" radius={4} />
-                        </BarChart>
-                    </ChartContainer>
+                <CardContent className="h-[250px]">
+                    {amountChart}
                 </CardContent>
             </Card>
 
@@ -439,6 +461,25 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                 </CardContent>
             </Card>
         </div>
+        <Dialog open={isFeeChartExpanded} onOpenChange={setIsFeeChartExpanded}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Fee Generation Trend</DialogTitle>
+                    <DialogDescription>Total fees generated from cash in and cash out services.</DialogDescription>
+                </DialogHeader>
+                <div className="flex-grow">{feeChart}</div>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isAmountChartExpanded} onOpenChange={setIsAmountChartExpanded}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Total Amount Trend</DialogTitle>
+                    <DialogDescription>Cash in vs. cash out amounts transacted.</DialogDescription>
+                </DialogHeader>
+                <div className="flex-grow">{amountChart}</div>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 };
 
@@ -478,30 +519,36 @@ export default function CashIOAnalytics() {
               setReports(reportData);
               setReportData('cashIOReports', reportData);
             }
-            if (customers.length > 0 && accounts.length > 0) setIsLoading(false);
+            if (!customersUnsubscribe || !accountsUnsubscribe || (customers.length > 0 && accounts.length > 0)) {
+                setIsLoading(false);
+            }
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            if (customers.length > 0 && accounts.length > 0) setIsLoading(false);
+            setIsLoading(false);
         });
 
         customersUnsubscribe = onValue(ref(db, 'customers'), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList);
-            if (reports && accounts.length > 0) setIsLoading(false);
+             if (!reportsUnsubscribe || !accountsUnsubscribe || (reports && accounts.length > 0)) {
+                setIsLoading(false);
+            }
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            if (reports && accounts.length > 0) setIsLoading(false);
+            setIsLoading(false);
         });
 
         accountsUnsubscribe = onValue(ref(db, 'accounts'), (snapshot) => {
             const accountList = snapshotToArray<Account>(snapshot);
             setAccounts(accountList);
             setStoreData('accounts', accountList);
-            if (reports && customers.length > 0) setIsLoading(false);
+            if (!reportsUnsubscribe || !customersUnsubscribe || (reports && customers.length > 0)) {
+                setIsLoading(false);
+            }
         }, (error) => {
             console.error("Firebase listener failed:", error);
-            if (reports && customers.length > 0) setIsLoading(false);
+            setIsLoading(false);
         });
 
         return () => {
