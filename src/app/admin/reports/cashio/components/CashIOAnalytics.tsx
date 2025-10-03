@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -331,21 +332,36 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     <CardTitle>Cash IO by Account</CardTitle>
                     <CardDescription>Breakdown of transactions by your business accounts.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead className="w-1/3">Account</TableHead>
+                              <TableHead className="text-center">In/Out Count</TableHead>
+                              <TableHead className="text-right">Cash In Amt</TableHead>
+                              <TableHead className="text-right">Cash Out Amt</TableHead>
+                              <TableHead className="text-right">Total Fees</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                    </Table>
                     <Accordion type="multiple" className="w-full">
                         {accountBreakdown.map(account => (
-                            <AccordionItem value={account.id} key={account.id}>
-                                <AccordionTrigger className="hover:no-underline group py-2">
-                                     <div className="grid grid-cols-6 items-center w-full text-left">
-                                        <div className="col-span-2 font-medium flex items-center gap-2">
-                                            <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                                            {account.name}
-                                        </div>
-                                        <div className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</div>
-                                        <div className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                                        <div className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                                        <div className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                                     </div>
+                            <AccordionItem value={account.id} key={account.id} className="border-b">
+                                <AccordionTrigger className="hover:no-underline group py-0 px-4">
+                                     <Table className="w-full">
+                                        <TableBody>
+                                            <TableRow className="border-b-0 hover:bg-transparent">
+                                                <TableCell className="font-medium w-1/3 flex items-center gap-2">
+                                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                                                    {account.name}
+                                                </TableCell>
+                                                <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                <TableCell className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                     </Table>
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <div className="bg-muted/50 p-4 pl-12">
@@ -458,8 +474,10 @@ export default function CashIOAnalytics() {
 
         reportsUnsubscribe = onValue(ref(db, 'cashIOReports'), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
-            setReports(reportData);
-            setReportData('cashIOReports', reportData);
+            if (reportData) {
+              setReports(reportData);
+              setReportData('cashIOReports', reportData);
+            }
             if (customers.length > 0 && accounts.length > 0) setIsLoading(false);
         }, (error) => {
             console.error("Firebase listener failed:", error);
@@ -491,7 +509,7 @@ export default function CashIOAnalytics() {
             if (customersUnsubscribe) customersUnsubscribe();
             if (accountsUnsubscribe) accountsUnsubscribe();
         };
-    }, [reports, customers.length, accounts.length]);
+    }, []);
 
     const todayData = useMemo(() => {
         if (!reports?.daily) return undefined;
@@ -553,4 +571,3 @@ export default function CashIOAnalytics() {
         </Tabs>
     );
 }
-
