@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartConfig, ChartContainer, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { DollarSign, ArrowUp, ArrowDown, ArrowRightLeft, ChevronRight, Expand } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
@@ -20,6 +20,7 @@ import { getReportPaths } from '@/lib/utils';
 import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Types for Cash IO Reports
 type CustomerCashIOData = {
@@ -108,6 +109,8 @@ const totalAmountChartConfig = {
 const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: ReportPeriodData; periodName: string; customerMap: Map<string, string>; accountMap: Map<string, string> }) => {
     const [isFeeChartExpanded, setIsFeeChartExpanded] = useState(false);
     const [isAmountChartExpanded, setIsAmountChartExpanded] = useState(false);
+    const [isAccountTableExpanded, setIsAccountTableExpanded] = useState(false);
+    const [isCustomerTableExpanded, setIsCustomerTableExpanded] = useState(false);
 
     const sortedData = useMemo(() => {
         if (!data) return [];
@@ -246,13 +249,13 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     const showAccountBreakdown = ['Weekly', 'Monthly', 'Yearly'].includes(periodName);
 
     const feeChart = (
-      <ChartContainer config={feeChartConfig} className="w-full h-[250px] sm:h-[400px]">
+      <ChartContainer config={feeChartConfig} className="w-full h-full min-h-[250px]">
           <BarChart data={feeChartData} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
               <YAxis tickFormatter={(value) => `₱${value > 1000 ? `${value / 1000}k` : value }`} />
               <Tooltip cursor={false} content={<ChartTooltipContent />} />
-              <Legend />
+              <ChartLegend content={<ChartLegendContent />} />
               <Bar dataKey="cashInFee" fill="var(--color-cashInFee)" radius={4} stackId="a" />
               <Bar dataKey="cashOutFee" fill="var(--color-cashOutFee)" radius={4} stackId="a" />
           </BarChart>
@@ -260,17 +263,79 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     );
 
     const amountChart = (
-      <ChartContainer config={totalAmountChartConfig} className="w-full h-[250px] sm:h-[400px]">
+      <ChartContainer config={totalAmountChartConfig} className="w-full h-full min-h-[250px]">
           <BarChart data={totalAmountChartData} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={formatXAxis} />
               <YAxis tickFormatter={(value) => `₱${value > 1000 ? `${value / 1000}k` : value }`} />
               <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-              <Legend />
+              <ChartLegend content={<ChartLegendContent />} />
               <Bar dataKey="cashInTotal" fill="var(--color-cashInTotal)" radius={4} />
               <Bar dataKey="cashOutTotal" fill="var(--color-cashOutTotal)" radius={4} />
           </BarChart>
       </ChartContainer>
+    );
+    
+    const accountTable = (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead className="w-1/3">Account</TableHead>
+                    <TableHead className="text-center">In/Out Count</TableHead>
+                    <TableHead className="text-right">Cash In Amt</TableHead>
+                    <TableHead className="text-right">Cash Out Amt</TableHead>
+                    <TableHead className="text-right">Total Fees</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {accountBreakdown.map(account => (
+                    <TableRow key={account.id}>
+                        <TableCell className="font-medium">{account.name}</TableCell>
+                        <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+
+    const customerTable = (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Cash In (Count)</TableHead>
+                    <TableHead className="text-right">Cash Out (Count)</TableHead>
+                    <TableHead className="text-right">Cash In Amount</TableHead>
+                    <TableHead className="text-right">Cash Out Amount</TableHead>
+                    <TableHead className="text-right">Total Fees</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {customerBreakdown.map(customer => (
+                    <TableRow key={customer.id}>
+                        <TableCell className="font-medium">
+                            {customer.name === 'Unknown Customer' ? (
+                                <span>{customer.name}</span>
+                            ) : (
+                                <Button variant="link" asChild className="p-0 h-auto">
+                                    <Link href={`/admin/customers/${customer.id}`}>
+                                        {customer.name}
+                                    </Link>
+                                </Button>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-right">{(customer.cashIn || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{(customer.cashOut || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₱{(customer.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">₱{(customer.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">₱{(customer.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
     );
 
     return (
@@ -329,7 +394,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                         <Expand className="h-5 w-5" />
                     </Button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pl-2 pr-6">
                     {feeChart}
                 </CardContent>
             </Card>
@@ -344,27 +409,32 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                         <Expand className="h-5 w-5" />
                     </Button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pl-2 pr-6">
                     {amountChart}
                 </CardContent>
             </Card>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Cash IO by Account</CardTitle>
-                    <CardDescription>Breakdown of transactions by your business accounts.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Cash IO by Account</CardTitle>
+                        <CardDescription>Breakdown of transactions by your business accounts.</CardDescription>
+                    </div>
+                     <Button variant="ghost" size="icon" onClick={() => setIsAccountTableExpanded(true)}>
+                        <Expand className="h-5 w-5" />
+                    </Button>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
-                      <TableHeader>
-                          <TableRow>
-                              <TableHead className="w-1/3 pl-10">Account</TableHead>
-                              <TableHead className="text-center">In/Out Count</TableHead>
-                              <TableHead className="text-right">Cash In Amt</TableHead>
-                              <TableHead className="text-right">Cash Out Amt</TableHead>
-                              <TableHead className="text-right pr-4">Total Fees</TableHead>
-                          </TableRow>
-                      </TableHeader>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-1/3 pl-10">Account</TableHead>
+                                <TableHead className="text-center">In/Out Count</TableHead>
+                                <TableHead className="text-right">Cash In Amt</TableHead>
+                                <TableHead className="text-right">Cash Out Amt</TableHead>
+                                <TableHead className="text-right pr-4">Total Fees</TableHead>
+                            </TableRow>
+                        </TableHeader>
                     </Table>
                     <Accordion type="multiple" className="w-full">
                         {accountBreakdown.map(account => (
@@ -419,45 +489,19 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
             </Card>
             
             <Card>
-                <CardHeader>
-                    <CardTitle>Cash IO by Customer</CardTitle>
-                    <CardDescription>Breakdown of ordered transactions by customer.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Cash IO by Customer</CardTitle>
+                        <CardDescription>Breakdown of ordered transactions by customer.</CardDescription>
+                    </div>
+                     <Button variant="ghost" size="icon" onClick={() => setIsCustomerTableExpanded(true)}>
+                        <Expand className="h-5 w-5" />
+                    </Button>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Customer</TableHead>
-                                <TableHead className="text-right">Cash In (Count)</TableHead>
-                                <TableHead className="text-right">Cash Out (Count)</TableHead>
-                                <TableHead className="text-right">Cash In Amount</TableHead>
-                                <TableHead className="text-right">Cash Out Amount</TableHead>
-                                <TableHead className="text-right">Total Fees</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {customerBreakdown.map(customer => (
-                                <TableRow key={customer.id}>
-                                    <TableCell className="font-medium">
-                                        {customer.name === 'Unknown Customer' ? (
-                                            <span>{customer.name}</span>
-                                        ) : (
-                                            <Button variant="link" asChild className="p-0 h-auto">
-                                                <Link href={`/admin/customers/${customer.id}`}>
-                                                    {customer.name}
-                                                </Link>
-                                            </Button>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right">{(customer.cashIn || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{(customer.cashOut || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">₱{(customer.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">₱{(customer.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">₱{(customer.totalFee || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <div className="max-h-96 overflow-y-auto">
+                        {customerTable}
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -477,6 +521,28 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     <DialogDescription>Cash in vs. cash out amounts transacted.</DialogDescription>
                 </DialogHeader>
                 <div className="flex-grow">{amountChart}</div>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isAccountTableExpanded} onOpenChange={setIsAccountTableExpanded}>
+            <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Cash IO by Account</DialogTitle>
+                    <DialogDescription>Breakdown of transactions by your business accounts.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="flex-grow">
+                    <div className="pr-6">{accountTable}</div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+        <Dialog open={isCustomerTableExpanded} onOpenChange={setIsCustomerTableExpanded}>
+            <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Cash IO by Customer</DialogTitle>
+                    <DialogDescription>Breakdown of ordered transactions by customer.</DialogDescription>
+                </DialogHeader>
+                 <ScrollArea className="flex-grow">
+                    <div className="pr-6">{customerTable}</div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
         </>
