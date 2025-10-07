@@ -275,30 +275,57 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
           </BarChart>
       </ChartContainer>
     );
-    
+
     const accountTable = (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead className="w-1/3">Account</TableHead>
-                    <TableHead className="text-center">In/Out Count</TableHead>
-                    <TableHead className="text-right">Cash In Amt</TableHead>
-                    <TableHead className="text-right">Cash Out Amt</TableHead>
-                    <TableHead className="text-right">Total Fees</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {accountBreakdown.map(account => (
-                    <TableRow key={account.id}>
-                        <TableCell className="font-medium">{account.name}</TableCell>
-                        <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</TableCell>
-                        <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+        <Accordion type="multiple" className="w-full">
+            {accountBreakdown.map(account => (
+                <AccordionItem value={account.id} key={account.id} className="border-b last:border-b-0">
+                    <AccordionTrigger className="hover:no-underline group py-0">
+                         <Table className="w-full">
+                            <TableBody>
+                                <TableRow className="border-b-0 hover:bg-transparent">
+                                    <TableCell className="font-medium w-1/3 flex items-center gap-2">
+                                        <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                                        {account.name}
+                                    </TableCell>
+                                    <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                </TableRow>
+                            </TableBody>
+                         </Table>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="bg-muted/50 p-4 pl-12">
+                            <h4 className="font-semibold mb-2">Breakdown for {account.name}</h4>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Period</TableHead>
+                                        <TableHead className="text-center">Cash In/Out</TableHead>
+                                        <TableHead className="text-right">Cash In Amt</TableHead>
+                                        <TableHead className="text-right">Cash Out Amt</TableHead>
+                                        <TableHead className="text-right">Total Fees</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                {Object.entries(account.periodData).sort(([keyA], [keyB]) => keyB.localeCompare(keyA)).map(([periodKey, stats]) => (
+                                    <TableRow key={periodKey}>
+                                        <TableCell>{formatXAxis(periodKey)}</TableCell>
+                                        <TableCell className="text-center">{stats.cashInCount}/{stats.cashOutCount}</TableCell>
+                                        <TableCell className="text-right">₱{stats.cashInAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                        <TableCell className="text-right">₱{stats.cashOutAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                        <TableCell className="text-right">₱{(stats.cashInFee + stats.cashOutFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                    </TableRow>
+                                ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
     );
 
     const customerTable = (
@@ -436,55 +463,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                             </TableRow>
                         </TableHeader>
                     </Table>
-                    <Accordion type="multiple" className="w-full">
-                        {accountBreakdown.map(account => (
-                            <AccordionItem value={account.id} key={account.id} className="border-b last:border-b-0">
-                                <AccordionTrigger className="hover:no-underline group py-0 px-4">
-                                     <Table className="w-full">
-                                        <TableBody>
-                                            <TableRow className="border-b-0 hover:bg-transparent">
-                                                <TableCell className="font-medium w-1/3 flex items-center gap-2">
-                                                    <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                                                    {account.name}
-                                                </TableCell>
-                                                <TableCell className="text-center">{(account.cashInCount || 0).toLocaleString()} / {(account.cashOutCount || 0).toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">₱{(account.cashInAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                <TableCell className="text-right">₱{(account.cashOutAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                <TableCell className="text-right font-semibold">₱{((account.cashInFee || 0) + (account.cashOutFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                     </Table>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="bg-muted/50 p-4 pl-12">
-                                        <h4 className="font-semibold mb-2">Breakdown for {account.name}</h4>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Period</TableHead>
-                                                    <TableHead className="text-center">Cash In/Out</TableHead>
-                                                    <TableHead className="text-right">Cash In Amt</TableHead>
-                                                    <TableHead className="text-right">Cash Out Amt</TableHead>
-                                                    <TableHead className="text-right">Total Fees</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                            {Object.entries(account.periodData).sort(([keyA], [keyB]) => keyB.localeCompare(keyA)).map(([periodKey, stats]) => (
-                                                <TableRow key={periodKey}>
-                                                    <TableCell>{formatXAxis(periodKey)}</TableCell>
-                                                    <TableCell className="text-center">{stats.cashInCount}/{stats.cashOutCount}</TableCell>
-                                                    <TableCell className="text-right">₱{stats.cashInAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                    <TableCell className="text-right">₱{stats.cashOutAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                    <TableCell className="text-right">₱{(stats.cashInFee + stats.cashOutFee).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
+                    {accountTable}
                 </CardContent>
             </Card>
             
@@ -530,7 +509,20 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
                     <DialogDescription>Breakdown of transactions by your business accounts.</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-grow">
-                    <div className="pr-6">{accountTable}</div>
+                    <div className="pr-6">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-1/3 pl-10">Account</TableHead>
+                                    <TableHead className="text-center">In/Out Count</TableHead>
+                                    <TableHead className="text-right">Cash In Amt</TableHead>
+                                    <TableHead className="text-right">Cash Out Amt</TableHead>
+                                    <TableHead className="text-right pr-4">Total Fees</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                        </Table>
+                        {accountTable}
+                    </div>
                 </ScrollArea>
             </DialogContent>
         </Dialog>
