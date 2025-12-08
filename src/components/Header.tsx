@@ -1,8 +1,7 @@
-
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -113,6 +112,9 @@ export default function Header() {
                                   <Link href="/admin/cashio-fees" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <DollarSign className="h-5 w-5 text-muted-foreground" /><span>CashIO Fees</span>
                                   </Link>
+                                  <Link href="/admin/import-cashio" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <FileInput className="h-5 w-5 text-muted-foreground" /><span>Import CashIO</span>
+                                  </Link>
                                   <Link href="/admin/accounts" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <Landmark className="h-5 w-5 text-muted-foreground" /><span>Accounts</span>
                                   </Link>
@@ -216,6 +218,7 @@ export default function Header() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link href="/admin/printing/prices" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing Prices</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/cashio-fees" className="flex items-center gap-2 cursor-pointer"><DollarSign className="h-4 w-4" /> CashIO Fees</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/admin/import-cashio" className="flex items-center gap-2 cursor-pointer"><FileInput className="h-4 w-4" /> Import CashIO</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
                     {isAdmin && (
