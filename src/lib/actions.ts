@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer, createStoreAccount, getStoreByCode } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice } from './lib/types';
 import { ref, get, update, remove } from 'firebase/database';
 import { db } from './firebase';
@@ -128,6 +128,48 @@ export async function createUserProfileAction(userData: Omit<AppUser, 'authorize
     });
     revalidatePath('/admin/users');
     revalidatePath('/admin/activity-logs');
+}
+
+const storeSchema = z.object({
+    storeName: z.string().min(1, 'Store name is required.'),
+    userId: z.string().min(1, 'User ID is required.'),
+    userName: z.string().min(1, 'User name is required.'),
+});
+
+const storeCodeSchema = z.object({
+    code: z.string().min(1, 'Store code is required.'),
+});
+
+export async function createStoreAccountAction(data: z.infer<typeof storeSchema>) {
+    const validated = storeSchema.safeParse(data);
+    if (!validated.success) {
+        throw new Error('Invalid store data.');
+    }
+    const newStore = await createStoreAccount(validated.data.storeName, {
+        userId: validated.data.userId,
+        userName: validated.data.userName,
+    });
+    await logActivity({
+        type: 'System',
+        action: 'Created',
+        details: `Store "${newStore.name}" was created.`,
+        targetId: newStore.id,
+        userId: validated.data.userId,
+        userName: validated.data.userName,
+    });
+    return newStore;
+}
+
+export async function joinStoreByCodeAction(data: z.infer<typeof storeCodeSchema>) {
+    const validated = storeCodeSchema.safeParse(data);
+    if (!validated.success) {
+        throw new Error('Invalid store code.');
+    }
+    const store = await getStoreByCode(validated.data.code.trim().toUpperCase());
+    if (!store) {
+        throw new Error('Store code not found.');
+    }
+    return store;
 }
 
 

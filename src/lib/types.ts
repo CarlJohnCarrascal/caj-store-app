@@ -14,7 +14,17 @@ export interface AppUser {
   email: string;
   authorized: boolean;
   role: 'admin' | 'user';
+  storeId?: string;
+  storeName?: string;
   updatedBy?: ChangeTracker;
+}
+
+export interface StoreAccount {
+  id: string;
+  name: string;
+  code: string;
+  createdAt: string;
+  createdBy?: ChangeTracker;
 }
 
 export interface Product {
