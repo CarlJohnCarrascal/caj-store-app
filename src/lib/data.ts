@@ -5,7 +5,7 @@
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction, limitToLast } from 'firebase/database';
 import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
-import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice, StoreAccount } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -30,6 +30,8 @@ export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role
   await set(userRef, {
     name: user.name,
     email: user.email,
+    storeId: user.storeId || null,
+    storeName: user.storeName || null,
     authorized: false, // New users are not authorized by default
     role: 'user', // New users are assigned 'user' role by default
   });
@@ -72,6 +74,53 @@ export async function updateUserRole(userId: string, role: 'admin' | 'user', upd
 export async function getUsers(): Promise<AppUser[]> {
   const snapshot = await get(ref(db, 'users'));
   return snapshotToArray<AppUser>(snapshot);
+}
+
+// ==================
+// Store Account Functions
+// ==================
+function generateStoreCode(length = 6): string {
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < length; i += 1) {
+    code += charset[Math.floor(Math.random() * charset.length)];
+  }
+  return code;
+}
+
+async function generateUniqueStoreCode(): Promise<string> {
+  let attempts = 0;
+  while (attempts < 10) {
+    const code = generateStoreCode();
+    const snapshot = await get(query(ref(db, 'stores'), orderByChild('code'), equalTo(code)));
+    if (!snapshot.exists()) {
+      return code;
+    }
+    attempts += 1;
+  }
+  throw new Error('Unable to generate a unique store code. Please try again.');
+}
+
+export async function createStoreAccount(storeName: string, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<StoreAccount> {
+  const code = await generateUniqueStoreCode();
+  const newStoreRef = push(ref(db, 'stores'));
+  const dataToSave = {
+    name: storeName,
+    code,
+    createdAt: getCurrentPHTISOString(),
+    createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
+  };
+  await set(newStoreRef, dataToSave);
+  return { ...dataToSave, id: newStoreRef.key! };
+}
+
+export async function getStoreByCode(code: string): Promise<StoreAccount | null> {
+  const snapshot = await get(query(ref(db, 'stores'), orderByChild('code'), equalTo(code)));
+  if (!snapshot.exists()) {
+    return null;
+  }
+  const stores = snapshotToArray<StoreAccount>(snapshot);
+  return stores[0] || null;
 }
 
 // ==================
