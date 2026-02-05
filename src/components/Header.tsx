@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { ScrollArea } from './ui/scroll-area';
+import { StoreSwitcher } from './StoreSwitcher';
 
 export default function Header() {
   const { cartCount, isCartOpen, setCartOpen } = useCart();
@@ -43,7 +45,7 @@ export default function Header() {
       <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-40 border-b">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-4">
               {/* Mobile Menu */}
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
@@ -61,6 +63,9 @@ export default function Header() {
                         </Link>
                      </SheetTitle>
                   </SheetHeader>
+                  <div className="p-4">
+                     <StoreSwitcher onStoreSwitch={() => setIsMenuOpen(false)} />
+                  </div>
                   <ScrollArea className="flex-1">
                     <nav className="flex flex-col space-y-1 p-6 pt-2">
                       <Accordion type="multiple" className="w-full">
@@ -100,6 +105,9 @@ export default function Header() {
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="pl-10 space-y-1">
+                                  <Link href="/admin/stores" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                      <Store className="h-5 w-5 text-muted-foreground" /><span>Stores</span>
+                                  </Link>
                                   <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                       <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
                                   </Link>
@@ -185,15 +193,16 @@ export default function Header() {
                   </ScrollArea>
                 </SheetContent>
               </Sheet>
+              
+              <div className="hidden md:flex items-center gap-2">
+                <Link href="/admin" className="text-lg font-bold flex items-center gap-2">
+                    <LayoutDashboard className="h-5 w-5" />
+                </Link>
+                 <StoreSwitcher />
+              </div>
 
               {/* Desktop Nav */}
               <nav className="hidden md:flex items-center space-x-6">
-                <Link href="/admin" className="text-lg font-bold flex items-center gap-2">
-                    <LayoutDashboard className="h-5 w-5" />
-                    CajStore
-                </Link>
-                <div className="h-6 w-px bg-border" />
-                 
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
                     Point of Sale <ChevronDown className="h-4 w-4" />
@@ -213,6 +222,7 @@ export default function Header() {
                     Management <ChevronDown className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
+                    <DropdownMenuItem asChild><Link href="/admin/stores" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Stores</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />

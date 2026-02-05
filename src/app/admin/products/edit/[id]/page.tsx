@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { getProductById } from '@/lib/data';
@@ -8,19 +9,22 @@ import { useEffect, useState } from 'react';
 import { Product } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function EditProductPage() {
   const params = useParams();
   const id = params.id as string;
+  const { activeStoreId } = useAuth();
+  
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !activeStoreId) return;
     async function fetchProduct() {
       try {
-        const productData = await getProductById(id);
+        const productData = await getProductById(activeStoreId, id);
         if (!productData) {
           notFound();
           return;
@@ -33,9 +37,9 @@ export default function EditProductPage() {
       }
     }
     fetchProduct();
-  }, [id]);
+  }, [id, activeStoreId]);
 
-  if (isLoading) {
+  if (isLoading || !activeStoreId) {
     return (
       <div>
         <h1 className="text-3xl font-bold mb-6"><Skeleton className="h-9 w-64" /></h1>
@@ -59,7 +63,7 @@ export default function EditProductPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Edit Product</h1>
-      <ProductForm product={product} />
+      <ProductForm product={product} storeId={activeStoreId} />
     </div>
   );
 }

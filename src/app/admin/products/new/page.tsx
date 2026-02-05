@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
@@ -6,9 +7,11 @@ import { useSearchParams } from 'next/navigation';
 import ProductForm from '../ProductForm';
 import { Product } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 
 function NewProductForm() {
   const searchParams = useSearchParams();
+  const { activeStoreId } = useAuth();
   const [initialProduct, setInitialProduct] = useState<Partial<Product> | null>(null);
 
   useEffect(() => {
@@ -34,11 +37,11 @@ function NewProductForm() {
     setInitialProduct(defaults);
   }, [searchParams]);
 
-  if (initialProduct === null) {
+  if (initialProduct === null || !activeStoreId) {
     return <Skeleton className="h-[500px] w-full" />;
   }
 
-  return <ProductForm product={initialProduct as Product} />;
+  return <ProductForm product={initialProduct as Product} storeId={activeStoreId} />;
 }
 
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,9 +43,10 @@ type ProductFormValues = z.infer<typeof formSchema>;
 
 interface ProductFormProps {
   product?: Product;
+  storeId: string;
 }
 
-export default function ProductForm({ product }: ProductFormProps) {
+export default function ProductForm({ product, storeId }: ProductFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
@@ -78,6 +80,10 @@ export default function ProductForm({ product }: ProductFormProps) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
     }
+    if (!storeId) {
+        toast({ variant: 'destructive', title: 'Store not selected', description: 'Please select a store first.' });
+        return;
+    }
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -91,10 +97,10 @@ export default function ProductForm({ product }: ProductFormProps) {
         formData.append('userName', user.displayName || user.email!);
 
         if (product) {
-          await updateProductAction(product.id, formData);
+          await updateProductAction(storeId, product.id, formData);
           toast({ title: 'Success', description: 'Product updated successfully.' });
         } else {
-          await addProductAction(formData);
+          await addProductAction(storeId, formData);
           toast({ title: 'Success', description: 'Product added successfully.' });
           form.reset();
         }

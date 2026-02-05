@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -66,6 +67,7 @@ export default function CompleteProfileForm() {
             email: user.email!,
         });
         toast({ title: 'Profile Created!', description: "Welcome! Your account is pending admin approval." });
+        // Redirect to unauthorized, which will then redirect to /admin/stores
         router.push('/unauthorized'); 
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Setup Failed', description: error.message });

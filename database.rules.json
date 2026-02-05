@@ -1,27 +1,47 @@
+
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
-    "products": {
-      ".indexOn": ["category", "group", "barcode"]
+    "users": {
+      ".indexOn": ["role"],
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
     },
-    "orders": {
-      ".indexOn": "customerId"
+    "stores": {
+      ".read": "auth != null",
+      "$storeId": {
+        ".write": "auth != null && (!data.exists() || data.child('ownerId').val() === auth.uid)"
+      }
     },
-    "cashTransactions": {
-      ".indexOn": ["createdAt", "reference", "transactionDate"]
+    "storeMembers": {
+      ".read": "auth != null",
+      "$storeId": {
+        ".write": "root.child('stores').child($storeId).child('ownerId').val() === auth.uid",
+        "$uid": {
+          ".write": "auth.uid === $uid"
+        }
+      }
     },
-    "expenses": {
-      ".indexOn": "date"
-    },
-    "collections": {
-      ".indexOn": "customerId"
+    "storeData": {
+      "$storeId": {
+        ".read": "auth != null && root.child('storeMembers').child($storeId).child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && root.child('storeMembers').child($storeId).child(auth.uid).child('status').val() === 'approved'",
+        "products": { ".indexOn": ["category", "group", "barcode"] },
+        "orders": { ".indexOn": "customerId" },
+        "cashTransactions": { ".indexOn": ["createdAt", "reference", "transactionDate"] },
+        "expenses": { ".indexOn": "date" },
+        "collections": { ".indexOn": "customerId" },
+        "accounts": {},
+        "customers": {},
+        "printingPrices": {},
+        "feeThresholds": {}
+      }
     },
     "activityLogs": {
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": "timestamp"
-    },
-    "users": {
-        ".indexOn": ["role"]
     }
   }
 }

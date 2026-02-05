@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -14,7 +15,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
-  const { user, appUser, loading, isAuthorized } = useAuth();
+  const { user, appUser, loading, isAuthorized, activeStoreId } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,13 +27,17 @@ export default function AdminLayout({
         router.push('/auth/complete-profile');
       } else if (!isAuthorized) {
         router.push('/unauthorized');
+      } else if (!activeStoreId) {
+        // Authorized for the app, but hasn't created/joined/selected a store
+        router.push('/admin/stores');
       }
     }
-  }, [authEnabled, loading, user, appUser, isAuthorized, router]);
+  }, [authEnabled, loading, user, appUser, isAuthorized, activeStoreId, router]);
 
   const firebaseConfigMissing = !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-  const showContent = !authEnabled || (!loading && user && isAuthorized);
+  // Show content if not using auth, or if logged in, authorized, and has an active store
+  const showContent = !authEnabled || (!loading && user && isAuthorized && activeStoreId);
 
   return (
     <div className="min-h-screen flex flex-col">

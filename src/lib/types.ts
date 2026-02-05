@@ -8,12 +8,30 @@ export interface ChangeTracker {
   timestamp: string; // ISO string
 }
 
+export interface Store {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerName: string;
+  joinCode: string;
+  createdBy?: ChangeTracker;
+}
+
+export interface StoreMemberInfo {
+  id: string; // user id
+  name: string;
+  email: string;
+  status: 'pending' | 'approved' | 'rejected';
+  role: 'owner' | 'admin' | 'member';
+}
+
 export interface AppUser {
   id: string; // Firebase UID
   name: string;
   email: string;
-  authorized: boolean;
-  role: 'admin' | 'user';
+  authorized: boolean; // Keep this for global app access
+  role: 'admin' | 'user'; // Global role
+  activeStoreId?: string; // Newly active store
   updatedBy?: ChangeTracker;
 }
 
@@ -117,7 +135,7 @@ export interface Order {
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System' | 'PrintingPrice';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System' | 'PrintingPrice' | 'Store' | 'StoreMember';
   action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange';
   timestamp: Date;
   details: string;
