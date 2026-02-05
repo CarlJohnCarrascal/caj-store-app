@@ -5,7 +5,7 @@
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction, limitToLast } from 'firebase/database';
 import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
-import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice, StoreMemberInfo } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -25,7 +25,7 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 // ==================
 // User Functions
 // ==================
-export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role'>): Promise<void> {
+export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role' | 'activeStoreId'>): Promise<void> {
   const userRef = ref(db, `users/${user.id}`);
   await set(userRef, {
     name: user.name,
@@ -75,24 +75,42 @@ export async function getUsers(): Promise<AppUser[]> {
 }
 
 // ==================
+// Store Functions
+// ==================
+
+export async function getStoreMembers(storeId: string): Promise<StoreMemberInfo[]> {
+  const membersRef = ref(db, `storeMembers/${storeId}`);
+  const snapshot = await get(membersRef);
+  if (snapshot.exists()) {
+      const membersData = snapshot.val();
+      return Object.keys(membersData).map(userId => ({
+          id: userId,
+          ...membersData[userId]
+      }));
+  }
+  return [];
+}
+
+
+// ==================
 // Product Functions
 // ==================
 
-export async function getProducts(): Promise<Product[]> {
-  const snapshot = await get(ref(db, 'products'));
+export async function getProducts(storeId: string): Promise<Product[]> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/products`));
   return snapshotToArray<Product>(snapshot).reverse();
 }
 
-export async function getProductById(id: string): Promise<Product | undefined> {
-  const snapshot = await get(ref(db, `products/${id}`));
+export async function getProductById(storeId: string, id: string): Promise<Product | undefined> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/products/${id}`));
   if (snapshot.exists()) {
     return { id, ...snapshot.val() };
   }
   return undefined;
 }
 
-export async function isBarcodeDuplicate(barcode: string, currentProductId?: string): Promise<boolean> {
-    const productsRef = ref(db, 'products');
+export async function isBarcodeDuplicate(storeId: string, barcode: string, currentProductId?: string): Promise<boolean> {
+    const productsRef = ref(db, `storeData/${storeId}/products`);
     const q = query(productsRef, orderByChild('barcode'), equalTo(barcode));
     const snapshot = await get(q);
     if (snapshot.exists()) {
@@ -107,8 +125,8 @@ export async function isBarcodeDuplicate(barcode: string, currentProductId?: str
     return false;
 }
 
-export async function addProduct(product: Omit<Product, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product> {
-  const newProductRef = push(ref(db, 'products'));
+export async function addProduct(storeId: string, product: Omit<Product, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product> {
+  const newProductRef = push(ref(db, `storeData/${storeId}/products`));
   const dataToSave = {
     ...product,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -117,9 +135,9 @@ export async function addProduct(product: Omit<Product, 'id'>, createdBy: Omit<C
   return { ...dataToSave, id: newProductRef.key! };
 }
 
-export async function updateProduct(updatedProduct: Product, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product | null> {
+export async function updateProduct(storeId: string, updatedProduct: Product, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Product | null> {
   const { id, ...data } = updatedProduct;
-  const productRef = ref(db, `products/${id}`);
+  const productRef = ref(db, `storeData/${storeId}/products/${id}`);
   const snapshot = await get(productRef);
   if (snapshot.exists()) {
     const existingData = snapshot.val();
@@ -134,8 +152,8 @@ export async function updateProduct(updatedProduct: Product, updatedBy: Omit<Cha
   return null;
 }
 
-export async function deleteProduct(id: string): Promise<Product | null> {
-  const productRef = ref(db, `products/${id}`);
+export async function deleteProduct(storeId: string, id: string): Promise<Product | null> {
+  const productRef = ref(db, `storeData/${storeId}/products/${id}`);
   const snapshot = await get(productRef);
   if (snapshot.exists()) {
     const deletedProduct = { id, ...snapshot.val() };
@@ -808,9 +826,9 @@ export async function deletePrintingPrice(id: string): Promise<void> {
 // Product Reporting Functions
 // ========================
 
-export async function initializeProductReport(productId: string) {
+export async function initializeProductReport(storeId: string, productId: string) {
   const { overall: overallPath } = getReportPaths(getCurrentPHTISOString());
-  const reportRef = ref(db, `productReports${overallPath}/${productId}`);
+  const reportRef = ref(db, `storeData/${storeId}/productReports${overallPath}/${productId}`);
   await set(reportRef, {
     totalQuantity: 0,
     totalSales: 0,
@@ -818,12 +836,12 @@ export async function initializeProductReport(productId: string) {
   });
 }
 
-export async function updateProductReports(productId: string, quantity: number, sales: number) {
+export async function updateProductReports(storeId: string, productId: string, quantity: number, sales: number) {
   const dateStr = getCurrentPHTISOString();
   const paths = getReportPaths(dateStr);
 
   for (const periodPath of Object.values(paths)) {
-    const reportRef = ref(db, `productReports${periodPath}/${productId}`);
+    const reportRef = ref(db, `storeData/${storeId}/productReports${periodPath}/${productId}`);
     await runTransaction(reportRef, (currentData: any) => {
       if (currentData === null) {
         currentData = { totalQuantity: 0, totalSales: 0, totalOrders: 0 };

@@ -5,9 +5,10 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer } from './data';
-import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice } from './lib/types';
-import { ref, get, update, remove } from 'firebase/database';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice, Store, StoreMemberInfo } from '@/lib/types';
+import { ref, get, update, remove, push, set, query, orderByChild, equalTo } from 'firebase/database';
 import { db } from './firebase';
+import { getCurrentPHTISOString } from './utils';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -33,7 +34,7 @@ function getUserFromFormData(data: FormData) {
     return { userId, userName };
 }
 
-export async function addProductAction(data: FormData) {
+export async function addProductAction(storeId: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
   
@@ -43,15 +44,15 @@ export async function addProductAction(data: FormData) {
   }
 
   if (validatedFields.data.barcode) {
-    const isDuplicate = await isBarcodeDuplicate(validatedFields.data.barcode);
+    const isDuplicate = await isBarcodeDuplicate(storeId, validatedFields.data.barcode);
     if (isDuplicate) {
       throw new Error(`Barcode "${validatedFields.data.barcode}" is already assigned to another product.`);
     }
   }
 
-  const newProduct = await addProduct(validatedFields.data, user);
+  const newProduct = await addProduct(storeId, validatedFields.data, user);
   
-  await initializeProductReport(newProduct.id);
+  await initializeProductReport(storeId, newProduct.id);
 
   await logActivity({
     type: 'Product',
@@ -66,7 +67,7 @@ export async function addProductAction(data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function updateProductAction(id: string, data: FormData) {
+export async function updateProductAction(storeId: string, id: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
   
@@ -76,14 +77,14 @@ export async function updateProductAction(id: string, data: FormData) {
   }
 
   if (validatedFields.data.barcode) {
-    const isDuplicate = await isBarcodeDuplicate(validatedFields.data.barcode, id);
+    const isDuplicate = await isBarcodeDuplicate(storeId, validatedFields.data.barcode, id);
     if (isDuplicate) {
       throw new Error(`Barcode "${validatedFields.data.barcode}" is already assigned to another product.`);
     }
   }
 
   const product: Product = { id, ...validatedFields.data, role: 'user' }; // role is required but not on form
-  await updateProduct(product, user);
+  await updateProduct(storeId, product, user);
 
   await logActivity({
       type: 'Product',
@@ -116,7 +117,7 @@ export async function deleteProductAction(id: string, user: { userId: string; us
   revalidatePath('/admin/activity-logs');
 }
 
-export async function createUserProfileAction(userData: Omit<AppUser, 'authorized' | 'role'>) {
+export async function createUserProfileAction(userData: Omit<AppUser, 'authorized' | 'role' | 'activeStoreId'>) {
     await createUserProfile(userData);
     await logActivity({
         type: 'User',
@@ -985,5 +986,130 @@ export async function regenerateCashIOReportsAction(user: { userId: string; user
     });
 
     revalidatePath('/admin/reports/cashio');
+    revalidatePath('/admin/activity-logs');
+}
+
+// ==================
+// Store Management Actions
+// ==================
+
+const generateJoinCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+export async function createStoreAction(storeName: string, user: { userId: string; userName: string }) {
+    const userRef = ref(db, `users/${user.userId}`);
+    const userSnap = await get(userRef);
+    if (!userSnap.exists()) {
+        throw new Error("User creating store not found.");
+    }
+    const appUser = { id: user.userId, ...userSnap.val() };
+
+    const newStoreRef = push(ref(db, 'stores'));
+    const joinCode = generateJoinCode();
+    const newStore: Omit<Store, 'id'> = {
+        name: storeName,
+        ownerId: user.userId,
+        ownerName: user.userName,
+        joinCode: joinCode,
+        createdBy: { ...user, timestamp: getCurrentPHTISOString() },
+    };
+    await set(newStoreRef, newStore);
+    const newStoreId = newStoreRef.key!;
+
+    // Add owner as a member
+    const memberRef = ref(db, `storeMembers/${newStoreId}/${user.userId}`);
+    await set(memberRef, {
+        name: appUser.name,
+        email: appUser.email,
+        status: 'approved',
+        role: 'owner',
+    });
+
+    // Set as active store for the user
+    await update(userRef, { activeStoreId: newStoreId });
+
+    await logActivity({
+        type: 'Store',
+        action: 'Created',
+        details: `Store "${storeName}" was created.`,
+        targetId: newStoreId,
+        ...user
+    });
+
+    revalidatePath('/admin/stores');
+    revalidatePath('/admin');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function joinStoreAction(joinCode: string, user: { id: string; name: string; email: string; }) {
+    const storesRef = ref(db, 'stores');
+    const q = query(storesRef, orderByChild('joinCode'), equalTo(joinCode));
+    const snapshot = await get(q);
+
+    if (!snapshot.exists()) {
+        throw new Error('Invalid join code.');
+    }
+
+    const storeId = Object.keys(snapshot.val())[0];
+    const storeData = Object.values(snapshot.val())[0] as Store;
+
+    // Check if user is already a member
+    const memberRef = ref(db, `storeMembers/${storeId}/${user.id}`);
+    const memberSnap = await get(memberRef);
+    if (memberSnap.exists()) {
+        const memberData = memberSnap.val();
+        if(memberData.status === 'pending') {
+            throw new Error('You have already requested to join this store.');
+        } else if (memberData.status === 'approved') {
+            throw new Error('You are already a member of this store.');
+        }
+    }
+
+    await set(memberRef, {
+        name: user.name,
+        email: user.email,
+        status: 'pending',
+        role: 'member',
+    });
+
+    await logActivity({
+        type: 'StoreMember',
+        action: 'Created',
+        details: `User "${user.name}" requested to join store "${storeData.name}".`,
+        targetId: storeId,
+        userId: user.id,
+        userName: user.name,
+    });
+
+    revalidatePath('/admin/stores');
+    revalidatePath('/admin/activity-logs');
+}
+
+export async function approveMemberAction(storeId: string, memberId: string, user: { userId: string; userName: string; }) {
+    const storeRef = ref(db, `stores/${storeId}`);
+    const storeSnap = await get(storeRef);
+    if (!storeSnap.exists() || storeSnap.val().ownerId !== user.userId) {
+        throw new Error("You are not the owner of this store.");
+    }
+    const storeData = storeSnap.val();
+
+    const memberRef = ref(db, `storeMembers/${storeId}/${memberId}`);
+    const memberSnap = await get(memberRef);
+    if (!memberSnap.exists()) {
+        throw new Error("Member not found.");
+    }
+
+    await update(memberRef, { status: 'approved' });
+
+    await logActivity({
+        type: 'StoreMember',
+        action: 'Updated',
+        details: `Membership for "${memberSnap.val().name}" was approved in store "${storeData.name}".`,
+        targetId: storeId,
+        ...user,
+    });
+
+    revalidatePath('/admin/stores');
     revalidatePath('/admin/activity-logs');
 }
