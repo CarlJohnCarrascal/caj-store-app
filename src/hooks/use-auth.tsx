@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -68,16 +67,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             memberStoresUnsubscribe = onValue(memberRef, async (allMembersSnapshot) => {
                 const userStores: Store[] = [];
                 if (allMembersSnapshot.exists()) {
-                    for (const storeId in allMembersSnapshot.val()) {
-                        if (allMembersSnapshot.child(storeId).hasChild(user.uid)) {
+                    const allStoresMembers = allMembersSnapshot.val();
+                    const storePromises = Object.keys(allStoresMembers).map(async (storeId) => {
+                        const members = allStoresMembers[storeId];
+                        if (members && members[user.uid] && members[user.uid].status === 'approved') {
                             const storeSnap = await get(ref(db, `stores/${storeId}`));
-                            if(storeSnap.exists()){
+                            if (storeSnap.exists()) {
                                 userStores.push({ id: storeId, ...storeSnap.val() });
                             }
                         }
-                    }
+                    });
+                    await Promise.all(storePromises);
                 }
                 setMemberStores(userStores);
+                
+                // Auto-set active store if none is set and there are available stores
+                if (!dbUser.activeStoreId && userStores.length > 0) {
+                  // This will cause a re-render, but it's an important UX improvement
+                  await update(ref(db, `users/${user.uid}`), { activeStoreId: userStores[0].id });
+                }
             });
             
             // Listen for role in the currently active store

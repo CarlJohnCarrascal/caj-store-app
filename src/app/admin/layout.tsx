@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -17,6 +16,7 @@ export default function AdminLayout({
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
   const { user, appUser, loading, isAuthorized, activeStoreId } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && authEnabled) {
@@ -27,17 +27,17 @@ export default function AdminLayout({
         router.push('/auth/complete-profile');
       } else if (!isAuthorized) {
         router.push('/unauthorized');
-      } else if (!activeStoreId) {
+      } else if (!activeStoreId && pathname !== '/admin/stores') {
         // Authorized for the app, but hasn't created/joined/selected a store
         router.push('/admin/stores');
       }
     }
-  }, [authEnabled, loading, user, appUser, isAuthorized, activeStoreId, router]);
+  }, [authEnabled, loading, user, appUser, isAuthorized, activeStoreId, router, pathname]);
 
   const firebaseConfigMissing = !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-  // Show content if not using auth, or if logged in, authorized, and has an active store
-  const showContent = !authEnabled || (!loading && user && isAuthorized && activeStoreId);
+  // Show content if not using auth, or if logged in, authorized, and either has an active store OR is on the stores page.
+  const showContent = !authEnabled || (!loading && user && isAuthorized && (activeStoreId || pathname === '/admin/stores'));
 
   return (
     <div className="min-h-screen flex flex-col">
