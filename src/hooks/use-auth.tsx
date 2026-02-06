@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe, update, get } from 'firebase/database';
 import { AppUser, Store, StoreMemberInfo } from '@/lib/types';
@@ -12,6 +12,7 @@ interface AuthContextType {
   appUser: AppUser | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAuthorized: boolean;
   isAdmin: boolean;
@@ -131,6 +132,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const provider = new GoogleAuthProvider();
     await signInWithRedirect(auth, provider);
   };
+  
+  const signInWithEmail = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
@@ -151,7 +156,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
         user, appUser, loading, 
-        signInWithGoogle, signOut, 
+        signInWithGoogle,
+        signInWithEmail, 
+        signOut, 
         isAuthorized, isAdmin,
         activeStoreId,
         activeStore,

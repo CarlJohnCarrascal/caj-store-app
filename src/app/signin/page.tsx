@@ -1,12 +1,15 @@
+
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // SVG for Google icon
 const GoogleIcon = () => (
@@ -16,9 +19,11 @@ const GoogleIcon = () => (
 );
 
 export default function SignInPage() {
-  const { signInWithGoogle, user, appUser, loading } = useAuth();
+  const { signInWithGoogle, signInWithEmail, user, appUser, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     // If the user is already logged in, redirect them away from the sign-in page.
@@ -32,6 +37,18 @@ export default function SignInPage() {
     }
   }, [user, appUser, loading, router]);
 
+  const handleEmailSignIn = async () => {
+    if (!email || !password) {
+        toast({ variant: 'destructive', title: 'Missing fields', description: 'Please enter both email and password.' });
+        return;
+    }
+    try {
+      await signInWithEmail(email, password);
+      // The user will be redirected by the useEffect if successful
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Sign-in Failed', description: error.message || 'An unknown error occurred with Email/Password Sign-In.' });
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     try {
@@ -61,14 +78,50 @@ export default function SignInPage() {
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
             <CardDescription>
-              Sign in to your account using Google to access the dashboard.
+              Sign in to your account to access the dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleGoogleSignIn} className="w-full">
-              <GoogleIcon />
-              Sign In with Google
-            </Button>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input 
+                        id="password" 
+                        type="password" 
+                        required 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </div>
+                <Button onClick={handleEmailSignIn} className="w-full">
+                    Sign In with Email
+                </Button>
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                            Or continue with
+                        </span>
+                    </div>
+                </div>
+                <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
+                    <GoogleIcon />
+                    Sign In with Google
+                </Button>
+            </div>
           </CardContent>
         </Card>
         <div className="text-center text-sm">
