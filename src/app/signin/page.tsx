@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getRedirectResult } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 // SVG for Google icon
 const GoogleIcon = () => (
@@ -18,18 +21,37 @@ const GoogleIcon = () => (
 export default function SignInPage() {
   const { signInWithGoogle, user, appUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [origin, setOrigin] = useState('');
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOrigin(window.location.origin);
     }
-  }, []);
+    
+    // This effect runs once on page load to handle the redirect from Google.
+    getRedirectResult(auth)
+      .catch((error) => {
+        console.error("Sign-in redirect error:", error);
+        // This error can happen if the popup is closed or if the domain is not authorized in Firebase.
+        toast({
+          variant: 'destructive',
+          title: 'Sign-in Failed',
+          description: `Could not process sign-in. (${error.code})`,
+        });
+      })
+      .finally(() => {
+        // Once the redirect is processed (or if there wasn't one),
+        // we can let the rest of the app's logic take over.
+        setIsProcessingRedirect(false);
+      });
+  }, [toast]);
   
   useEffect(() => {
-    if (!authLoading) {
+    // This effect handles navigation once we know the final auth state.
+    // It waits for both the main auth loading and the redirect processing to finish.
+    if (!authLoading && !isProcessingRedirect) {
         if (appUser) { // User has a profile in our DB
             if (appUser.authorized) {
                 router.push('/admin');
@@ -39,25 +61,26 @@ export default function SignInPage() {
         } else if (user && !appUser) { // User is authenticated with Firebase but has no profile yet
             router.push('/auth/complete-profile');
         }
+        // If no user, do nothing and stay on the sign-in page.
     }
-  }, [user, appUser, authLoading, router]);
+  }, [user, appUser, authLoading, isProcessingRedirect, router]);
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    // We don't need a loading state here because it will redirect away.
     try {
       await signInWithGoogle();
-      // Let the useEffect handle the redirect
+      // The user will be redirected to Google and then back to this page.
+      // The useEffect hooks above will handle the result.
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Sign-in Failed', description: error.message || 'An unknown error occurred with Google Sign-In.' });
-    } finally {
-      setLoading(false);
     }
   };
   
-  if (authLoading || user) { // Show loading if auth state is loading OR if a user object exists (means we are about to redirect)
+  // Show a loading screen while auth state is being determined or redirect is processing.
+  if (authLoading || isProcessingRedirect) {
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <p>Loading...</p>
+            <p>Verifying authentication...</p>
         </div>
     )
   }
@@ -77,9 +100,9 @@ export default function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleGoogleSignIn} disabled={loading} className="w-full">
+            <Button onClick={handleGoogleSignIn} className="w-full">
               <GoogleIcon />
-              {loading ? 'Signing In...' : 'Sign In with Google'}
+              Sign In with Google
             </Button>
           </CardContent>
         </Card>

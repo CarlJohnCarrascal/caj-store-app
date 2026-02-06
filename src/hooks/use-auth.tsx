@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -37,10 +38,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [activeStoreRole, setActiveStoreRole] = useState<StoreMemberInfo['role'] | null>(null);
   
   useEffect(() => {
-    getRedirectResult(auth).catch((error) => {
-        console.error("Error from sign-in redirect", error);
-    });
-
     let appUserUnsubscribe: Unsubscribe | null = null;
     let memberStoresUnsubscribe: Unsubscribe | null = null;
     let roleUnsubscribe: Unsubscribe | null = null;
@@ -133,7 +130,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithRedirect(auth, provider);
-    // The onAuthStateChanged listener and getRedirectResult will handle the rest
   };
 
   const signOut = async () => {
