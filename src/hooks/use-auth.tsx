@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged, sendSignInLinkToEmail, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe, update, get } from 'firebase/database';
 import { AppUser, Store, StoreMemberInfo } from '@/lib/types';
@@ -10,8 +11,7 @@ interface AuthContextType {
   user: User | null;
   appUser: AppUser | null;
   loading: boolean;
-  signInWithLink: (email: string) => Promise<void>;
-  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthorized: boolean;
   isAdmin: boolean;
@@ -127,17 +127,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
   
-  const signInWithLink = async (email: string) => {
-    const actionCodeSettings = {
-      url: `${window.location.origin}/auth/action`,
-      handleCodeInApp: true,
-    };
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    window.localStorage.setItem('emailForSignIn', email);
-  };
-  
-  const signInWithPassword = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+    // The onAuthStateChanged listener will handle the rest
   };
 
   const signOut = async () => {
@@ -159,7 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
         user, appUser, loading, 
-        signInWithLink, signInWithPassword, signOut, 
+        signInWithGoogle, signOut, 
         isAuthorized, isAdmin,
         activeStoreId,
         activeStore,

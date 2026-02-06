@@ -1,23 +1,25 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+// SVG for Google icon
+const GoogleIcon = () => (
+  <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+    <path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 111.8 512 0 400.2 0 264.8S111.8 17.6 244 17.6c70.9 0 121.5 27.7 166.4 69.6l-67.5 64.8C294.6 118.6 272.5 102 244 102c-58.4 0-106.3 47.9-106.3 106.3s47.9 106.3 106.3 106.3c66.2 0 91.6-49.2 96.2-72.2H244v-83.8h236.1c2.3 12.7 3.9 26.9 3.9 42.5z"></path>
+  </svg>
+);
+
 export default function SignInPage() {
-  const { signInWithLink, signInWithPassword, appUser, loading: authLoading } = useAuth();
+  const { signInWithGoogle, appUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
-  const [loading, setLoading] = useState<'link' | 'pin' | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [origin, setOrigin] = useState('');
 
@@ -37,43 +39,15 @@ export default function SignInPage() {
     }
   }, [appUser, authLoading, router]);
 
-  const handlePinSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || pin.length < 6) {
-      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a valid email and 6-digit PIN.' });
-      return;
-    }
-    setLoading('pin');
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
     try {
-      await signInWithPassword(email, pin);
+      await signInWithGoogle();
       // Let the useEffect handle the redirect
     } catch (error: any) {
-      let description = 'An unknown error occurred.';
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-password') {
-        description = 'The email or PIN you entered is incorrect.';
-      } else {
-        description = error.message;
-      }
-      toast({ variant: 'destructive', title: 'Sign-in Failed', description });
+      toast({ variant: 'destructive', title: 'Sign-in Failed', description: error.message || 'An unknown error occurred with Google Sign-In.' });
     } finally {
-      setLoading(null);
-    }
-  };
-  
-  const handleLinkSubmit = async () => {
-    if (!email) {
-      toast({ variant: 'destructive', title: 'Email is required' });
-      return;
-    }
-    setLoading('link');
-    try {
-      await signInWithLink(email);
-      setSubmitted(true);
-    } catch (error: any)
-      {
-      toast({ variant: 'destructive', title: 'Sign-in Error', description: error.message });
-    } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
   
@@ -94,62 +68,16 @@ export default function SignInPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>{submitted ? 'Check Your Email' : 'Sign In'}</CardTitle>
+            <CardTitle>Sign In</CardTitle>
             <CardDescription>
-              {submitted
-                ? "We've sent a sign-in link to your email address. Click the link to complete sign-in."
-                : 'Enter your email and PIN, or choose to sign in with a link.'}
+              Sign in to your account using Google to access the dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
-             {submitted ? (
-              <div className="p-6 pt-0 text-center text-muted-foreground">
-                <p>If you don't see the email, please check your spam folder.</p>
-              </div>
-            ) : (
-              <form onSubmit={handlePinSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pin">PIN</Label>
-                   <div className="relative">
-                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="pin"
-                        type="password"
-                        placeholder="• • • • • •"
-                        value={pin}
-                        onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                        maxLength={6}
-                        pattern="\d{6}"
-                        autoComplete="one-time-code"
-                        className="pl-9 text-center text-lg tracking-[0.5em]"
-                      />
-                    </div>
-                </div>
-                 <div className="space-y-2">
-                  <Button type="submit" disabled={!!loading} className="w-full">
-                    {loading === 'pin' ? 'Signing In...' : 'Sign In with PIN'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleLinkSubmit} disabled={!!loading} className="w-full">
-                    {loading === 'link' ? 'Sending...' : 'Send Sign-in Link'}
-                  </Button>
-                </div>
-              </form>
-            )}
+            <Button onClick={handleGoogleSignIn} disabled={loading} className="w-full">
+              <GoogleIcon />
+              {loading ? 'Signing In...' : 'Sign In with Google'}
+            </Button>
           </CardContent>
         </Card>
         <div className="text-center text-sm">
