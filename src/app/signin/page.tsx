@@ -1,15 +1,12 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getRedirectResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 // SVG for Google icon
 const GoogleIcon = () => (
@@ -19,68 +16,36 @@ const GoogleIcon = () => (
 );
 
 export default function SignInPage() {
-  const { signInWithGoogle, user, appUser, loading: authLoading } = useAuth();
+  const { signInWithGoogle, user, appUser, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [origin, setOrigin] = useState('');
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setOrigin(window.location.origin);
-    }
-    
-    // This effect runs once on page load to handle the redirect from Google.
-    getRedirectResult(auth)
-      .catch((error) => {
-        console.error("Sign-in redirect error:", error);
-        // This error can happen if the popup is closed or if the domain is not authorized in Firebase.
-        toast({
-          variant: 'destructive',
-          title: 'Sign-in Failed',
-          description: `Could not process sign-in. (${error.code})`,
-        });
-      })
-      .finally(() => {
-        // Once the redirect is processed (or if there wasn't one),
-        // we can let the rest of the app's logic take over.
-        setIsProcessingRedirect(false);
-      });
-  }, [toast]);
-  
-  useEffect(() => {
-    // This effect handles navigation once we know the final auth state.
-    // It waits for both the main auth loading and the redirect processing to finish.
-    if (!authLoading && !isProcessingRedirect) {
-        if (appUser) { // User has a profile in our DB
-            if (appUser.authorized) {
-                router.push('/admin');
-            } else {
-                router.push('/unauthorized');
-            }
-        } else if (user && !appUser) { // User is authenticated with Firebase but has no profile yet
-            router.push('/auth/complete-profile');
+    // If the user is already logged in, redirect them away from the sign-in page.
+    if (!loading && user) {
+        if (appUser) {
+            router.replace(appUser.authorized ? '/admin' : '/unauthorized');
+        } else {
+            // New user, but not yet in our DB.
+            router.replace('/auth/complete-profile');
         }
-        // If no user, do nothing and stay on the sign-in page.
     }
-  }, [user, appUser, authLoading, isProcessingRedirect, router]);
+  }, [user, appUser, loading, router]);
+
 
   const handleGoogleSignIn = async () => {
-    // We don't need a loading state here because it will redirect away.
     try {
       await signInWithGoogle();
-      // The user will be redirected to Google and then back to this page.
-      // The useEffect hooks above will handle the result.
+      // The user will be redirected to Google and then back to /auth/action
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Sign-in Failed', description: error.message || 'An unknown error occurred with Google Sign-In.' });
     }
   };
   
-  // Show a loading screen while auth state is being determined or redirect is processing.
-  if (authLoading || isProcessingRedirect) {
+  if (loading || user) {
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <p>Verifying authentication...</p>
+            <p>Checking authentication status...</p>
         </div>
     )
   }
@@ -90,7 +55,7 @@ export default function SignInPage() {
       <div className="w-full max-w-md space-y-4">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">Caj-Store</h1>
-          <p className="text-muted-foreground">{origin || 'Admin Portal'}</p>
+          <p className="text-muted-foreground">Admin Portal</p>
         </div>
         <Card>
           <CardHeader>
