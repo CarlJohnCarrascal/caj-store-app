@@ -120,7 +120,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
   const [isImageModalOpen, setIsImageModalOpen] = React.useState(false);
   const { toast } = useToast();
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, activeStoreId } = useAuth();
   
   const [referenceSearch, setReferenceSearch] = React.useState('');
   const [isSearchingByRef, setIsSearchingByRef] = React.useState(false);
@@ -139,6 +139,10 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
 
   React.useEffect(() => {
     setIsMounted(true);
+    if (!activeStoreId) {
+      setIsLoading(false);
+      return;
+    }
     let allDataLoaded = false;
     
     // Load all data from cache first
@@ -161,7 +165,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     };
     loadFromCache();
 
-    const reportsRef = ref(db, 'cashIOReports/overall/all-time');
+    const reportsRef = ref(db, `storeData/${activeStoreId}/cashIOReports/overall/all-time`);
     const unsubscribeReports = onValue(reportsRef, (snapshot) => {
         if (snapshot.exists()) {
             setOverallReport(snapshot.val());
@@ -169,14 +173,14 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     });
 
     // Listen for live updates
-    const accountsRef = ref(db, 'accounts');
+    const accountsRef = ref(db, `storeData/${activeStoreId}/accounts`);
     const unsubscribeAccounts = onValue(accountsRef, (snapshot) => {
       const accountList = snapshotToArray<Account>(snapshot);
       setAccounts(accountList);
       setStoreData('accounts', accountList);
     });
 
-    const customersRef = ref(db, 'customers');
+    const customersRef = ref(db, `storeData/${activeStoreId}/customers`);
     const unsubscribeCustomers = onValue(customersRef, (snapshot) => {
       const customerList = snapshotToArray<Customer>(snapshot);
       setCustomers(customerList);
@@ -191,10 +195,14 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
       unsubscribeCustomers();
       unsubscribeReports();
     };
-  }, []);
+  }, [activeStoreId]);
 
   React.useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !activeStoreId) {
+        setIsLoading(false);
+        setTransactions([]);
+        return;
+    };
     
     // Load from cache that matches date range
     const loadFromCache = async () => {
@@ -209,7 +217,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
 
     // Fetch from Firebase for all transactions and update cache
     setIsFetching(true);
-    const transactionsRef = ref(db, 'cashTransactions');
+    const transactionsRef = ref(db, `storeData/${activeStoreId}/cashTransactions`);
     const q = query(transactionsRef, orderByChild('transactionDate'));
 
     const unsubscribe = onValue(q, (snapshot) => {
@@ -226,16 +234,16 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     return () => {
       unsubscribe();
     };
-  }, [authLoading, user, toast]);
+  }, [authLoading, user, toast, activeStoreId]);
 
   const handleReferenceSearch = async () => {
-    if (!referenceSearch) return;
+    if (!referenceSearch || !activeStoreId) return;
 
     setIsSearchingByRef(true);
     setSearchAttempted(true);
     setFoundTransaction(null);
     try {
-        const transactionsRef = ref(db, 'cashTransactions');
+        const transactionsRef = ref(db, `storeData/${activeStoreId}/cashTransactions`);
         const q = query(transactionsRef, orderByChild('reference'), equalTo(referenceSearch));
         const snapshot = await get(q);
         if (snapshot.exists()) {
@@ -289,13 +297,13 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
   };
   
   const handleDeleteTransaction = (id: string) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have an active store.' });
         return;
     }
     startDeleteTransition(async () => {
         try {
-            await deleteCashTransactionAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+            await deleteCashTransactionAction(activeStoreId, id, { userId: user.uid, userName: user.displayName || user.email! });
             await deleteItem('cashTransactions', id);
             toast({ title: 'Success', description: 'Transaction deleted successfully.' });
             setSelectedTransaction(null);
