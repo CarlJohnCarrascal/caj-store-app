@@ -31,11 +31,7 @@
         "orders": { ".indexOn": "customerId" },
         "cashTransactions": { ".indexOn": ["createdAt", "reference", "transactionDate"] },
         "expenses": { ".indexOn": "date" },
-        "collections": { ".indexOn": "customerId" },
-        "accounts": {},
-        "customers": {},
-        "printingPrices": {},
-        "feeThresholds": {}
+        "collections": { ".indexOn": "customerId" }
       }
     },
     "activityLogs": {
