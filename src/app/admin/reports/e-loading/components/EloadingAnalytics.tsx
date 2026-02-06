@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -15,6 +16,7 @@ import { format, subDays } from 'date-fns';
 import { getReportPaths } from '@/lib/utils';
 import { EloadingReportData } from '@/lib/types';
 import { getReportData, setReportData } from '@/lib/offline';
+import { useAuth } from '@/hooks/use-auth';
 
 type ReportPeriodData = {
     [key: string]: EloadingReportData;
@@ -227,10 +229,15 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
 };
 
 export default function EloadingAnalytics() {
+    const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (!activeStoreId) {
+            setIsLoading(false);
+            return;
+        }
         let unsubscribeReports: Unsubscribe | null = null;
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('eloadingReports');
@@ -241,7 +248,7 @@ export default function EloadingAnalytics() {
         };
         loadFromCache();
 
-        unsubscribeReports = onValue(ref(db, 'eloadingReports'), (snapshot) => {
+        unsubscribeReports = onValue(ref(db, `storeData/${activeStoreId}/eloadingReports`), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('eloadingReports', reportData);
@@ -254,7 +261,7 @@ export default function EloadingAnalytics() {
         return () => {
           if (unsubscribeReports) unsubscribeReports();
         };
-    }, []);
+    }, [activeStoreId]);
     
 
     const todayData = useMemo(() => {

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -15,6 +16,7 @@ import { format, subDays } from 'date-fns';
 import { getReportPaths } from '@/lib/utils';
 import { OtherServiceReportData } from '@/lib/types';
 import { getReportData, setReportData } from '@/lib/offline';
+import { useAuth } from '@/hooks/use-auth';
 
 type ReportPeriodData = {
     [key: string]: OtherServiceReportData;
@@ -180,10 +182,15 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
 };
 
 export default function OtherServiceAnalytics() {
+    const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (!activeStoreId) {
+            setIsLoading(false);
+            return;
+        }
         let unsubscribeReports: Unsubscribe | null = null;
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('otherServiceReports');
@@ -194,7 +201,7 @@ export default function OtherServiceAnalytics() {
         };
         loadFromCache();
 
-        unsubscribeReports = onValue(ref(db, 'otherServiceReports'), (snapshot) => {
+        unsubscribeReports = onValue(ref(db, `storeData/${activeStoreId}/otherServiceReports`), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('otherServiceReports', reportData);
@@ -207,7 +214,7 @@ export default function OtherServiceAnalytics() {
         return () => {
             if (unsubscribeReports) unsubscribeReports();
         };
-    }, []);
+    }, [activeStoreId]);
     
     const last30DaysData = useMemo(() => {
         if (!reports?.daily) return undefined;

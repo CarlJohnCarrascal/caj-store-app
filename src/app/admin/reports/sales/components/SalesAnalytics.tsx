@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -14,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
 import { getReportPaths, getCurrentPHTISOString } from '@/lib/utils';
 import { getReportData, setReportData } from '@/lib/offline';
+import { useAuth } from '@/hooks/use-auth';
 
 type ServiceData = {
   orders: number;
@@ -315,10 +317,15 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
 
 
 export default function SalesAnalytics() {
+  const { activeStoreId } = useAuth();
   const [reports, setReports] = useState<AllReports | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!activeStoreId) {
+      setIsLoading(false);
+      return;
+    }
     let unsubscribe: Unsubscribe | null = null;
     
     const loadFromCache = async () => {
@@ -330,7 +337,7 @@ export default function SalesAnalytics() {
     };
     loadFromCache();
 
-    unsubscribe = onValue(ref(db, 'salesReports'), (snapshot) => {
+    unsubscribe = onValue(ref(db, `storeData/${activeStoreId}/salesReports`), (snapshot) => {
       const reportData = snapshot.exists() ? snapshot.val() : null;
       setReports(reportData);
       setReportData('salesReports', reportData);
@@ -345,7 +352,7 @@ export default function SalesAnalytics() {
             unsubscribe();
         }
     };
-  }, []);
+  }, [activeStoreId]);
 
   const todayData = useMemo(() => {
     if (!reports?.daily) return undefined;

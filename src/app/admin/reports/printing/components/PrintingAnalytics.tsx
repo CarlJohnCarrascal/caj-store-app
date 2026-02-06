@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -16,6 +17,7 @@ import { getReportPaths } from '@/lib/utils';
 import { PrintingReportData } from '@/lib/types';
 import { getReportData, setReportData } from '@/lib/offline';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useAuth } from '@/hooks/use-auth';
 
 type ReportPeriodData = {
     [key: string]: PrintingReportData;
@@ -225,10 +227,15 @@ const ReportView = ({ data, periodName }: { data?: ReportPeriodData; periodName:
 };
 
 export default function PrintingAnalytics() {
+    const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (!activeStoreId) {
+            setIsLoading(false);
+            return;
+        }
         let unsubscribeReports: Unsubscribe | null = null;
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('printingReports');
@@ -239,7 +246,7 @@ export default function PrintingAnalytics() {
         };
         loadFromCache();
 
-        unsubscribeReports = onValue(ref(db, 'printingReports'), (snapshot) => {
+        unsubscribeReports = onValue(ref(db, `storeData/${activeStoreId}/printingReports`), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('printingReports', reportData);
@@ -252,7 +259,7 @@ export default function PrintingAnalytics() {
         return () => {
             if (unsubscribeReports) unsubscribeReports();
         };
-    }, []);
+    }, [activeStoreId]);
     
     const last30DaysData = useMemo(() => {
         if (!reports?.daily) return undefined;

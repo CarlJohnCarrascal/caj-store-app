@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -17,6 +18,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getReportPaths } from '@/lib/utils';
 import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
+import { useAuth } from '@/hooks/use-auth';
 
 // Types for Customer Reports
 type ActiveCustomerData = {
@@ -253,6 +255,7 @@ const ReportView = ({ data, periodName, customerMap }: { data?: ReportPeriodData
 };
 
 export default function CustomerAnalytics() {
+    const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -260,6 +263,11 @@ export default function CustomerAnalytics() {
     const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
 
     useEffect(() => {
+        if (!activeStoreId) {
+            setIsLoading(false);
+            return;
+        }
+
         let reportsUnsubscribe: Unsubscribe | null = null;
         let customersUnsubscribe: Unsubscribe | null = null;
 
@@ -276,7 +284,7 @@ export default function CustomerAnalytics() {
         };
         loadFromCache();
 
-        reportsUnsubscribe = onValue(ref(db, 'customerReports'), (snapshot) => {
+        reportsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/customerReports`), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('customerReports', reportData);
@@ -286,7 +294,7 @@ export default function CustomerAnalytics() {
             if (customers.length > 0) setIsLoading(false);
         });
 
-        customersUnsubscribe = onValue(ref(db, 'customers'), (snapshot) => {
+        customersUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/customers`), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList);
@@ -300,7 +308,7 @@ export default function CustomerAnalytics() {
             if (reportsUnsubscribe) reportsUnsubscribe();
             if (customersUnsubscribe) customersUnsubscribe();
         };
-    }, []);
+    }, [activeStoreId]);
 
     const todayData = useMemo(() => {
         if (!reports?.daily) return undefined;

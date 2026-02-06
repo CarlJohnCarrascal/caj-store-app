@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
@@ -14,6 +15,7 @@ import { Product, ProductReportData } from '@/lib/types';
 import { getReportPaths } from '@/lib/utils';
 import Image from 'next/image';
 import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/offline';
+import { useAuth } from '@/hooks/use-auth';
 
 // Types for Product Reports
 type ReportPeriodData = {
@@ -152,6 +154,7 @@ const ReportView = ({ data, periodName, productMap }: { data?: ReportPeriodData;
 
 
 export default function ProductAnalytics() {
+    const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -159,6 +162,11 @@ export default function ProductAnalytics() {
     const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
     useEffect(() => {
+        if (!activeStoreId) {
+            setIsLoading(false);
+            return;
+        }
+
         let reportsUnsubscribe: Unsubscribe | null = null;
         let productsUnsubscribe: Unsubscribe | null = null;
 
@@ -173,7 +181,7 @@ export default function ProductAnalytics() {
         };
         loadFromCache();
 
-        reportsUnsubscribe = onValue(ref(db, 'productReports'), (snapshot) => {
+        reportsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/productReports`), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('productReports', reportData);
@@ -183,7 +191,7 @@ export default function ProductAnalytics() {
             if(products.length > 0) setIsLoading(false);
         });
 
-        productsUnsubscribe = onValue(ref(db, 'products'), (snapshot) => {
+        productsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/products`), (snapshot) => {
             const productList = snapshotToArray<Product>(snapshot);
             setProducts(productList);
             setStoreData('products', productList);
@@ -197,7 +205,7 @@ export default function ProductAnalytics() {
             if (reportsUnsubscribe) reportsUnsubscribe();
             if (productsUnsubscribe) productsUnsubscribe();
         };
-    }, []);
+    }, [activeStoreId]);
 
     const aggregateReportData = (periodData?: { [dateKey: string]: ReportPeriodData }, filterByCurrentYear = false): ReportPeriodData | undefined => {
         if (!periodData) return undefined;
