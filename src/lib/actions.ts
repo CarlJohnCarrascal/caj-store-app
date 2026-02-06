@@ -5,8 +5,8 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer, addCashTransaction, updateCashTransaction, deleteCashTransaction } from './data';
-import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice, Store, StoreMemberInfo } from '@/lib/types';
-import { ref, get, update, remove, push, set, query, orderByChild, equalTo } from 'firebase/database';
+import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice, Store, StoreMemberInfo } from './types';
+import { ref, get, update, remove, push, set, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
 import { db } from './firebase';
 import { getCurrentPHTISOString } from './utils';
 
@@ -34,70 +34,15 @@ function getUserFromFormData(data: FormData) {
     return { userId, userName };
 }
 
-export async function addProductAction(storeId: string, data: FormData) {
-  const user = getUserFromFormData(data);
-  const rawData = Object.fromEntries(data.entries());
-  
-  const validatedFields = productSchema.safeParse(rawData);
-  if (!validatedFields.success) {
-    throw new Error('Invalid product data.');
-  }
-
-  if (validatedFields.data.barcode) {
-    const isDuplicate = await isBarcodeDuplicate(storeId, validatedFields.data.barcode);
-    if (isDuplicate) {
-      throw new Error(`Barcode "${validatedFields.data.barcode}" is already assigned to another product.`);
-    }
-  }
-
-  const newProduct = await addProduct(storeId, validatedFields.data, user);
-  
-  await initializeProductReport(storeId, newProduct.id);
-
-  await logActivity({
-    type: 'Product',
-    action: 'Created',
-    details: `Product "${newProduct.name}" was created.`,
-    targetId: newProduct.id,
-    ...user,
-  });
-
+export async function addProductAction() {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
-  revalidatePath('/admin/activity-logs');
 }
 
-export async function updateProductAction(storeId: string, id: string, data: FormData) {
-  const user = getUserFromFormData(data);
-  const rawData = Object.fromEntries(data.entries());
-  
-  const validatedFields = productSchema.safeParse(rawData);
-  if (!validatedFields.success) {
-    throw new Error('Invalid product data.');
-  }
-
-  if (validatedFields.data.barcode) {
-    const isDuplicate = await isBarcodeDuplicate(storeId, validatedFields.data.barcode, id);
-    if (isDuplicate) {
-      throw new Error(`Barcode "${validatedFields.data.barcode}" is already assigned to another product.`);
-    }
-  }
-
-  const product: Product = { id, ...validatedFields.data };
-  await updateProduct(storeId, product, user);
-
-  await logActivity({
-      type: 'Product',
-      action: 'Updated',
-      details: `Product "${product.name}" was updated.`,
-      targetId: product.id,
-      ...user,
-  });
-
+export async function updateProductAction(id: string) {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
   revalidatePath(`/admin/edit/${id}`);
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteProductAction(storeId: string, id: string, user: { userId: string; userName: string }) {

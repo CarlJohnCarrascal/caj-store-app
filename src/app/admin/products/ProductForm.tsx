@@ -23,6 +23,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import BarcodeScanner from '@/components/BarcodeScanner';
+import { addProduct, updateProduct, isBarcodeDuplicate, logActivity } from '@/lib/data';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -86,26 +87,43 @@ export default function ProductForm({ product, storeId }: ProductFormProps) {
     }
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined) {
-            formData.append(key, String(value));
-          }
-        });
+        const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
         
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
-        if (product) {
-          await updateProductAction(storeId, product.id, formData);
+        if (data.barcode) {
+          const isDuplicate = await isBarcodeDuplicate(storeId, data.barcode, product?.id);
+          if (isDuplicate) {
+            throw new Error(`Barcode "${data.barcode}" is already assigned to another product.`);
+          }
+        }
+        
+        if (product && product.id) {
+          await updateProduct(storeId, {id: product.id, ...data}, userPayload);
+          await logActivity({
+              type: 'Product',
+              action: 'Updated',
+              details: `Product "${data.name}" was updated.`,
+              targetId: product.id,
+              ...userPayload,
+          });
+          await updateProductAction(product.id);
           toast({ title: 'Success', description: 'Product updated successfully.' });
+
         } else {
-          await addProductAction(storeId, formData);
+          const newProduct = await addProduct(storeId, data, userPayload);
+          await logActivity({
+            type: 'Product',
+            action: 'Created',
+            details: `Product "${newProduct.name}" was created.`,
+            targetId: newProduct.id,
+            ...userPayload,
+          });
+          await addProductAction();
           toast({ title: 'Success', description: 'Product added successfully.' });
           form.reset();
         }
+
         router.push('/admin/products');
-        router.refresh();
+        router.refresh(); // Fallback refresh
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
