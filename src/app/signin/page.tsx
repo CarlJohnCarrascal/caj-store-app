@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,7 +16,7 @@ const GoogleIcon = () => (
 );
 
 export default function SignInPage() {
-  const { signInWithGoogle, appUser, loading: authLoading } = useAuth();
+  const { signInWithGoogle, user, appUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -30,14 +29,18 @@ export default function SignInPage() {
   }, []);
   
   useEffect(() => {
-    if (!authLoading && appUser) {
-        if (appUser.authorized) {
-            router.push('/admin');
-        } else {
-            router.push('/unauthorized');
+    if (!authLoading) {
+        if (appUser) { // User has a profile in our DB
+            if (appUser.authorized) {
+                router.push('/admin');
+            } else {
+                router.push('/unauthorized');
+            }
+        } else if (user && !appUser) { // User is authenticated with Firebase but has no profile yet
+            router.push('/auth/complete-profile');
         }
     }
-  }, [appUser, authLoading, router]);
+  }, [user, appUser, authLoading, router]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -51,7 +54,7 @@ export default function SignInPage() {
     }
   };
   
-  if (authLoading || appUser) {
+  if (authLoading || user) { // Show loading if auth state is loading OR if a user object exists (means we are about to redirect)
     return (
         <div className="min-h-screen flex items-center justify-center">
             <p>Loading...</p>
