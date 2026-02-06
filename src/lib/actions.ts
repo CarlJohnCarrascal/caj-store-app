@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, addCashTransaction, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, updateCashTransaction, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, deleteCashTransaction, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer } from './data';
+import { addProduct, deleteProduct, updateProduct, addCustomer, addAccount, deleteAccount, addCollection, updateCollection, deleteCollection, logActivity, updateCustomerBalance, isReferenceNumberDuplicate, addOrder, addExpense, updateExpense, deleteExpense, updateUserAuthorization, getUserById, updateUserRole, getFeeThresholds, addFeeThreshold, updateFeeThreshold, deleteFeeThreshold, initializeProductReport, updateProductReports, getCashTransactionById, deleteCustomer, updateEloadingReports, updatePrintingReports, updateOtherServiceReports, isBarcodeDuplicate, regenerateCashIOReports, createUserProfile, updateCashIOReport, updateSalesReports, updateCustomerReports, finalizeReceiptImage, deleteReceiptImage, getCustomerById, addPrintingPrice, deletePrintingPrice, updatePrintingPrice, updateCustomer, addCashTransaction, updateCashTransaction, deleteCashTransaction } from './data';
 import { Product, CartItem, Customer, Account, Collection, CashTransaction, Order, AppUser, PrintingPrice, Store, StoreMemberInfo } from '@/lib/types';
 import { ref, get, update, remove, push, set, query, orderByChild, equalTo } from 'firebase/database';
 import { db } from './firebase';
@@ -83,7 +83,7 @@ export async function updateProductAction(storeId: string, id: string, data: For
     }
   }
 
-  const product: Product = { id, ...validatedFields.data, role: 'user' }; // role is required but not on form
+  const product: Product = { id, ...validatedFields.data };
   await updateProduct(storeId, product, user);
 
   await logActivity({
@@ -100,8 +100,8 @@ export async function updateProductAction(storeId: string, id: string, data: For
   revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteProductAction(id: string, user: { userId: string; userName: string }) {
-  const deletedProduct = await deleteProduct(id);
+export async function deleteProductAction(storeId: string, id: string, user: { userId: string; userName: string }) {
+  const deletedProduct = await deleteProduct(storeId, id);
   if (deletedProduct) {
     await logActivity({
         type: 'Product',
@@ -195,6 +195,7 @@ const processOrderSchema = z.object({
     settlementType: z.enum(['pay_order', 'add_to_balance']),
     userId: z.string(),
     userName: z.string(),
+    storeId: z.string(),
 });
 
 function getCostAndFeeFromDescription(description: string): { cost: number, fee: number } {
@@ -228,6 +229,7 @@ export async function processOrderAction(
         settlementType,
         userId,
         userName,
+        storeId,
     } = validatedOrder.data;
 
     const user = { userId, userName };
@@ -237,11 +239,11 @@ export async function processOrderAction(
         switch (item.category) {
             case 'CashIO':
                 if (item.originalTransactionId) {
-                    const cashTx = await getCashTransactionById(item.originalTransactionId);
+                    const cashTx = await getCashTransactionById(storeId, item.originalTransactionId);
                     if (cashTx) {
                         const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
                         
-                        updatedTransaction = await updateCashTransaction(cashTx.id, { 
+                        updatedTransaction = await updateCashTransaction(storeId, cashTx.id, { 
                             status: finalStatus,
                             customerId,
                         }, user);
@@ -261,27 +263,26 @@ export async function processOrderAction(
                 const { fee } = getCostAndFeeFromDescription(description);
                 const serviceType = item.name.replace('E-loading: ', '').trim();
                 const totalCost = item.price - fee;
-                await updateEloadingReports({ serviceType, cost: totalCost, fee });
+                await updateEloadingReports(storeId, { serviceType, cost: totalCost, fee });
                 break;
             }
             case 'Printing': {
                 const serviceType = item.name.replace('Printing: ', '').trim();
                 const size = item.dimensions !== 'N/A' ? item.dimensions : '';
-                await updatePrintingReports({ serviceType, size, quantity: item.quantity, sales: item.price * item.quantity });
+                await updatePrintingReports(storeId, { serviceType, size, quantity: item.quantity, sales: item.price * item.quantity });
                 break;
             }
             case 'Other Service': {
-                const description = typeof item.description === 'string' ? item.description : '';
                 const { fee } = getCostAndFeeFromDescription(item.description || '');
                 const totalCost = item.price - fee;
-                await updateOtherServiceReports({ cost: totalCost, fee });
+                await updateOtherServiceReports(storeId, { cost: totalCost, fee });
                 break;
             }
             case 'Financial':
                 // No specific reporting for this internal category
                 break;
             default: // This is a 'Store' product
-                await updateProductReports(item.id, item.quantity, item.price * item.quantity);
+                await updateProductReports(storeId, item.id, item.quantity, item.price * item.quantity);
                 break;
         }
     }
@@ -317,11 +318,11 @@ export async function processOrderAction(
         orderPayload.newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
     }
 
-    const newOrder = await addOrder(orderPayload, user);
+    const newOrder = await addOrder(storeId, orderPayload, user);
     
     // Pass the fetched/updated transaction directly to avoid another DB call
     if (updatedTransaction) {
-        await updateCashIOReport(updatedTransaction, 'orderedTransactions', customerId);
+        await updateCashIOReport(storeId, updatedTransaction, 'orderedTransactions', customerId);
     }
 
     await logActivity({
@@ -332,12 +333,12 @@ export async function processOrderAction(
         ...user,
     });
     
-    await updateSalesReports(newOrder);
+    await updateSalesReports(storeId, newOrder);
     const orderValueForReport = Math.abs(total);
-    await updateCustomerReports('order', customerId, orderValueForReport);
+    await updateCustomerReports(storeId, 'order', customerId, orderValueForReport);
 
     if (!isUnknownCustomer && totalBalanceUpdate !== 0) {
-        await updateCustomerBalance(customerId, totalBalanceUpdate);
+        await updateCustomerBalance(storeId, customerId, totalBalanceUpdate);
         await logActivity({
             type: 'Customer',
             action: 'Updated',
@@ -365,7 +366,7 @@ const customerSchema = z.object({
 });
 
 
-export async function addCustomerAction(data: FormData): Promise<Customer> {
+export async function addCustomerAction(storeId: string, data: FormData): Promise<Customer> {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
 
@@ -375,7 +376,7 @@ export async function addCustomerAction(data: FormData): Promise<Customer> {
     throw new Error('Invalid customer data.');
   }
 
-  const newCustomer = await addCustomer(validatedFields.data as Omit<Customer, 'id'>, user);
+  const newCustomer = await addCustomer(storeId, validatedFields.data as Omit<Customer, 'id'>, user);
   await logActivity({
     type: 'Customer',
     action: 'Created',
@@ -384,14 +385,14 @@ export async function addCustomerAction(data: FormData): Promise<Customer> {
     ...user,
   });
   
-  await updateCustomerReports('new_customer', newCustomer.id);
+  await updateCustomerReports(storeId, 'new_customer', newCustomer.id);
 
   revalidatePath('/admin/customers');
   revalidatePath('/admin/activity-logs');
   return newCustomer;
 }
 
-export async function updateCustomerAction(id: string, data: FormData): Promise<Customer> {
+export async function updateCustomerAction(storeId: string, id: string, data: FormData): Promise<Customer> {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
 
@@ -402,7 +403,7 @@ export async function updateCustomerAction(id: string, data: FormData): Promise<
     
     const updatedData = validatedFields.data as Omit<Customer, 'id'>;
 
-    const updatedCustomer = await updateCustomer(id, updatedData, user);
+    const updatedCustomer = await updateCustomer(storeId, id, updatedData, user);
     
     await logActivity({
         type: 'Customer',
@@ -419,6 +420,7 @@ export async function updateCustomerAction(id: string, data: FormData): Promise<
 }
 
 export async function createFinancialTransactionOrderAction(
+    storeId: string,
     customerId: string, 
     amount: number, // Positive for payment, negative for adding to balance
     user: { userId: string, userName: string }
@@ -430,7 +432,7 @@ export async function createFinancialTransactionOrderAction(
         throw new Error('Invalid amount provided.');
     }
 
-    const customer = await getCustomerById(customerId);
+    const customer = await getCustomerById(storeId, customerId);
     if (!customer) {
         throw new Error('Customer not found.');
     }
@@ -467,9 +469,9 @@ export async function createFinancialTransactionOrderAction(
         createdAt: '', // will be set by addOrder
     };
 
-    const newOrder = await addOrder(orderPayload, user);
+    const newOrder = await addOrder(storeId, orderPayload, user);
 
-    await updateCustomerBalance(customerId, -total); // update balance by -total (which is +amount)
+    await updateCustomerBalance(storeId, customerId, -total); // update balance by -total (which is +amount)
 
     await logActivity({
         type: 'Order',
@@ -485,8 +487,8 @@ export async function createFinancialTransactionOrderAction(
     revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteCustomerAction(id: string, user: { userId: string, userName: string }) {
-    const deletedCustomer = await deleteCustomer(id);
+export async function deleteCustomerAction(storeId: string, id: string, user: { userId: string, userName: string }) {
+    const deletedCustomer = await deleteCustomer(storeId, id);
     if(deletedCustomer) {
         await logActivity({
             type: 'Customer',
@@ -508,7 +510,7 @@ const accountSchema = z.object({
   balance: z.coerce.number().default(0),
 });
 
-export async function addAccountAction(data: FormData) {
+export async function addAccountAction(storeId: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
 
@@ -517,7 +519,7 @@ export async function addAccountAction(data: FormData) {
     throw new Error('Invalid account data.');
   }
 
-  const newAccount = await addAccount(validatedFields.data as Omit<Account, 'id'>, user);
+  const newAccount = await addAccount(storeId, validatedFields.data as Omit<Account, 'id'>, user);
   await logActivity({
       type: 'Account',
       action: 'Created',
@@ -531,8 +533,8 @@ export async function addAccountAction(data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteAccountAction(id: string, user: { userId: string, userName: string }) {
-    const deletedAccount = await deleteAccount(id);
+export async function deleteAccountAction(storeId: string, id: string, user: { userId: string, userName: string }) {
+    const deletedAccount = await deleteAccount(storeId, id);
     if(deletedAccount) {
         await logActivity({
             type: 'Account',
@@ -564,7 +566,7 @@ const cashTransactionSchema = z.object({
   receiptImageUrl: z.string().optional(),
 });
 
-export async function addCashTransactionAction(data: FormData): Promise<CashTransaction> {
+export async function addCashTransactionAction(storeId: string, data: FormData): Promise<CashTransaction> {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
 
@@ -574,7 +576,7 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
     throw new Error('Invalid cash transaction data.');
   }
 
-  const newTransaction = await addCashTransaction(validatedFields.data, user);
+  const newTransaction = await addCashTransaction(storeId, validatedFields.data, user);
 
   await logActivity({
     type: 'CashIO',
@@ -584,7 +586,7 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
     ...user,
   });
   
-  await updateCashIOReport(newTransaction, 'allTransactions');
+  await updateCashIOReport(storeId, newTransaction, 'allTransactions');
 
   revalidatePath('/admin/cashio');
   revalidatePath('/admin/activity-logs');
@@ -593,7 +595,7 @@ export async function addCashTransactionAction(data: FormData): Promise<CashTran
   return newTransaction;
 }
 
-export async function updateCashTransactionAction(id: string, data: FormData) {
+export async function updateCashTransactionAction(storeId: string, id: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
   
@@ -603,24 +605,24 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
     throw new Error('Invalid cash transaction data.');
   }
   
-  const oldTransactionSnapshot = await get(ref(db, `cashTransactions/${id}`));
+  const oldTransactionSnapshot = await get(ref(db, `storeData/${storeId}/cashTransactions/${id}`));
   if (!oldTransactionSnapshot.exists()) {
     throw new Error('Transaction not found to update.');
   }
   const oldTransaction: CashTransaction = { id, ...oldTransactionSnapshot.val() };
   
-  const newTransaction = await updateCashTransaction(id, validatedFields.data, user);
+  const newTransaction = await updateCashTransaction(storeId, id, validatedFields.data, user);
   
   // Reverse old transaction from reports
-  await updateCashIOReport(oldTransaction, 'allTransactions', undefined, -1);
+  await updateCashIOReport(storeId, oldTransaction, 'allTransactions', undefined, -1);
   if (oldTransaction.customerId) {
-      await updateCashIOReport(oldTransaction, 'orderedTransactions', oldTransaction.customerId, -1);
+      await updateCashIOReport(storeId, oldTransaction, 'orderedTransactions', oldTransaction.customerId, -1);
   }
 
   // Add new transaction to reports
-  await updateCashIOReport(newTransaction, 'allTransactions');
+  await updateCashIOReport(storeId, newTransaction, 'allTransactions');
   if (newTransaction.customerId) {
-      await updateCashIOReport(newTransaction, 'orderedTransactions', newTransaction.customerId);
+      await updateCashIOReport(storeId, newTransaction, 'orderedTransactions', newTransaction.customerId);
   }
 
   await logActivity({
@@ -638,12 +640,12 @@ export async function updateCashTransactionAction(id: string, data: FormData) {
   revalidatePath('/admin/accounts');
 }
 
-export async function deleteCashTransactionAction(id: string, user: { userId: string, userName:string }) {
-    const deletedTransaction = await deleteCashTransaction(id);
+export async function deleteCashTransactionAction(storeId: string, id: string, user: { userId: string, userName:string }) {
+    const deletedTransaction = await deleteCashTransaction(storeId, id);
 
     if (deletedTransaction) {
         // Reverse account balance change
-        const accountRef = ref(db, `accounts/${deletedTransaction.accountUsedId}`);
+        const accountRef = ref(db, `storeData/${storeId}/accounts/${deletedTransaction.accountUsedId}`);
         const accountSnapshot = await get(accountRef);
         if (accountSnapshot.exists()) {
             const account = accountSnapshot.val();
@@ -657,9 +659,9 @@ export async function deleteCashTransactionAction(id: string, user: { userId: st
         }
 
         // Reverse report data
-        await updateCashIOReport(deletedTransaction, 'allTransactions', undefined, -1);
+        await updateCashIOReport(storeId, deletedTransaction, 'allTransactions', undefined, -1);
         if (deletedTransaction.customerId) {
-            await updateCashIOReport(deletedTransaction, 'orderedTransactions', deletedTransaction.customerId, -1);
+            await updateCashIOReport(storeId, deletedTransaction, 'orderedTransactions', deletedTransaction.customerId, -1);
         }
         
         // Log the deletion
@@ -678,13 +680,13 @@ export async function deleteCashTransactionAction(id: string, user: { userId: st
     revalidatePath('/admin/reports/cashio');
 }
 
-export async function deleteReceiptImageAction(transactionId: string, user: { userId: string, userName:string }) {
-  const transaction = await getCashTransactionById(transactionId);
+export async function deleteReceiptImageAction(storeId: string, transactionId: string, user: { userId: string, userName:string }) {
+  const transaction = await getCashTransactionById(storeId, transactionId);
   if (!transaction || !transaction.receiptImageUrl) {
     throw new Error("No receipt image found for this transaction.");
   }
 
-  await deleteReceiptImage(transactionId, transaction.receiptImageUrl);
+  await deleteReceiptImage(storeId, transactionId, transaction.receiptImageUrl);
 
   await logActivity({
     type: 'CashIO',
@@ -705,7 +707,7 @@ const collectionSchema = z.object({
     note: z.string().optional(),
 });
 
-export async function addCollectionAction(data: FormData) {
+export async function addCollectionAction(storeId: string, data: FormData) {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
 
@@ -714,7 +716,7 @@ export async function addCollectionAction(data: FormData) {
         throw new Error('Invalid collection data.');
     }
 
-    const newCollection = await addCollection(validatedFields.data, user);
+    const newCollection = await addCollection(storeId, validatedFields.data, user);
     await logActivity({
         type: 'Collection',
         action: 'Created',
@@ -727,7 +729,7 @@ export async function addCollectionAction(data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function updateCollectionAction(id: string, data: FormData) {
+export async function updateCollectionAction(storeId: string, id: string, data: FormData) {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
     
@@ -736,7 +738,7 @@ export async function updateCollectionAction(id: string, data: FormData) {
         throw new Error('Invalid collection data.');
     }
 
-    await updateCollection({ id, ...validatedFields.data }, user);
+    await updateCollection(storeId, { id, ...validatedFields.data }, user);
     await logActivity({
         type: 'Collection',
         action: 'Updated',
@@ -750,8 +752,8 @@ export async function updateCollectionAction(id: string, data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteCollectionAction(id: string, user: { userId: string, userName: string }) {
-    const deletedCollection = await deleteCollection(id);
+export async function deleteCollectionAction(storeId: string, id: string, user: { userId: string, userName: string }) {
+    const deletedCollection = await deleteCollection(storeId, id);
     if (deletedCollection) {
         await logActivity({
             type: 'Collection',
@@ -774,7 +776,7 @@ const expenseSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function addExpenseAction(data: FormData) {
+export async function addExpenseAction(storeId: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
   
@@ -783,7 +785,7 @@ export async function addExpenseAction(data: FormData) {
     throw new Error('Invalid expense data.');
   }
 
-  const newExpense = await addExpense(validatedFields.data, user);
+  const newExpense = await addExpense(storeId, validatedFields.data, user);
 
   await logActivity({
     type: 'Expense',
@@ -797,7 +799,7 @@ export async function addExpenseAction(data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function updateExpenseAction(id: string, data: FormData) {
+export async function updateExpenseAction(storeId: string, id: string, data: FormData) {
   const user = getUserFromFormData(data);
   const rawData = Object.fromEntries(data.entries());
 
@@ -806,7 +808,7 @@ export async function updateExpenseAction(id: string, data: FormData) {
     throw new Error('Invalid expense data.');
   }
 
-  await updateExpense(id, validatedFields.data, user);
+  await updateExpense(storeId, id, validatedFields.data, user);
 
   await logActivity({
     type: 'Expense',
@@ -821,8 +823,8 @@ export async function updateExpenseAction(id: string, data: FormData) {
   revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteExpenseAction(id: string, user: { userId: string, userName: string }) {
-    const deletedExpense = await deleteExpense(id);
+export async function deleteExpenseAction(storeId: string, id: string, user: { userId: string, userName: string }) {
+    const deletedExpense = await deleteExpense(storeId, id);
     if (deletedExpense) {
         await logActivity({
             type: 'Expense',
@@ -846,7 +848,7 @@ const feeThresholdSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function addFeeThresholdAction(data: FormData) {
+export async function addFeeThresholdAction(storeId: string, data: FormData) {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
 
@@ -855,7 +857,7 @@ export async function addFeeThresholdAction(data: FormData) {
         throw new Error('Invalid fee threshold data.');
     }
 
-    const newThreshold = await addFeeThreshold(validatedFields.data, user);
+    const newThreshold = await addFeeThreshold(storeId, validatedFields.data, user);
     await logActivity({
         type: 'FeeThreshold',
         action: 'Created',
@@ -868,7 +870,7 @@ export async function addFeeThresholdAction(data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function updateFeeThresholdAction(id: string, data: FormData) {
+export async function updateFeeThresholdAction(storeId: string, id: string, data: FormData) {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
     
@@ -877,7 +879,7 @@ export async function updateFeeThresholdAction(id: string, data: FormData) {
         throw new Error('Invalid fee threshold data.');
     }
 
-    await updateFeeThreshold(id, validatedFields.data, user);
+    await updateFeeThreshold(storeId, id, validatedFields.data, user);
     await logActivity({
         type: 'FeeThreshold',
         action: 'Updated',
@@ -890,8 +892,8 @@ export async function updateFeeThresholdAction(id: string, data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function deleteFeeThresholdAction(id: string, user: { userId: string, userName: string }) {
-    await deleteFeeThreshold(id);
+export async function deleteFeeThresholdAction(storeId: string, id: string, user: { userId: string, userName: string }) {
+    await deleteFeeThreshold(storeId, id);
     await logActivity({
         type: 'FeeThreshold',
         action: 'Deleted',
@@ -912,7 +914,7 @@ const printingPriceSchema = z.object({
     notes: z.string().optional(),
 });
 
-export async function addPrintingPriceAction(data: FormData) {
+export async function addPrintingPriceAction(storeId: string, data: FormData) {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
 
@@ -921,7 +923,7 @@ export async function addPrintingPriceAction(data: FormData) {
         throw new Error('Invalid printing price data.');
     }
 
-    const newPrice = await addPrintingPrice(validatedFields.data as Omit<PrintingPrice, 'id'>, user);
+    const newPrice = await addPrintingPrice(storeId, validatedFields.data as Omit<PrintingPrice, 'id'>, user);
     await logActivity({
         type: 'PrintingPrice',
         action: 'Created',
@@ -934,7 +936,7 @@ export async function addPrintingPriceAction(data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function updatePrintingPriceAction(id: string, data: FormData) {
+export async function updatePrintingPriceAction(storeId: string, id: string, data: FormData) {
     const user = getUserFromFormData(data);
     const rawData = Object.fromEntries(data.entries());
     
@@ -943,7 +945,7 @@ export async function updatePrintingPriceAction(id: string, data: FormData) {
         throw new Error('Invalid printing price data.');
     }
 
-    await updatePrintingPrice(id, validatedFields.data, user);
+    await updatePrintingPrice(storeId, id, validatedFields.data, user);
     await logActivity({
         type: 'PrintingPrice',
         action: 'Updated',
@@ -956,8 +958,8 @@ export async function updatePrintingPriceAction(id: string, data: FormData) {
     revalidatePath('/admin/activity-logs');
 }
 
-export async function deletePrintingPriceAction(id: string, user: { userId: string, userName: string }) {
-    await deletePrintingPrice(id);
+export async function deletePrintingPriceAction(storeId: string, id: string, user: { userId: string, userName: string }) {
+    await deletePrintingPrice(storeId, id);
     await logActivity({
         type: 'PrintingPrice',
         action: 'Deleted',
@@ -971,12 +973,12 @@ export async function deletePrintingPriceAction(id: string, user: { userId: stri
 }
 
 
-export async function regenerateCashIOReportsAction(user: { userId: string; userName: string }) {
+export async function regenerateCashIOReportsAction(storeId: string, user: { userId: string; userName: string }) {
     const actor = await getUserById(user.userId);
     if (!actor || actor.role !== 'admin') {
         throw new Error('Unauthorized: Only admins can regenerate reports.');
     }
-    await regenerateCashIOReports();
+    await regenerateCashIOReports(storeId);
     await logActivity({
         type: 'System',
         action: 'Updated',
@@ -1025,6 +1027,14 @@ export async function createStoreAction(storeName: string, user: { userId: strin
         status: 'approved',
         role: 'owner',
     });
+
+    // Add default "N/A" account
+    await addAccount(newStoreId, {
+        accountName: 'N/A',
+        bankName: 'N/A',
+        accountNumber: 'N/A',
+        balance: 0,
+    }, user);
 
     // Set as active store for the user
     await update(userRef, { activeStoreId: newStoreId });

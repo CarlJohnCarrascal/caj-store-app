@@ -7,20 +7,23 @@ import CashTransactionForm from '../components/CashTransactionForm';
 import { Suspense, useEffect, useState } from 'react';
 import { Account } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
 function NewCashTransactionForm() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const searchParams = useSearchParams();
+  const { activeStoreId } = useAuth();
   
   const [initialTransaction, setInitialTransaction] = useState<any | null>(null);
 
   useEffect(() => {
     async function fetchAccounts() {
-      const fetchedAccounts = await getAccounts();
+      if (!activeStoreId) return;
+      const fetchedAccounts = await getAccounts(activeStoreId);
       setAccounts(fetchedAccounts);
     }
     fetchAccounts();
-  }, []);
+  }, [activeStoreId]);
 
   useEffect(() => {
     // Create a base object for the new transaction with defaults

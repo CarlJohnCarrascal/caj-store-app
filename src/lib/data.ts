@@ -167,13 +167,21 @@ export async function deleteProduct(storeId: string, id: string): Promise<Produc
 // Account Functions
 // ==================
 
-export async function getAccounts(): Promise<Account[]> {
-  const snapshot = await get(ref(db, 'accounts'));
+export async function getAccounts(storeId: string): Promise<Account[]> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/accounts`));
   return snapshotToArray<Account>(snapshot);
 }
 
-export async function addAccount(account: Omit<Account, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Account> {
-  const newAccountRef = push(ref(db, 'accounts'));
+export async function getAccountById(storeId: string, id: string): Promise<Account | undefined> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/accounts/${id}`));
+  if (snapshot.exists()) {
+    return { id, ...snapshot.val() };
+  }
+  return undefined;
+}
+
+export async function addAccount(storeId: string, account: Omit<Account, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Account> {
+  const newAccountRef = push(ref(db, `storeData/${storeId}/accounts`));
   const dataToSave = {
     ...account,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -182,8 +190,8 @@ export async function addAccount(account: Omit<Account, 'id'>, createdBy: Omit<C
   return { ...dataToSave, id: newAccountRef.key! };
 }
 
-export async function deleteAccount(id: string): Promise<Account | null> {
-  const accountRef = ref(db, `accounts/${id}`);
+export async function deleteAccount(storeId: string, id: string): Promise<Account | null> {
+  const accountRef = ref(db, `storeData/${storeId}/accounts/${id}`);
   const snapshot = await get(accountRef);
   if (snapshot.exists()) {
     const deletedAccount = { id, ...snapshot.val() };
@@ -197,21 +205,21 @@ export async function deleteAccount(id: string): Promise<Account | null> {
 // Customer Functions
 // ==================
 
-export async function getCustomers(): Promise<Customer[]> {
-  const snapshot = await get(ref(db, 'customers'));
+export async function getCustomers(storeId: string): Promise<Customer[]> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/customers`));
   return snapshotToArray<Customer>(snapshot);
 }
 
-export async function getCustomerById(id: string): Promise<Customer | undefined> {
-  const snapshot = await get(ref(db, `customers/${id}`));
+export async function getCustomerById(storeId: string, id: string): Promise<Customer | undefined> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/customers/${id}`));
   if (snapshot.exists()) {
     return { id, ...snapshot.val() };
   }
   return undefined;
 }
 
-export async function addCustomer(customer: Omit<Customer, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Customer> {
-  const newCustomerRef = push(ref(db, 'customers'));
+export async function addCustomer(storeId: string, customer: Omit<Customer, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Customer> {
+  const newCustomerRef = push(ref(db, `storeData/${storeId}/customers`));
   const dataToSave = {
     ...customer,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -220,8 +228,8 @@ export async function addCustomer(customer: Omit<Customer, 'id'>, createdBy: Omi
   return { ...dataToSave, id: newCustomerRef.key! };
 }
 
-export async function updateCustomer(id: string, customerData: Omit<Customer, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Customer> {
-    const customerRef = ref(db, `customers/${id}`);
+export async function updateCustomer(storeId: string, id: string, customerData: Omit<Customer, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Customer> {
+    const customerRef = ref(db, `storeData/${storeId}/customers/${id}`);
     const snapshot = await get(customerRef);
     if(snapshot.exists()){
       const existingData = snapshot.val();
@@ -237,8 +245,8 @@ export async function updateCustomer(id: string, customerData: Omit<Customer, 'i
 }
 
 
-export async function updateCustomerBalance(customerId: string, amount: number): Promise<Customer | null> {
-    const customerRef = ref(db, `customers/${customerId}`);
+export async function updateCustomerBalance(storeId: string, customerId: string, amount: number): Promise<Customer | null> {
+    const customerRef = ref(db, `storeData/${storeId}/customers/${customerId}`);
     const snapshot = await get(customerRef);
     if (snapshot.exists()) {
         const currentBalance = snapshot.val().balance || 0;
@@ -249,12 +257,12 @@ export async function updateCustomerBalance(customerId: string, amount: number):
     return null;
 }
 
-export async function deleteCustomer(id: string): Promise<Customer | null> {
-    const orders = await getOrdersByCustomerId(id);
+export async function deleteCustomer(storeId: string, id: string): Promise<Customer | null> {
+    const orders = await getOrdersByCustomerId(storeId, id);
     if (orders.length > 0) {
         throw new Error('Cannot delete a customer with existing orders.');
     }
-    const customerRef = ref(db, `customers/${id}`);
+    const customerRef = ref(db, `storeData/${storeId}/customers/${id}`);
     const snapshot = await get(customerRef);
     if (snapshot.exists()) {
         const deletedCustomer = { id, ...snapshot.val() };
@@ -268,11 +276,11 @@ export async function deleteCustomer(id: string): Promise<Customer | null> {
 // CashTransaction Functions
 // =======================
 
-export async function getCashTransactions(): Promise<CashTransaction[]> {
-  const transactionsSnapshot = await get(ref(db, 'cashTransactions'));
+export async function getCashTransactions(storeId: string): Promise<CashTransaction[]> {
+  const transactionsSnapshot = await get(ref(db, `storeData/${storeId}/cashTransactions`));
   const transactions = snapshotToArray<CashTransaction>(transactionsSnapshot);
 
-  const accountsSnapshot = await get(ref(db, 'accounts'));
+  const accountsSnapshot = await get(ref(db, `storeData/${storeId}/accounts`));
   const accountsData = accountsSnapshot.val() || {};
 
   const transactionsWithAccountNames = transactions.map(transaction => {
@@ -285,8 +293,8 @@ export async function getCashTransactions(): Promise<CashTransaction[]> {
   return transactionsWithAccountNames.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function getCashTransactionById(id: string): Promise<CashTransaction | undefined> {
-  const snapshot = await get(ref(db, `cashTransactions/${id}`));
+export async function getCashTransactionById(storeId: string, id: string): Promise<CashTransaction | undefined> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/cashTransactions/${id}`));
   if (snapshot.exists()) {
     return { id, ...snapshot.val() };
   }
@@ -294,15 +302,15 @@ export async function getCashTransactionById(id: string): Promise<CashTransactio
 }
 
 
-export async function isReferenceNumberDuplicate(reference: string): Promise<boolean> {
-  const transactionsRef = ref(db, 'cashTransactions');
+export async function isReferenceNumberDuplicate(storeId: string, reference: string): Promise<boolean> {
+  const transactionsRef = ref(db, `storeData/${storeId}/cashTransactions`);
   const q = query(transactionsRef, orderByChild('reference'), equalTo(reference));
   const snapshot = await get(q);
   return snapshot.exists();
 }
 
-export async function getCashTransactionByReference(reference: string): Promise<CashTransaction | null> {
-    const transactionsRef = ref(db, 'cashTransactions');
+export async function getCashTransactionByReference(storeId: string, reference: string): Promise<CashTransaction | null> {
+    const transactionsRef = ref(db, `storeData/${storeId}/cashTransactions`);
     const q = query(transactionsRef, orderByChild('reference'), equalTo(reference));
     const snapshot = await get(q);
     if (snapshot.exists()) {
@@ -314,8 +322,8 @@ export async function getCashTransactionByReference(reference: string): Promise<
 }
 
 
-export async function addCashTransaction(transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'> & { datetime?: string }, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
-  const accountRef = ref(db, `accounts/${transactionData.accountUsedId}`);
+export async function addCashTransaction(storeId: string, transactionData: Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'> & { datetime?: string }, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<CashTransaction> {
+  const accountRef = ref(db, `storeData/${storeId}/accounts/${transactionData.accountUsedId}`);
   const accountSnapshot = await get(accountRef);
   if (!accountSnapshot.exists()) {
     throw new Error("Account not found");
@@ -334,13 +342,12 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
   
   let transactionDateString: string;
   if (transactionData.datetime && transactionData.datetime.length > 0) {
-    // Treat the datetime-local string as PHT and format it correctly with seconds and timezone
     transactionDateString = `${transactionData.datetime}:00+08:00`;
   } else {
     transactionDateString = nowPHTString;
   }
   
-  const newTransactionRef = push(ref(db, 'cashTransactions'));
+  const newTransactionRef = push(ref(db, `storeData/${storeId}/cashTransactions`));
 
   const dataToSave: any = {
     ...transactionData,
@@ -360,11 +367,12 @@ export async function addCashTransaction(transactionData: Omit<CashTransaction, 
 }
 
 export async function updateCashTransaction(
+  storeId: string,
   id: string,
   transactionData: Partial<Omit<CashTransaction, 'id' | 'createdAt' | 'updatedAt' | 'newBalance' | 'transactionDate'>> & { datetime?: string },
   updatedBy: Omit<ChangeTracker, 'timestamp'>
 ): Promise<CashTransaction> {
-    const transactionRef = ref(db, `cashTransactions/${id}`);
+    const transactionRef = ref(db, `storeData/${storeId}/cashTransactions/${id}`);
     const oldTransactionSnapshot = await get(transactionRef);
     if (!oldTransactionSnapshot.exists()) {
         throw new Error("Transaction to update not found");
@@ -373,12 +381,10 @@ export async function updateCashTransaction(
 
     let finalNewBalanceForAccount;
 
-    // Only perform balance recalculations if amount, fee, or accountUsedId changed
     const needsBalanceUpdate = 'amount' in transactionData || 'fee' in transactionData || 'accountUsedId' in transactionData;
 
     if (needsBalanceUpdate) {
-        // --- Reverse old transaction on account balance ---
-        const oldAccountRef = ref(db, `accounts/${oldTransaction.accountUsedId}`);
+        const oldAccountRef = ref(db, `storeData/${storeId}/accounts/${oldTransaction.accountUsedId}`);
         const oldAccountSnapshot = await get(oldAccountRef);
         if (oldAccountSnapshot.exists()) {
             const oldAccount = oldAccountSnapshot.val();
@@ -396,8 +402,7 @@ export async function updateCashTransaction(
         const newAmount = transactionData.amount || oldTransaction.amount;
         const newFee = transactionData.fee || oldTransaction.fee;
         
-        // --- Apply new transaction on account balance ---
-        const newAccountRef = ref(db, `accounts/${newAccountUsedId}`);
+        const newAccountRef = ref(db, `storeData/${storeId}/accounts/${newAccountUsedId}`);
         const newAccountSnapshot = await get(newAccountRef);
         if (!newAccountSnapshot.exists()) {
             throw new Error("New account not found");
@@ -413,7 +418,6 @@ export async function updateCashTransaction(
         await update(newAccountRef, { balance: finalNewBalanceForAccount });
     }
 
-    // --- Prepare and save the updated transaction ---
     const nowPHTString = getCurrentPHTISOString();
     let transactionDateString: string;
     if (transactionData.datetime && transactionData.datetime.length > 0) {
@@ -423,8 +427,8 @@ export async function updateCashTransaction(
     }
 
     const dataToSave: any = {
-        ...oldTransaction, // Start with old data
-        ...transactionData, // Overwrite with new data
+        ...oldTransaction,
+        ...transactionData,
         transactionDate: transactionDateString,
         updatedAt: nowPHTString,
         updatedBy: { ...updatedBy, timestamp: nowPHTString },
@@ -441,8 +445,8 @@ export async function updateCashTransaction(
     return { id, ...dataToSave };
 }
 
-export async function deleteCashTransaction(id: string): Promise<CashTransaction | null> {
-    const transactionRef = ref(db, `cashTransactions/${id}`);
+export async function deleteCashTransaction(storeId: string, id: string): Promise<CashTransaction | null> {
+    const transactionRef = ref(db, `storeData/${storeId}/cashTransactions/${id}`);
     const snapshot = await get(transactionRef);
     if (snapshot.exists()) {
         const deletedTransaction: CashTransaction = { id, ...snapshot.val() };
@@ -461,9 +465,9 @@ export async function deleteCashTransaction(id: string): Promise<CashTransaction
 // =======================
 // Image Upload Function
 // =======================
-export async function finalizeReceiptImage(dataUrl: string, folder: 'cashin' | 'cashout', fileName: string): Promise<string> {
+export async function finalizeReceiptImage(storeId: string, dataUrl: string, folder: 'cashin' | 'cashout', fileName: string): Promise<string> {
   const mainfolder = process.env.IMAGE_FOLDER;
-  const path = `${mainfolder}/${folder}/${fileName}`;
+  const path = `${mainfolder}/${storeId}/${folder}/${fileName}`;
     const imageRef = storageRef(storage, path);
     // Directly upload the data URL string
     const snapshot = await uploadString(imageRef, dataUrl, 'data_url');
@@ -471,13 +475,13 @@ export async function finalizeReceiptImage(dataUrl: string, folder: 'cashin' | '
     return downloadURL;
 }
 
-export async function deleteReceiptImage(transactionId: string, imageUrl: string): Promise<void> {
+export async function deleteReceiptImage(storeId: string, transactionId: string, imageUrl: string): Promise<void> {
     // 1. Delete from storage
     const imageStorageRef = storageRef(storage, imageUrl);
     await deleteObject(imageStorageRef);
 
     // 2. Remove from database
-    const transactionRef = ref(db, `cashTransactions/${transactionId}`);
+    const transactionRef = ref(db, `storeData/${storeId}/cashTransactions/${transactionId}`);
     await update(transactionRef, {
         receiptImageUrl: null
     });
@@ -488,10 +492,10 @@ export async function deleteReceiptImage(transactionId: string, imageUrl: string
 // Collection Functions
 // =======================
 
-export async function getCollections(): Promise<Collection[]> {
-    const collectionsSnapshot = await get(ref(db, 'collections'));
+export async function getCollections(storeId: string): Promise<Collection[]> {
+    const collectionsSnapshot = await get(ref(db, `storeData/${storeId}/collections`));
     const collections = snapshotToArray<Collection>(collectionsSnapshot);
-    const customersSnapshot = await get(ref(db, 'customers'));
+    const customersSnapshot = await get(ref(db, `storeData/${storeId}/customers`));
     const customersData = customersSnapshot.val() || {};
 
     const collectionsWithCustomerNames = collections.map(collection => {
@@ -504,8 +508,8 @@ export async function getCollections(): Promise<Collection[]> {
     return collectionsWithCustomerNames;
 }
 
-export async function getCollectionNames(): Promise<string[]> {
-    const snapshot = await get(ref(db, 'collections'));
+export async function getCollectionNames(storeId: string): Promise<string[]> {
+    const snapshot = await get(ref(db, `storeData/${storeId}/collections`));
     const names = new Set<string>();
     if (snapshot.exists()) {
         snapshot.forEach((childSnapshot: any) => {
@@ -515,16 +519,16 @@ export async function getCollectionNames(): Promise<string[]> {
     return Promise.resolve([...names]);
 }
 
-export async function getCollectionById(id: string): Promise<Collection | undefined> {
-    const snapshot = await get(ref(db, `collections/${id}`));
+export async function getCollectionById(storeId: string, id: string): Promise<Collection | undefined> {
+    const snapshot = await get(ref(db, `storeData/${storeId}/collections/${id}`));
     if (snapshot.exists()) {
         return { id, ...snapshot.val() };
     }
     return undefined;
 }
 
-export async function addCollection(collection: Omit<Collection, 'id' | 'customerName'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Collection> {
-    const newCollectionRef = push(ref(db, 'collections'));
+export async function addCollection(storeId: string, collection: Omit<Collection, 'id' | 'customerName'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Collection> {
+    const newCollectionRef = push(ref(db, `storeData/${storeId}/collections`));
     const dataToSave = {
       ...collection,
       createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -533,9 +537,9 @@ export async function addCollection(collection: Omit<Collection, 'id' | 'custome
     return { ...dataToSave, id: newCollectionRef.key! };
 }
 
-export async function updateCollection(updatedCollection: Omit<Collection, 'customerName'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Collection | null> {
+export async function updateCollection(storeId: string, updatedCollection: Omit<Collection, 'customerName'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Collection | null> {
     const { id, ...data } = updatedCollection;
-    const collectionRef = ref(db, `collections/${id}`);
+    const collectionRef = ref(db, `storeData/${storeId}/collections/${id}`);
     const snapshot = await get(collectionRef);
     if(snapshot.exists()){
       const existingData = snapshot.val();
@@ -550,8 +554,8 @@ export async function updateCollection(updatedCollection: Omit<Collection, 'cust
     return null;
 }
 
-export async function deleteCollection(id: string): Promise<Collection | null> {
-    const collectionRef = ref(db, `collections/${id}`);
+export async function deleteCollection(storeId: string, id: string): Promise<Collection | null> {
+    const collectionRef = ref(db, `storeData/${storeId}/collections/${id}`);
     const snapshot = await get(collectionRef);
     if (snapshot.exists()) {
         const deletedCollection = { id, ...snapshot.val() };
@@ -565,8 +569,8 @@ export async function deleteCollection(id: string): Promise<Collection | null> {
 // Order Functions
 // ==================
 
-export async function addOrder(orderData: Omit<Order, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Order> {
-    const newOrderRef = push(ref(db, 'orders'));
+export async function addOrder(storeId: string, orderData: Omit<Order, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Order> {
+    const newOrderRef = push(ref(db, `storeData/${storeId}/orders`));
     const dataToSave = { 
       ...orderData, 
       createdAt: getCurrentPHTISOString(),
@@ -576,15 +580,15 @@ export async function addOrder(orderData: Omit<Order, 'id'>, createdBy: Omit<Cha
     return { ...dataToSave, id: newOrderRef.key! };
 }
 
-export async function getOrders(): Promise<Order[]> {
-    const snapshot = await get(ref(db, 'orders'));
+export async function getOrders(storeId: string): Promise<Order[]> {
+    const snapshot = await get(ref(db, `storeData/${storeId}/orders`));
     const orders = snapshotToArray<Order>(snapshot);
     const ordersWithDates = orders.map(order => ({ ...order, createdAt: order.createdAt }));
     return ordersWithDates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function getOrderById(id: string): Promise<Order | undefined> {
-    const snapshot = await get(ref(db, `orders/${id}`));
+export async function getOrderById(storeId: string, id: string): Promise<Order | undefined> {
+    const snapshot = await get(ref(db, `storeData/${storeId}/orders/${id}`));
     if (snapshot.exists()) {
         const order = snapshot.val();
         return { id, ...order, createdAt: order.createdAt };
@@ -592,8 +596,8 @@ export async function getOrderById(id: string): Promise<Order | undefined> {
     return undefined;
 }
 
-export async function getOrdersByCustomerId(customerId: string): Promise<Order[]> {
-    const ordersRef = ref(db, 'orders');
+export async function getOrdersByCustomerId(storeId: string, customerId: string): Promise<Order[]> {
+    const ordersRef = ref(db, `storeData/${storeId}/orders`);
     const q = query(ordersRef, orderByChild('customerId'), equalTo(customerId));
     const snapshot = await get(q);
     if (!snapshot.exists()) {
@@ -604,8 +608,8 @@ export async function getOrdersByCustomerId(customerId: string): Promise<Order[]
     return ordersWithDates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function getRecentOrdersByCategory(category: string, limit: number = 20): Promise<Order[]> {
-    const ordersRef = ref(db, 'orders');
+export async function getRecentOrdersByCategory(storeId: string, category: string, limit: number = 20): Promise<Order[]> {
+    const ordersRef = ref(db, `storeData/${storeId}/orders`);
     const q = query(ordersRef, limitToLast(limit * 5)); // Fetch more to filter client-side
     const snapshot = await get(q);
     if (!snapshot.exists()) {
@@ -631,8 +635,8 @@ export async function getRecentOrdersByCategory(category: string, limit: number 
 // ActivityLog Functions
 // =======================
 
-export async function getActivities(): Promise<ActivityLog[]> {
-    const snapshot = await get(ref(db, 'activityLogs'));
+export async function getActivities(storeId: string): Promise<ActivityLog[]> {
+    const snapshot = await get(ref(db, `storeData/${storeId}/activityLogs`));
     const logs = snapshotToArray<ActivityLog>(snapshot);
     const logsWithDates = logs.map(log => ({ ...log, timestamp: new Date(log.timestamp) }));
     return logsWithDates.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -652,8 +656,8 @@ export async function logActivity(log: Omit<ActivityLog, 'id' | 'timestamp'>): P
 // Expense Functions
 // ===================
 
-export async function getExpenses(): Promise<Expense[]> {
-  const snapshot = await get(ref(db, 'expenses'));
+export async function getExpenses(storeId: string): Promise<Expense[]> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/expenses`));
   const expenses = snapshotToArray<Expense>(snapshot);
   const expensesWithDates = expenses.map(e => ({
     ...e,
@@ -663,8 +667,8 @@ export async function getExpenses(): Promise<Expense[]> {
   return expensesWithDates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-export async function getExpenseById(id: string): Promise<Expense | undefined> {
-  const snapshot = await get(ref(db, `expenses/${id}`));
+export async function getExpenseById(storeId: string, id: string): Promise<Expense | undefined> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/expenses/${id}`));
   if (snapshot.exists()) {
     const expense = snapshot.val();
     const expenseWithDate = {
@@ -678,8 +682,8 @@ export async function getExpenseById(id: string): Promise<Expense | undefined> {
   return undefined;
 }
 
-export async function addExpense(expenseData: Omit<Expense, 'id' | 'createdAt'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Expense> {
-  const newExpenseRef = push(ref(db, 'expenses'));
+export async function addExpense(storeId: string, expenseData: Omit<Expense, 'id' | 'createdAt'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Expense> {
+  const newExpenseRef = push(ref(db, `storeData/${storeId}/expenses`));
   const dataToSave = {
     ...expenseData,
     date: new Date(expenseData.date).toISOString(),
@@ -690,8 +694,8 @@ export async function addExpense(expenseData: Omit<Expense, 'id' | 'createdAt'>,
   return { ...dataToSave, id: newExpenseRef.key! };
 }
 
-export async function updateExpense(id: string, expenseData: Omit<Expense, 'id' | 'createdAt'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Expense> {
-    const expenseRef = ref(db, `expenses/${id}`);
+export async function updateExpense(storeId: string, id: string, expenseData: Omit<Expense, 'id' | 'createdAt'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<Expense> {
+    const expenseRef = ref(db, `storeData/${storeId}/expenses/${id}`);
     const snapshot = await get(expenseRef);
     if(snapshot.exists()){
       const existingData = snapshot.val();
@@ -707,8 +711,8 @@ export async function updateExpense(id: string, expenseData: Omit<Expense, 'id' 
     throw new Error("Expense not found");
 }
 
-export async function deleteExpense(id: string): Promise<Expense | null> {
-    const expenseRef = ref(db, `expenses/${id}`);
+export async function deleteExpense(storeId: string, id: string): Promise<Expense | null> {
+    const expenseRef = ref(db, `storeData/${storeId}/expenses/${id}`);
     const snapshot = await get(expenseRef);
     if (snapshot.exists()) {
         const deletedExpense = { id, ...snapshot.val() };
@@ -731,8 +735,8 @@ const defaultFeeThresholds: Omit<FeeThreshold, 'id' | 'createdBy'>[] = [
   { from: 10001, to: 100000, fee: 10, type: 'per_thousand_flat', notes: 'Fee for amounts over 10000' },
 ];
 
-export async function getFeeThresholds(): Promise<FeeThreshold[]> {
-  const thresholdsRef = ref(db, 'feeThresholds');
+export async function getFeeThresholds(storeId: string): Promise<FeeThreshold[]> {
+  const thresholdsRef = ref(db, `storeData/${storeId}/feeThresholds`);
   let snapshot = await get(thresholdsRef);
 
   if (!snapshot.exists()) {
@@ -752,8 +756,8 @@ export async function getFeeThresholds(): Promise<FeeThreshold[]> {
   return snapshotToArray<FeeThreshold>(snapshot);
 }
 
-export async function addFeeThreshold(threshold: Omit<FeeThreshold, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<FeeThreshold> {
-  const newThresholdRef = push(ref(db, 'feeThresholds'));
+export async function addFeeThreshold(storeId: string, threshold: Omit<FeeThreshold, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<FeeThreshold> {
+  const newThresholdRef = push(ref(db, `storeData/${storeId}/feeThresholds`));
   const dataToSave = {
     ...threshold,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -762,8 +766,8 @@ export async function addFeeThreshold(threshold: Omit<FeeThreshold, 'id'>, creat
   return { ...dataToSave, id: newThresholdRef.key! };
 }
 
-export async function updateFeeThreshold(id: string, thresholdData: Omit<FeeThreshold, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
-  const thresholdRef = ref(db, `feeThresholds/${id}`);
+export async function updateFeeThreshold(storeId: string, id: string, thresholdData: Omit<FeeThreshold, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
+  const thresholdRef = ref(db, `storeData/${storeId}/feeThresholds/${id}`);
   const snapshot = await get(thresholdRef);
   if (snapshot.exists()) {
     const dataToSave = {
@@ -777,8 +781,8 @@ export async function updateFeeThreshold(id: string, thresholdData: Omit<FeeThre
   }
 }
 
-export async function deleteFeeThreshold(id: string): Promise<void> {
-  const thresholdRef = ref(db, `feeThresholds/${id}`);
+export async function deleteFeeThreshold(storeId: string, id: string): Promise<void> {
+  const thresholdRef = ref(db, `storeData/${storeId}/feeThresholds/${id}`);
   await remove(thresholdRef);
 }
 
@@ -786,13 +790,13 @@ export async function deleteFeeThreshold(id: string): Promise<void> {
 // Printing Price Functions
 // ========================
 
-export async function getPrintingPrices(): Promise<PrintingPrice[]> {
-  const snapshot = await get(ref(db, 'printingPrices'));
+export async function getPrintingPrices(storeId: string): Promise<PrintingPrice[]> {
+  const snapshot = await get(ref(db, `storeData/${storeId}/printingPrices`));
   return snapshotToArray<PrintingPrice>(snapshot);
 }
 
-export async function addPrintingPrice(price: Omit<PrintingPrice, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<PrintingPrice> {
-  const newPriceRef = push(ref(db, 'printingPrices'));
+export async function addPrintingPrice(storeId: string, price: Omit<PrintingPrice, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<PrintingPrice> {
+  const newPriceRef = push(ref(db, `storeData/${storeId}/printingPrices`));
   const dataToSave = {
     ...price,
     createdBy: { ...createdBy, timestamp: getCurrentPHTISOString() },
@@ -801,8 +805,8 @@ export async function addPrintingPrice(price: Omit<PrintingPrice, 'id'>, created
   return { ...dataToSave, id: newPriceRef.key! };
 }
 
-export async function updatePrintingPrice(id: string, priceData: Omit<PrintingPrice, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
-  const priceRef = ref(db, `printingPrices/${id}`);
+export async function updatePrintingPrice(storeId: string, id: string, priceData: Omit<PrintingPrice, 'id'>, updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
+  const priceRef = ref(db, `storeData/${storeId}/printingPrices/${id}`);
   const snapshot = await get(priceRef);
   if (snapshot.exists()) {
     const dataToSave = {
@@ -816,8 +820,8 @@ export async function updatePrintingPrice(id: string, priceData: Omit<PrintingPr
   }
 }
 
-export async function deletePrintingPrice(id: string): Promise<void> {
-  const priceRef = ref(db, `printingPrices/${id}`);
+export async function deletePrintingPrice(storeId: string, id: string): Promise<void> {
+  const priceRef = ref(db, `storeData/${storeId}/printingPrices/${id}`);
   await remove(priceRef);
 }
 
@@ -869,7 +873,7 @@ function getCostAndFeeFromDescription(description: string): { cost: number, fee:
 }
 
 
-export async function updateSalesReports(order: Order) {
+export async function updateSalesReports(storeId: string, order: Order) {
   const paths = getReportPaths(order.createdAt);
 
   const salesByService: { [key: string]: number } = {};
@@ -887,7 +891,7 @@ export async function updateSalesReports(order: Order) {
 
     let saleValue = 0;
     if (category === 'CashIO' && item.originalTransactionId) {
-      const cashTx = await getCashTransactionById(item.originalTransactionId);
+      const cashTx = await getCashTransactionById(storeId, item.originalTransactionId);
       saleValue = cashTx ? cashTx.fee : 0;
     } else if (['E-loading', 'Other Service'].includes(category)) {
       const { fee } = getCostAndFeeFromDescription(item.description || '');
@@ -904,7 +908,7 @@ export async function updateSalesReports(order: Order) {
   const finalReportableSale = reportableSubtotal - order.discount;
 
   for (const periodPath of Object.values(paths)) {
-    const reportRef = ref(db, `salesReports${periodPath}`);
+    const reportRef = ref(db, `storeData/${storeId}/salesReports${periodPath}`);
     await runTransaction(reportRef, (currentData: any) => {
       if (currentData === null) {
         currentData = { totalOrders: 0, totalSales: 0, byService: {} };
@@ -932,7 +936,7 @@ export async function updateSalesReports(order: Order) {
   }
 }
 
-export async function updateCashIOReport(transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
+export async function updateCashIOReport(storeId: string, transaction: CashTransaction, type: 'allTransactions' | 'orderedTransactions', customerId?: string, factor: 1 | -1 = 1) {
     if (!transaction || !transaction.transactionDate) {
         console.error("updateCashIOReport called with invalid transaction or missing transactionDate", transaction);
         return; // Exit gracefully to prevent crash
@@ -941,7 +945,7 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
     const paths = getReportPaths(transaction.transactionDate);
     
     for (const periodPath of Object.values(paths)) {
-        const reportRef = ref(db, `cashIOReports${periodPath}`);
+        const reportRef = ref(db, `storeData/${storeId}/cashIOReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: any) => {
           
@@ -1016,13 +1020,13 @@ export async function updateCashIOReport(transaction: CashTransaction, type: 'al
     }
 }
 
-export async function updateCustomerReports(type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
+export async function updateCustomerReports(storeId: string, type: 'new_customer' | 'order', customerId: string, orderTotal: number = 0) {
     const dateStr = getCurrentPHTISOString();
     const paths = getReportPaths(dateStr);
     const orderValue = Math.abs(orderTotal);
 
     for (const periodPath of Object.values(paths)) {
-        const reportRef = ref(db, `customerReports${periodPath}`);
+        const reportRef = ref(db, `storeData/${storeId}/customerReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: any) => {
             if (currentData === null) {
@@ -1052,12 +1056,12 @@ export async function updateCustomerReports(type: 'new_customer' | 'order', cust
 }
 
 
-export async function updateEloadingReports(data: { serviceType: string; cost: number; fee: number }) {
+export async function updateEloadingReports(storeId: string, data: { serviceType: string; cost: number; fee: number }) {
     const dateStr = getCurrentPHTISOString();
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
-        const reportRef = ref(db, `eloadingReports${periodPath}`);
+        const reportRef = ref(db, `storeData/${storeId}/eloadingReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: EloadingReportData | null) => {
             if (currentData === null) {
@@ -1080,12 +1084,12 @@ export async function updateEloadingReports(data: { serviceType: string; cost: n
     }
 }
 
-export async function updatePrintingReports(data: { serviceType: string; size: string; quantity: number, sales: number }) {
+export async function updatePrintingReports(storeId: string, data: { serviceType: string; size: string; quantity: number, sales: number }) {
     const dateStr = getCurrentPHTISOString();
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
-        const reportRef = ref(db, `printingReports${periodPath}`);
+        const reportRef = ref(db, `storeData/${storeId}/printingReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: PrintingReportData | null) => {
             if (currentData === null) {
@@ -1114,12 +1118,12 @@ export async function updatePrintingReports(data: { serviceType: string; size: s
 }
 
 
-export async function updateOtherServiceReports(data: { cost: number; fee: number }) {
+export async function updateOtherServiceReports(storeId: string, data: { cost: number; fee: number }) {
     const dateStr = getCurrentPHTISOString();
     const paths = getReportPaths(dateStr);
 
     for (const periodPath of Object.values(paths)) {
-        const reportRef = ref(db, `otherServiceReports${periodPath}`);
+        const reportRef = ref(db, `storeData/${storeId}/otherServiceReports${periodPath}`);
         
         await runTransaction(reportRef, (currentData: OtherServiceReportData | null) => {
             if (currentData === null) {
@@ -1135,17 +1139,18 @@ export async function updateOtherServiceReports(data: { cost: number; fee: numbe
     }
 }
 
-export async function regenerateCashIOReports(): Promise<void> {
-    const allTransactions = await getCashTransactions();
-    const newReportsData = {}; // This will hold the regenerated data.
+export async function regenerateCashIOReports(storeId: string): Promise<void> {
+    const allTransactions = await getCashTransactions(storeId);
+    const newReportsData: any = {}; // This will hold the regenerated data.
 
     for (const transaction of allTransactions) {
         const paths = getReportPaths(transaction.transactionDate);
         for (const periodKey of Object.keys(paths)) { // 'daily', 'weekly', etc.
             const path = (paths as any)[periodKey];
             
-            // Logic similar to updateCashIOReport, but accumulating into newReportsData
-            const currentPeriod = newReportsData[path] || {
+            const fullPath = `storeData/${storeId}/cashIOReports${path}`;
+            
+            const currentPeriod = newReportsData[fullPath] || {
                 cashIn: 0, cashOut: 0, totalTransactions: 0, cashInFee: 0, cashOutFee: 0,
                 cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
                 customers: {}, byAccount: {},
@@ -1157,6 +1162,7 @@ export async function regenerateCashIOReports(): Promise<void> {
             currentPeriod.totalFee += transaction.fee;
             
             const accountId = transaction.accountUsedId;
+            if(!currentPeriod.byAccount) currentPeriod.byAccount = {};
             const accountReport = currentPeriod.byAccount[accountId] || {
                 cashInCount: 0, cashInAmount: 0, cashInFee: 0,
                 cashOutCount: 0, cashOutAmount: 0, cashOutFee: 0,
@@ -1181,6 +1187,7 @@ export async function regenerateCashIOReports(): Promise<void> {
 
             // Ordered Transactions part
             if (transaction.customerId) {
+                 if(!currentPeriod.customers) currentPeriod.customers = {};
                 const customerReport = currentPeriod.customers[transaction.customerId] || {
                     cashIn: 0, cashOut: 0, cashInFee: 0, cashOutFee: 0,
                     cashInTotal: 0, cashOutTotal: 0, totalAmount: 0, totalFee: 0,
@@ -1201,23 +1208,20 @@ export async function regenerateCashIOReports(): Promise<void> {
                 currentPeriod.customers[transaction.customerId] = customerReport;
             }
             
-            newReportsData[path] = currentPeriod;
+            newReportsData[fullPath] = currentPeriod;
         }
     }
 
-    // Restructure for Firebase
-    const finalReportObject: any = {};
-    for (const [path, data] of Object.entries(newReportsData)) {
-      const parts = path.substring(1).split('/'); // Remove leading '/' and split
-      let currentLevel = finalReportObject;
-      for (let i = 0; i < parts.length - 1; i++) {
-        currentLevel[parts[i]] = currentLevel[parts[i]] || {};
-        currentLevel = currentLevel[parts[i]];
-      }
-      currentLevel[parts[parts.length - 1]] = data;
-    }
+    const reportsRef = ref(db, `storeData/${storeId}/cashIOReports`);
+    await set(reportsRef, {}); // Clear existing reports
 
-    // Overwrite the entire cashIOReports node
-    const reportsRef = ref(db, 'cashIOReports');
-    await set(reportsRef, finalReportObject);
+    const updates: { [key: string]: any } = {};
+    for (const [path, data] of Object.entries(newReportsData)) {
+      const relativePath = path.replace(`storeData/${storeId}/cashIOReports`, '');
+      updates[relativePath] = data;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(reportsRef, updates);
+    }
 }

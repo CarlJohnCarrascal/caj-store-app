@@ -30,7 +30,7 @@ interface AccountFormProps {
 export default function AccountForm({ account }: AccountFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<AccountFormValues>({
@@ -44,8 +44,8 @@ export default function AccountForm({ account }: AccountFormProps) {
   });
 
   const onSubmit = (data: AccountFormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
         return;
     }
     startTransition(async () => {
@@ -62,14 +62,14 @@ export default function AccountForm({ account }: AccountFormProps) {
           // TODO: Implement update account action
           toast({ title: 'Success', description: 'Account updated successfully.' });
         } else {
-          await addAccountAction(formData);
+          await addAccountAction(activeStoreId, formData);
           toast({ title: 'Success', description: 'Account added successfully.' });
           form.reset();
         }
         router.push('/admin/accounts');
         router.refresh();
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };

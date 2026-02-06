@@ -66,7 +66,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [extractionResult, setExtractionResult] = useState<string | null>(null);
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   const [feeThresholds, setFeeThresholds] = useState<FeeThreshold[]>([]);
 
   const isEditing = !!transaction?.id;
@@ -99,11 +99,12 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
   // Fetch fee thresholds on mount
   useEffect(() => {
     async function fetchThresholds() {
-      const thresholds = await getFeeThresholds();
+        if (!activeStoreId) return;
+      const thresholds = await getFeeThresholds(activeStoreId);
       setFeeThresholds(thresholds);
     }
     fetchThresholds();
-  }, []);
+  }, [activeStoreId]);
   
   // Set the last used account from localStorage
   useEffect(() => {
@@ -257,13 +258,13 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
   };
 
   const onSave = (data: CashTransactionFormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
         return;
     }
     startTransition(async () => {
       try {
-        const isDuplicate = await isReferenceNumberDuplicate(data.reference);
+        const isDuplicate = await isReferenceNumberDuplicate(activeStoreId, data.reference);
         if (isDuplicate) {
           toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
           return;
@@ -287,12 +288,12 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
           if (storedItemRaw) {
             const storedItem = JSON.parse(storedItemRaw);
             const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-            imageUrl = await finalizeReceiptImage(storedItem.image, folder, data.reference);
+            imageUrl = await finalizeReceiptImage(activeStoreId, storedItem.image, folder, data.reference);
             formData.append('receiptImageUrl', imageUrl);
           }
         }
 
-        await addCashTransactionAction(formData);
+        await addCashTransactionAction(activeStoreId, formData);
 
         // Clean up local storage after successful processing
         if (data.fromScanned) {
@@ -309,13 +310,13 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
   };
   
   const onAddToOrder = (data: CashTransactionFormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
         return;
     }
     startTransition(async () => {
       try {
-        const isDuplicate = await isReferenceNumberDuplicate(data.reference);
+        const isDuplicate = await isReferenceNumberDuplicate(activeStoreId, data.reference);
         if (isDuplicate) {
             toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists.' });
             return;
@@ -343,12 +344,12 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
           if (storedItemRaw) {
             const storedItem = JSON.parse(storedItemRaw);
             const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-            imageUrl = await finalizeReceiptImage(storedItem.image, folder, data.reference);
+            imageUrl = await finalizeReceiptImage(activeStoreId, storedItem.image, folder, data.reference);
             formData.append('receiptImageUrl', imageUrl);
           }
         }
 
-        const newTransaction = await addCashTransactionAction(formData);
+        const newTransaction = await addCashTransactionAction(activeStoreId, formData);
         
         // Clean up local storage after successful processing
         if (data.fromScanned) {
@@ -388,7 +389,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
   };
 
   const onUpdate = (data: CashTransactionFormValues) => {
-    if (!transaction?.id) return;
+    if (!transaction?.id || !activeStoreId) return;
     if (!user) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
@@ -407,7 +408,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
             formData.append('userId', user.uid);
             formData.append('userName', user.displayName || user.email!);
 
-            await updateCashTransactionAction(transaction.id, formData);
+            await updateCashTransactionAction(activeStoreId, transaction.id, formData);
             toast({ title: 'Success', description: 'Transaction updated successfully.' });
             router.push('/admin/cashio');
             router.refresh();

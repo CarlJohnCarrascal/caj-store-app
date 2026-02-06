@@ -43,9 +43,16 @@ export default function AccountList() {
   const [isPending, startTransition] = useTransition();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   
   useEffect(() => {
+    if (!activeStoreId) {
+        setIsLoading(false);
+        setAccounts([]);
+        return;
+    }
+    
+    setIsLoading(true);
     const loadFromCache = async () => {
       const cachedData = await getStoreData<Account>('accounts');
       if (cachedData.length > 0) {
@@ -55,7 +62,7 @@ export default function AccountList() {
     };
     loadFromCache();
 
-    const accountsRef = ref(db, 'accounts');
+    const accountsRef = ref(db, `storeData/${activeStoreId}/accounts`);
     const unsubscribe = onValue(accountsRef, (snapshot) => {
       const accountList = snapshotToArray<Account>(snapshot);
       setAccounts(accountList);
@@ -67,20 +74,20 @@ export default function AccountList() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
 
   const handleDelete = (id: string) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete accounts.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
         return;
     }
     startTransition(async () => {
       try {
-        await deleteAccountAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteAccountAction(activeStoreId, id, { userId: user.uid, userName: user.displayName || user.email! });
         await deleteItem('accounts', id);
         toast({ title: 'Success', description: 'Account deleted successfully.' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete account.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete account.' });
       }
     });
   };
@@ -129,12 +136,12 @@ export default function AccountList() {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                     {/* <p className={cn(
+                     <p className={cn(
                       "font-semibold text-xl",
                        account.balance >= 0 ? "text-primary" : "text-destructive"
                     )}>
                       ₱{account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p> */}
+                    </p>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="icon">

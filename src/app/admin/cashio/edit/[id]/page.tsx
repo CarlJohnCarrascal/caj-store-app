@@ -21,7 +21,7 @@ export default function EditCashTransactionPage() {
   const params = useParams();
   const id = params.id as string;
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
 
   const [transaction, setTransaction] = useState<CashTransaction | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -31,17 +31,18 @@ export default function EditCashTransactionPage() {
   const [isDeleting, startDeleteTransition] = useTransition();
 
   useEffect(() => {
-    if (!id) {
+    if (!id || !activeStoreId) {
         setIsLoading(false);
-        setError("Transaction ID is missing from the URL.");
+        if(!id) setError("Transaction ID is missing from the URL.");
+        if(!activeStoreId) setError("No active store selected.");
         return;
     };
 
     async function fetchData() {
       try {
         const [transactionData, accountsData] = await Promise.all([
-          getCashTransactionById(id),
-          getAccounts(),
+          getCashTransactionById(activeStoreId, id),
+          getAccounts(activeStoreId),
         ]);
         
         if (!transactionData) {
@@ -65,14 +66,14 @@ export default function EditCashTransactionPage() {
     }
 
     fetchData();
-  }, [id]);
+  }, [id, activeStoreId]);
 
   const handleDeleteImage = async () => {
-    if (!transaction || !transaction.receiptImageUrl || !user) return;
+    if (!transaction || !transaction.receiptImageUrl || !user || !activeStoreId) return;
     
     startDeleteTransition(async () => {
       try {
-        await deleteReceiptImageAction(transaction.id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteReceiptImageAction(activeStoreId, transaction.id, { userId: user.uid, userName: user.displayName || user.email! });
         setTransaction(prev => prev ? { ...prev, receiptImageUrl: undefined } : null);
         toast({ title: "Success", description: "Receipt image has been deleted." });
       } catch (error: any) {

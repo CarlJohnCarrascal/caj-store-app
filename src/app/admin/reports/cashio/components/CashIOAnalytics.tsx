@@ -21,6 +21,7 @@ import { getReportData, setReportData, getStoreData, setStoreData } from '@/lib/
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 // Types for Cash IO Reports
 type CustomerCashIOData = {
@@ -111,6 +112,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
     const [isAmountChartExpanded, setIsAmountChartExpanded] = useState(false);
     const [isAccountTableExpanded, setIsAccountTableExpanded] = useState(false);
     const [isCustomerTableExpanded, setIsCustomerTableExpanded] = useState(false);
+    const { activeStoreId } = useAuth();
 
     const sortedData = useMemo(() => {
         if (!data) return [];
@@ -542,6 +544,7 @@ const ReportView = ({ data, periodName, customerMap, accountMap }: { data?: Repo
 };
 
 export default function CashIOAnalytics() {
+    const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
@@ -551,6 +554,15 @@ export default function CashIOAnalytics() {
     const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.accountName])), [accounts]);
 
     useEffect(() => {
+        if (!activeStoreId) {
+            setIsLoading(false);
+            setReports(null);
+            setCustomers([]);
+            setAccounts([]);
+            return;
+        }
+
+        setIsLoading(true);
         let reportsUnsubscribe: Unsubscribe | null = null;
         let customersUnsubscribe: Unsubscribe | null = null;
         let accountsUnsubscribe: Unsubscribe | null = null;
@@ -571,7 +583,7 @@ export default function CashIOAnalytics() {
         };
         loadFromCache();
 
-        reportsUnsubscribe = onValue(ref(db, 'cashIOReports'), (snapshot) => {
+        reportsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/cashIOReports`), (snapshot) => {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             if (reportData) {
               setReports(reportData);
@@ -585,7 +597,7 @@ export default function CashIOAnalytics() {
             setIsLoading(false);
         });
 
-        customersUnsubscribe = onValue(ref(db, 'customers'), (snapshot) => {
+        customersUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/customers`), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList);
@@ -597,7 +609,7 @@ export default function CashIOAnalytics() {
             setIsLoading(false);
         });
 
-        accountsUnsubscribe = onValue(ref(db, 'accounts'), (snapshot) => {
+        accountsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/accounts`), (snapshot) => {
             const accountList = snapshotToArray<Account>(snapshot);
             setAccounts(accountList);
             setStoreData('accounts', accountList);
@@ -614,7 +626,7 @@ export default function CashIOAnalytics() {
             if (customersUnsubscribe) customersUnsubscribe();
             if (accountsUnsubscribe) accountsUnsubscribe();
         };
-    }, []);
+    }, [activeStoreId]);
 
     const todayData = useMemo(() => {
         if (!reports?.daily) return undefined;
