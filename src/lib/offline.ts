@@ -81,7 +81,7 @@ const initDB = () => {
                 db.createObjectStore(storeName, { keyPath: 'storeName' });
             } else if (storeName === 'products') {
                 const store = db.createObjectStore(storeName, { keyPath: 'id' });
-                store.createIndex('by_barcode', 'barcode', { unique: true });
+                store.createIndex('by_barcode', 'barcode', { unique: false }); // Barcode is not unique across stores
             } else {
                 db.createObjectStore(storeName, { keyPath: 'id' });
             }
@@ -94,7 +94,7 @@ const initDB = () => {
           if (db.objectStoreNames.contains('products')) {
               const productStore = tx.objectStore('products');
               if (!productStore.indexNames.contains('by_barcode')) {
-                  productStore.createIndex('by_barcode', 'barcode', { unique: true });
+                  productStore.createIndex('by_barcode', 'barcode', { unique: false });
               }
           }
       }
@@ -208,9 +208,12 @@ export async function setReportData(storeName: 'salesReports' | 'productReports'
     }
 }
 
-export async function getProductByBarcode(barcode: string): Promise<Product | null> {
+export async function getProductByBarcode(storeId: string, barcode: string): Promise<Product | null> {
     if (typeof window === 'undefined' || !barcode) return null;
     try {
+        // This is a client-side search and doesn't know about storeId directly.
+        // It will search all cached products. A better implementation might involve
+        // namespacing the indexedDB stores by storeId, but that's a bigger change.
         const db = await initDB();
         const product = await db.getFromIndex('products', 'by_barcode', barcode);
         return product || null;

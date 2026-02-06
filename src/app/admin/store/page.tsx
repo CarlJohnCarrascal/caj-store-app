@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import OrderHistoryDialog from '../components/OrderHistoryDialog';
+import { useAuth } from '@/hooks/use-auth';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -54,12 +55,20 @@ export default function StorePage() {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
+  const { activeStoreId } = useAuth();
   
   const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   useEffect(() => {
+    if (!activeStoreId) {
+        setIsLoading(false);
+        setProducts([]);
+        return;
+    }
+    setIsLoading(true);
+
     // Load from cache first
     const loadFromCache = async () => {
       const cachedProducts = await getStoreData<Product>('products');
@@ -72,7 +81,7 @@ export default function StorePage() {
     loadFromCache();
 
     // Listen for live updates
-    const productsRef = ref(db, 'products');
+    const productsRef = ref(db, `storeData/${activeStoreId}/products`);
     const unsubscribe = onValue(productsRef, (snapshot) => {
       const allProducts = snapshotToArray<Product>(snapshot);
       setStoreData('products', allProducts); // Update cache
@@ -84,7 +93,7 @@ export default function StorePage() {
       setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
 
   const { categories, groups } = useMemo(() => {
     const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
@@ -120,7 +129,7 @@ export default function StorePage() {
         case 'price-desc':
           return b.price - a.price;
         case 'name-desc':
-          return b.name.localeCompare(a.name);
+          return b.name.localeCompare(b.name);
         case 'name-asc':
         default:
           return a.name.localeCompare(b.name);
@@ -152,8 +161,9 @@ export default function StorePage() {
   };
 
   const onBarcodeScanned = async (barcode: string) => {
+    if (!activeStoreId) return;
     setIsScannerOpen(false);
-    const product = await getProductByBarcode(barcode);
+    const product = await getProductByBarcode(activeStoreId, barcode);
     if (product) {
       addToCart(product);
       toast({

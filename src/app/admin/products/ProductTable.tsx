@@ -58,7 +58,7 @@ export default function ProductTable() {
   const [isPending, startTransition] = useTransition();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ category: 'all', group: 'all' });
@@ -67,6 +67,13 @@ export default function ProductTable() {
 
 
   useEffect(() => {
+    if (!activeStoreId) {
+        setIsLoading(false);
+        setProducts([]);
+        return;
+    };
+    setIsLoading(true);
+
     const loadFromCache = async () => {
       const cachedProducts = await getStoreData<Product>('products');
       if (cachedProducts.length > 0) {
@@ -76,7 +83,7 @@ export default function ProductTable() {
     };
     loadFromCache();
 
-    const productsRef = ref(db, 'products');
+    const productsRef = ref(db, `storeData/${activeStoreId}/products`);
     const unsubscribe = onValue(productsRef, (snapshot) => {
       const productList = snapshotToArray<Product>(snapshot);
       setProducts(productList);
@@ -88,7 +95,7 @@ export default function ProductTable() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
 
   const { categories, groups } = useMemo(() => {
     const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
@@ -140,13 +147,13 @@ export default function ProductTable() {
   };
 
   const handleDelete = (id: string) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete products.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Action not allowed', description: 'You must be logged in and have an active store.' });
         return;
     }
     startTransition(async () => {
       try {
-        await deleteProductAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteProductAction(activeStoreId, id, { userId: user.uid, userName: user.displayName || user.email! });
         await deleteItem('products', id);
         toast({ title: 'Success', description: 'Product deleted successfully.' });
       } catch (error) {
