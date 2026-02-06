@@ -30,7 +30,7 @@ export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role
   await set(userRef, {
     name: user.name,
     email: user.email,
-    authorized: false, // New users are not authorized by default
+    authorized: true, // New users are now authorized by default
     role: 'user', // New users are assigned 'user' role by default
   });
 }
