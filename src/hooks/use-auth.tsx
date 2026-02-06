@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe, update, get } from 'firebase/database';
 import { AppUser, Store, StoreMemberInfo } from '@/lib/types';
@@ -38,6 +37,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [activeStoreRole, setActiveStoreRole] = useState<StoreMemberInfo['role'] | null>(null);
   
   useEffect(() => {
+    getRedirectResult(auth).catch((error) => {
+        console.error("Error from sign-in redirect", error);
+    });
+
     let appUserUnsubscribe: Unsubscribe | null = null;
     let memberStoresUnsubscribe: Unsubscribe | null = null;
     let roleUnsubscribe: Unsubscribe | null = null;
@@ -129,8 +132,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-    // The onAuthStateChanged listener will handle the rest
+    await signInWithRedirect(auth, provider);
+    // The onAuthStateChanged listener and getRedirectResult will handle the rest
   };
 
   const signOut = async () => {
