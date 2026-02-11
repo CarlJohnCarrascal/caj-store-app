@@ -29,6 +29,7 @@ import { ref, onValue } from 'firebase/database';
 import PrintingPriceForm from './PrintingPriceForm';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { deletePrintingPrice, logActivity } from '@/lib/data';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -48,7 +49,7 @@ export default function PrintingPriceList() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPrice, setEditingPrice] = useState<PrintingPrice | undefined>(undefined);
@@ -58,6 +59,10 @@ export default function PrintingPriceList() {
   const [sizeSearch, setSizeSearch] = useState('');
 
   useEffect(() => {
+    if (!activeStoreId) {
+      setIsLoading(false);
+      return;
+    }
     const loadFromCache = async () => {
       const cachedData = await getStoreData<PrintingPrice>('printingPrices');
       if (cachedData.length > 0) {
@@ -67,7 +72,7 @@ export default function PrintingPriceList() {
     };
     loadFromCache();
     
-    const pricesRef = ref(db, 'printingPrices');
+    const pricesRef = ref(db, `storeData/${activeStoreId}/printingPrices`);
     const unsubscribe = onValue(pricesRef, (snapshot) => {
       const priceList = snapshotToArray<PrintingPrice>(snapshot);
       setPrices(priceList);
@@ -79,7 +84,7 @@ export default function PrintingPriceList() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
   
   const services = useMemo(() => ['all', ...new Set(prices.map(p => p.service))], [prices]);
   const types = ['all', 'Color', 'Black & White', 'N/A'];
@@ -92,18 +97,27 @@ export default function PrintingPriceList() {
       .sort((a, b) => a.service.localeCompare(b.service) || a.size.localeCompare(b.size));
   }, [prices, serviceFilter, typeFilter, sizeSearch]);
 
-  const handleDelete = (id: string) => {
-    if (!user) {
+  const handleDelete = (price: PrintingPrice) => {
+    if (!user || !activeStoreId) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete prices.' });
       return;
     }
     startTransition(async () => {
       try {
-        await deletePrintingPriceAction(id, { userId: user.uid, userName: user.displayName || user.email! });
-        await deleteItem('printingPrices', id);
+        await deletePrintingPrice(activeStoreId, price.id);
+        await logActivity({
+          type: 'PrintingPrice',
+          action: 'Deleted',
+          details: `Printing price for ${price.service} (${price.size}) was deleted.`,
+          targetId: price.id,
+          userId: user.uid,
+          userName: user.displayName || user.email!,
+        });
+        await deletePrintingPriceAction();
+        await deleteItem('printingPrices', price.id);
         toast({ title: 'Success', description: 'Printing price deleted successfully.' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete price.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete price.' });
       }
     });
   };
@@ -208,7 +222,7 @@ export default function PrintingPriceList() {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDelete(price.id)}
+                              onClick={() => handleDelete(price)}
                               disabled={isPending}
                               className="bg-destructive hover:bg-destructive/90"
                             >

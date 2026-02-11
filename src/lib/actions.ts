@@ -1,49 +1,49 @@
-
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { AppUser } from './types';
+import { AppUser } from './types';
+import { 
+  createUserProfile, 
+  updateUserAuthorization, 
+  getUserById, 
+  updateUserRole, 
+  regenerateCashIOReports, 
+  createStore, 
+  joinStore, 
+  approveMember 
+} from './data';
 
 // ==================
 // Revalidation-only Actions
-// These actions are now minimal and only trigger cache revalidation.
-// The actual database logic has been moved to the client-side data.ts file.
 // ==================
 
 export async function addProductAction() {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function updateProductAction(id: string) {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
   revalidatePath(`/admin/products/edit/${id}`);
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteProductAction() {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function addCustomerAction() {
   revalidatePath('/admin/customers');
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function updateCustomerAction(id: string) {
   revalidatePath('/admin/customers');
   revalidatePath(`/admin/customers/${id}`);
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteCustomerAction() {
     revalidatePath('/admin/customers');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function processOrderAction() {
@@ -51,7 +51,6 @@ export async function processOrderAction() {
     revalidatePath('/admin/cashio');
     revalidatePath('/admin/orders');
     revalidatePath('/admin/customers');
-    // We don't know the specific customer ID here, so we revalidate the base path.
 }
 
 export async function createFinancialTransactionOrderAction() {
@@ -63,25 +62,21 @@ export async function createFinancialTransactionOrderAction() {
 export async function addAccountAction() {
     revalidatePath('/admin/accounts');
     revalidatePath('/admin/cashio');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteAccountAction() {
     revalidatePath('/admin/accounts');
     revalidatePath('/admin/cashio');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function addCashTransactionAction() {
   revalidatePath('/admin/cashio');
-  revalidatePath('/admin/activity-logs');
   revalidatePath('/admin/accounts');
 }
 
 export async function updateCashTransactionAction(id: string) {
   revalidatePath('/admin/cashio');
   revalidatePath(`/admin/cashio/edit/${id}`);
-  revalidatePath('/admin/activity-logs');
   revalidatePath('/admin/reports/cashio');
   revalidatePath('/admin/accounts');
 }
@@ -89,7 +84,6 @@ export async function updateCashTransactionAction(id: string) {
 export async function deleteCashTransactionAction() {
     revalidatePath('/admin/cashio');
     revalidatePath('/admin/accounts');
-    revalidatePath('/admin/activity-logs');
     revalidatePath('/admin/reports/cashio');
 }
 
@@ -101,77 +95,60 @@ export async function deleteReceiptImageAction(transactionId: string) {
 
 export async function addCollectionAction() {
     revalidatePath('/admin/collections');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function updateCollectionAction(id: string) {
     revalidatePath('/admin/collections');
     revalidatePath(`/admin/collections/edit/${id}`);
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteCollectionAction() {
     revalidatePath('/admin/collections');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function addExpenseAction() {
   revalidatePath('/admin/expenses');
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function updateExpenseAction(id: string) {
   revalidatePath('/admin/expenses');
   revalidatePath(`/admin/expenses/edit/${id}`);
-  revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteExpenseAction() {
     revalidatePath('/admin/expenses');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function addFeeThresholdAction() {
     revalidatePath('/admin/cashio-fees');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function updateFeeThresholdAction() {
     revalidatePath('/admin/cashio-fees');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function deleteFeeThresholdAction() {
     revalidatePath('/admin/cashio-fees');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function addPrintingPriceAction() {
     revalidatePath('/admin/printing/prices');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function updatePrintingPriceAction() {
     revalidatePath('/admin/printing/prices');
-    revalidatePath('/admin/activity-logs');
 }
 
 export async function deletePrintingPriceAction() {
     revalidatePath('/admin/printing/prices');
-    revalidatePath('/admin/activity-logs');
 }
 
 // ======================================
 // Server-side only / Admin-gated actions
-// These can remain as they are, as they contain security checks
-// or are intended to run on the server.
 // ======================================
-
-import { createUserProfile, updateUserAuthorization, getUserById, updateUserRole, regenerateCashIOReports, createStore, joinStore, approveMember } from './data';
-import { getCurrentPHTISOString } from './utils';
-
 export async function createUserProfileAction(userData: Omit<AppUser, 'authorized' | 'role' | 'activeStoreId'>) {
     await createUserProfile(userData);
+    revalidatePath('/admin/users');
 }
 
 export async function updateUserAuthorizationAction(userId: string, authorized: boolean, updatedBy: { userId: string, userName: string }) {
@@ -223,4 +200,3 @@ export async function approveMemberAction(storeId: string, memberId: string, use
     await approveMember(storeId, memberId, user);
     revalidatePath('/admin/stores');
 }
-

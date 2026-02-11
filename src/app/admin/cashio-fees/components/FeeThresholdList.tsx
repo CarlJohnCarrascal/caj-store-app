@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useTransition, useEffect } from 'react';
@@ -26,6 +27,7 @@ import FeeThresholdForm from './FeeThresholdForm';
 import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
+import { deleteFeeThreshold, logActivity } from '@/lib/data';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -45,12 +47,16 @@ export default function FeeThresholdList() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingThreshold, setEditingThreshold] = useState<FeeThreshold | undefined>(undefined);
 
   useEffect(() => {
+    if (!activeStoreId) {
+        setIsLoading(false);
+        return;
+    }
     const loadFromCache = async () => {
       const cachedData = await getStoreData<FeeThreshold>('feeThresholds');
       if (cachedData.length > 0) {
@@ -60,7 +66,7 @@ export default function FeeThresholdList() {
     };
     loadFromCache();
     
-    const thresholdsRef = ref(db, 'feeThresholds');
+    const thresholdsRef = ref(db, `storeData/${activeStoreId}/feeThresholds`);
     const unsubscribe = onValue(thresholdsRef, (snapshot) => {
       const thresholdList = snapshotToArray<FeeThreshold>(snapshot);
       setThresholds(thresholdList);
@@ -72,24 +78,33 @@ export default function FeeThresholdList() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
 
   const sortedThresholds = useMemo(() => {
     return [...thresholds].sort((a, b) => a.from - b.from);
   }, [thresholds]);
 
   const handleDelete = (id: string) => {
-    if (!user) {
+    if (!user || !activeStoreId) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete thresholds.' });
       return;
     }
     startTransition(async () => {
       try {
-        await deleteFeeThresholdAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        await deleteFeeThreshold(activeStoreId, id);
+        await logActivity({
+            type: 'FeeThreshold',
+            action: 'Deleted',
+            details: `Fee threshold was deleted.`,
+            targetId: id,
+            userId: user.uid,
+            userName: user.displayName || user.email!,
+        });
+        await deleteFeeThresholdAction();
         await deleteItem('feeThresholds', id);
         toast({ title: 'Success', description: 'Fee threshold deleted successfully.' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete threshold.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete threshold.' });
       }
     });
   };

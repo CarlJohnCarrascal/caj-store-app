@@ -15,6 +15,7 @@ import { Hash, Ruler, ScanLine, Trash2, Plus, Minus, History, Palette } from 'lu
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import OrderHistoryDialog from '../components/OrderHistoryDialog';
+import { useAuth } from '@/hooks/use-auth';
 
 const printingServices = [
   "Xerox",
@@ -32,6 +33,7 @@ const printingServices = [
 export default function PrintingPage() {
   const { cartItems, addToCart, removeFromCart, updateQuantity } = useCart();
   const { toast } = useToast();
+  const { activeStoreId } = useAuth();
 
   const [service, setService] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -43,12 +45,13 @@ export default function PrintingPage() {
   const [printingPrices, setPrintingPrices] = useState<PrintingPrice[]>([]);
 
   useEffect(() => {
+    if (!activeStoreId) return;
     async function fetchPrices() {
-        const prices = await getPrintingPrices();
+        const prices = await getPrintingPrices(activeStoreId!);
         setPrintingPrices(prices);
     }
     fetchPrices();
-  }, []);
+  }, [activeStoreId]);
   
   const availableSizes = useMemo(() => {
     if (!service) return [];

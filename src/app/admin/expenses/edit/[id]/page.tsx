@@ -8,10 +8,12 @@ import { useEffect, useState } from 'react';
 import { Expense } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function EditExpensePage() {
   const params = useParams();
   const id = params.id as string;
+  const { activeStoreId } = useAuth();
 
   const [expense, setExpense] = useState<Expense | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -19,12 +21,12 @@ export default function EditExpensePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !activeStoreId) return;
     async function fetchData() {
       try {
         const [expenseData, allExpenses] = await Promise.all([
-          getExpenseById(id),
-          getExpenses()
+          getExpenseById(activeStoreId!, id),
+          getExpenses(activeStoreId!)
         ]);
         if (!expenseData) {
           notFound();
@@ -39,7 +41,7 @@ export default function EditExpensePage() {
       }
     }
     fetchData();
-  }, [id]);
+  }, [id, activeStoreId]);
 
   if (isLoading) {
     return (
@@ -56,7 +58,7 @@ export default function EditExpensePage() {
   if (error || !expense) {
     return (
       <Card className="mt-4 border-destructive">
-        <CardHeader><CardTitle className="text-destructive">An Error Occurred</CardTitle></CardHeader>
+        <CardHeader><h1 className="text-destructive">An Error Occurred</h1></CardHeader>
         <CardContent><p>{error || "Expense not found."}</p></CardContent>
       </Card>
     );

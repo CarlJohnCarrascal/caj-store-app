@@ -14,6 +14,7 @@ import { useTransition } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { addPrintingPrice, updatePrintingPrice, logActivity } from '@/lib/data';
 
 const formSchema = z.object({
   service: z.string().min(1, 'Service is required'),
@@ -38,7 +39,7 @@ const printingServices = [
 
 export default function PrintingPriceForm({ price, onSuccess, onCancel }: PrintingPriceFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
@@ -53,25 +54,34 @@ export default function PrintingPriceForm({ price, onSuccess, onCancel }: Printi
   });
 
   const onSubmit = (data: FormValues) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have an active store.' });
       return;
     }
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          formData.append(key, String(value));
-        });
-
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
+        const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
         if (price) {
-          await updatePrintingPriceAction(price.id, formData);
+          await updatePrintingPrice(activeStoreId, price.id, data, userPayload);
+          await logActivity({
+            type: 'PrintingPrice',
+            action: 'Updated',
+            details: `Printing price for ${data.service} (${data.size}) was updated.`,
+            targetId: price.id,
+            ...userPayload
+          });
+          await updatePrintingPriceAction();
           toast({ title: 'Success', description: 'Price updated successfully.' });
         } else {
-          await addPrintingPriceAction(formData);
+          const newPrice = await addPrintingPrice(activeStoreId, data, userPayload);
+          await logActivity({
+            type: 'PrintingPrice',
+            action: 'Created',
+            details: `New printing price for ${data.service} (${data.size}) was added.`,
+            targetId: newPrice.id,
+            ...userPayload
+          });
+          await addPrintingPriceAction();
           toast({ title: 'Success', description: 'Price added successfully.' });
         }
         

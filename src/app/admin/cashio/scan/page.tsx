@@ -63,15 +63,16 @@ export default function ScanImagePage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
 
   useEffect(() => {
+    if (!activeStoreId) return;
     async function fetchAccounts() {
-        const fetchedAccounts = await getAccounts();
+        const fetchedAccounts = await getAccounts(activeStoreId!);
         setAccounts(fetchedAccounts);
     }
     fetchAccounts();
-  }, []);
+  }, [activeStoreId]);
 
   useEffect(() => {
     if (step !== 2) {
@@ -127,6 +128,7 @@ export default function ScanImagePage() {
   };
   
   const processImage = async (imageDataUri: string) => {
+    if (!activeStoreId) return;
     setPreviewImage(imageDataUri); 
     if (step !== 3) setStep(3);
     setIsProcessing(true);
@@ -172,7 +174,7 @@ export default function ScanImagePage() {
         setExtractedData(data);
         
         if (data.reference) {
-            const duplicateTx = await getCashTransactionByReference(data.reference);
+            const duplicateTx = await getCashTransactionByReference(activeStoreId, data.reference);
             setDuplicateTransaction(duplicateTx);
 
             if (duplicateTx && transactionType === 'Cash Out' && duplicateTx.status === 'Claimed') {
@@ -270,11 +272,11 @@ export default function ScanImagePage() {
   }
 
   const handleAddToOrder = async () => {
-    if (!extractedData?.reference) return;
+    if (!extractedData?.reference || !activeStoreId) return;
     setIsProcessing(true);
 
     try {
-      const existingTx = await getCashTransactionByReference(extractedData.reference);
+      const existingTx = await getCashTransactionByReference(activeStoreId, extractedData.reference);
 
       if (!existingTx) {
           toast({ variant: 'destructive', title: 'Error', description: 'Could not find the existing transaction to add to the order.'});
@@ -284,8 +286,8 @@ export default function ScanImagePage() {
       let imageUrl = '';
       if (previewImage && user) {
         const folder = existingTx.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
-        imageUrl = await finalizeReceiptImage(previewImage, folder, existingTx.reference);
-        await updateCashTransaction(existingTx.id, { receiptImageUrl: imageUrl }, { userId: user.uid , userName: user.displayName || 'user' });
+        imageUrl = await finalizeReceiptImage(activeStoreId, previewImage, folder, existingTx.reference);
+        await updateCashTransaction(activeStoreId, existingTx.id, { receiptImageUrl: imageUrl }, { userId: user.uid , userName: user.displayName || 'user' });
       }
       
       const finalPrice = existingTx.transactionType === 'Cash In' 

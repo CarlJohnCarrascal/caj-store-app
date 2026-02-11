@@ -35,6 +35,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
+import { deleteExpense, logActivity } from '@/lib/data';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -58,9 +59,13 @@ export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [date, setDate] = useState<DateRange | undefined>();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   
   useEffect(() => {
+    if (!activeStoreId) {
+        setIsLoading(false);
+        return;
+    }
     const loadFromCache = async () => {
         const cachedData = await getStoreData<Expense>('expenses');
         if (cachedData.length > 0) {
@@ -70,7 +75,7 @@ export default function ExpenseList() {
     };
     loadFromCache();
 
-    const expensesRef = ref(db, 'expenses');
+    const expensesRef = ref(db, `storeData/${activeStoreId}/expenses`);
     const unsubscribe = onValue(expensesRef, (snapshot) => {
       const expenseList = snapshotToArray<Expense>(snapshot);
       const expensesWithDates = expenseList.map(e => ({
@@ -87,7 +92,7 @@ export default function ExpenseList() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
 
   const categories = useMemo(() => ['all', ...new Set(expenses.map(e => e.category))], [expenses]);
 
@@ -115,17 +120,28 @@ export default function ExpenseList() {
   }, [filteredExpenses]);
 
   const handleDelete = (id: string) => {
-    if (!user) {
+    if (!user || !activeStoreId) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete expenses.' });
         return;
     }
     startTransition(async () => {
       try {
-        await deleteExpenseAction(id, { userId: user.uid, userName: user.displayName || user.email! });
+        const deletedExpense = await deleteExpense(activeStoreId, id);
+        if (deletedExpense) {
+            await logActivity({
+                type: 'Expense',
+                action: 'Deleted',
+                details: `Expense "${deletedExpense.description}" of ₱${deletedExpense.amount.toFixed(2)} was deleted.`,
+                targetId: id,
+                userId: user.uid,
+                userName: user.displayName || user.email!,
+            });
+        }
+        await deleteExpenseAction();
         await deleteItem('expenses', id);
         toast({ title: 'Success', description: 'Expense deleted successfully.' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete expense.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete expense.' });
       }
     });
   };
