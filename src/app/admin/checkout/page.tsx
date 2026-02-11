@@ -38,6 +38,7 @@ import {
     AlertDialogTrigger,
   } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { processOrder } from '@/lib/data';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -56,7 +57,7 @@ export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart, cartCustomer, setCartCustomer } = useCart();
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('unknown');
@@ -69,7 +70,8 @@ export default function CheckoutPage() {
 
 
   useEffect(() => {
-    const customersRef = ref(db, 'customers');
+    if (!activeStoreId) return;
+    const customersRef = ref(db, `storeData/${activeStoreId}/customers`);
     const unsubscribe = onValue(customersRef, (snapshot) => {
       try {
         const fetchedCustomers = snapshotToArray<Customer>(snapshot);
@@ -80,7 +82,7 @@ export default function CheckoutPage() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [activeStoreId, toast]);
 
   useEffect(() => {
     if (cartCustomer && customers.length > 0) {
@@ -125,14 +127,14 @@ export default function CheckoutPage() {
   const amountTenderedValue = parseFloat(amountTendered) || 0;
   const balanceOrChange = finalTotal - amountTenderedValue;
 
-  const processOrder = (settlementType: 'pay_order' | 'add_to_balance') => {
+  const handleProcessOrder = (settlementType: 'pay_order' | 'add_to_balance') => {
     if (!selectedCustomerId) {
       toast({ variant: 'destructive', title: 'Customer Needed', description: 'Please select a customer.' });
       return;
     }
 
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to process an order.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
         return;
     }
 
@@ -160,11 +162,10 @@ export default function CheckoutPage() {
           applyCustomerBalance: isUnknownCustomer ? false : applyBalance,
           initialCustomerBalance: customerForAction.balance,
           settlementType,
-          userId: user.uid,
-          userName: user.displayName || user.email!,
         };
 
-        await processOrderAction(orderPayload);
+        await processOrder(activeStoreId, orderPayload, { userId: user.uid, userName: user.displayName || user.email! });
+        await processOrderAction();
 
         toast({
           title: 'Order Processed!',
@@ -196,7 +197,7 @@ export default function CheckoutPage() {
        toast({ variant: 'destructive', title: 'Insufficient Payment', description: 'Amount tendered must be greater than or equal to the total.' });
        return;
     }
-    processOrder('pay_order');
+    handleProcessOrder('pay_order');
   };
 
   if (cartItems.length === 0 && !isSubmitting) {
@@ -457,7 +458,7 @@ export default function CheckoutPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => processOrder('add_to_balance')} disabled={isSubmitting}>
+                            <AlertDialogAction onClick={() => handleProcessOrder('add_to_balance')} disabled={isSubmitting}>
                                 {isSubmitting ? 'Processing...' : 'Confirm'}
                             </AlertDialogAction>
                         </AlertDialogFooter>
@@ -485,3 +486,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

@@ -33,7 +33,7 @@ import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
-import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
+import { getStoreData, setStoreData, deleteItem, deleteProduct, logActivity } from '@/lib/offline';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
@@ -146,15 +146,24 @@ export default function ProductTable() {
     setFilters(prev => ({ ...prev, [filterType]: value }));
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (product: Product) => {
     if (!user || !activeStoreId) {
         toast({ variant: 'destructive', title: 'Action not allowed', description: 'You must be logged in and have an active store.' });
         return;
     }
     startTransition(async () => {
       try {
-        await deleteProductAction(activeStoreId, id, { userId: user.uid, userName: user.displayName || user.email! });
-        await deleteItem('products', id);
+        await deleteProduct(activeStoreId, product.id);
+        await logActivity({
+          type: 'Product',
+          action: 'Deleted',
+          details: `Product "${product.name}" was deleted.`,
+          targetId: product.id,
+          userId: user.uid,
+          userName: user.displayName || user.email!,
+        });
+        await deleteProductAction();
+        await deleteItem('products', product.id);
         toast({ title: 'Success', description: 'Product deleted successfully.' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete product.' });
@@ -284,7 +293,7 @@ export default function ProductTable() {
                             <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                                onClick={() => handleDelete(product.id)}
+                                onClick={() => handleDelete(product)}
                                 disabled={isPending}
                                 className="bg-destructive hover:bg-destructive/90"
                             >
@@ -318,3 +327,4 @@ export default function ProductTable() {
     </>
   );
 }
+

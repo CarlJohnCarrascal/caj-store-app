@@ -31,7 +31,7 @@ import { extractTransactionDetails } from '@/ai/flows/extract-transaction-detail
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
-import { getFeeThresholds, isReferenceNumberDuplicate, finalizeReceiptImage } from '@/lib/data';
+import { getFeeThresholds, isReferenceNumberDuplicate, finalizeReceiptImage, addCashTransaction, updateCashTransaction, logActivity } from '@/lib/data';
 import { calculateFee } from '@/lib/utils';
 
 
@@ -87,10 +87,10 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
       fee: 0,
       datetime: '',
       receiptImageUrl: '',
+      ...transaction,
       amount: transaction?.amount ? Number(transaction.amount) : 0,
       fee: transaction?.fee ? Number(transaction.fee) : 0,
       datetime: transaction?.datetime ? (transaction.datetime as any).slice(0, 16) : '',
-      ...transaction,
     },
   });
   
@@ -271,38 +271,28 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         }
 
         localStorage.setItem('lastUsedAccountId', data.accountUsedId);
-        const formData = new FormData();
-        const dataToSubmit = { ...data, status: 'Available' as const };
-        Object.entries(dataToSubmit).forEach(([key, value]) => {
-            formData.append(key, String(value));
-        });
-
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
+        
         let imageUrl = '';
-
-        //upload image
         if (data.fromScanned) {
           const storedItemRaw = localStorage.getItem("temp_receipt_image_" + data.fromScanned);
           if (storedItemRaw) {
             const storedItem = JSON.parse(storedItemRaw);
             const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
             imageUrl = await finalizeReceiptImage(activeStoreId, storedItem.image, folder, data.reference);
-            formData.append('receiptImageUrl', imageUrl);
           }
         }
 
-        await addCashTransactionAction(activeStoreId, formData);
+        const dataToSubmit = { ...data, status: 'Available' as const, receiptImageUrl: imageUrl };
 
-        // Clean up local storage after successful processing
+        await addCashTransaction(activeStoreId, dataToSubmit, { userId: user.uid, userName: user.displayName || user.email! });
+        await addCashTransactionAction();
+
         if (data.fromScanned) {
             localStorage.removeItem('temp_receipt_image_' + data.fromScanned);
         }
 
         toast({ title: 'Success', description: 'Transaction saved successfully.' });
         router.push('/admin/cashio');
-        router.refresh();
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
@@ -325,37 +315,24 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         localStorage.setItem('lastUsedAccountId', data.accountUsedId);
         const finalStatus = data.transactionType === 'Cash In' ? 'Processing' : 'Available';
         
-        const formData = new FormData();
-        const dataToSubmit = { ...data, status: finalStatus };
-        Object.entries(dataToSubmit).forEach(([key, value]) => {
-          if (value !== undefined) {
-            formData.append(key, String(value));
-          }
-        });
-
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
         let imageUrl = '';
-
-        //upload image
         if (data.fromScanned) {
           const storedItemRaw = localStorage.getItem("temp_receipt_image_" + data.fromScanned);
           if (storedItemRaw) {
             const storedItem = JSON.parse(storedItemRaw);
             const folder = data.transactionType === 'Cash Out' ? 'cashout' : 'cashin';
             imageUrl = await finalizeReceiptImage(activeStoreId, storedItem.image, folder, data.reference);
-            formData.append('receiptImageUrl', imageUrl);
           }
         }
 
-        const newTransaction = await addCashTransactionAction(activeStoreId, formData);
+        const dataToSubmit = { ...data, status: finalStatus, receiptImageUrl: imageUrl };
+
+        const newTransaction = await addCashTransaction(activeStoreId, dataToSubmit, { userId: user.uid, userName: user.displayName || user.email! });
+        await addCashTransactionAction();
         
-        // Clean up local storage after successful processing
         if (data.fromScanned) {
             localStorage.removeItem('temp_receipt_image_' + data.fromScanned);
         }
-
 
         const finalPrice = newTransaction.transactionType === 'Cash In' ? newTransaction.amount + newTransaction.fee : -(newTransaction.amount - newTransaction.fee);
 
@@ -389,29 +366,18 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
   };
 
   const onUpdate = (data: CashTransactionFormValues) => {
-    if (!transaction?.id || !activeStoreId) return;
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!transaction?.id || !activeStoreId || !user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Missing required data to update.' });
         return;
     }
     startTransition(async () => {
         try {
             localStorage.setItem('lastUsedAccountId', data.accountUsedId);
-            const formData = new FormData();
-            const dataToSubmit = { ...data };
-            Object.entries(dataToSubmit).forEach(([key, value]) => {
-                if (value !== undefined) {
-                    formData.append(key, String(value));
-                }
-            });
+            await updateCashTransaction(activeStoreId, transaction.id, data, { userId: user.uid, userName: user.displayName || user.email! });
+            await updateCashTransactionAction(transaction.id);
             
-            formData.append('userId', user.uid);
-            formData.append('userName', user.displayName || user.email!);
-
-            await updateCashTransactionAction(activeStoreId, transaction.id, formData);
             toast({ title: 'Success', description: 'Transaction updated successfully.' });
             router.push('/admin/cashio');
-            router.refresh();
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
         }
@@ -658,3 +624,4 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     </>
   );
 }
+

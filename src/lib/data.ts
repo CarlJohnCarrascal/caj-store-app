@@ -5,7 +5,7 @@
 import { db, storage } from './firebase';
 import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction, limitToLast } from 'firebase/database';
 import { ref as storageRef, uploadString, getDownloadURL, deleteObject, getBytes } from 'firebase/storage';
-import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice, StoreMemberInfo } from './types';
+import type { Product, Account, Customer, CashTransaction, Collection, Order, CartItem, Expense, AppUser, ChangeTracker, FeeThreshold, EloadingReportData, PrintingReportData, OtherServiceReportData, PrintingPrice, StoreMemberInfo, Store } from './types';
 import { getCurrentPHTISOString, getReportPaths } from './utils';
 
 // Helper function to convert Firebase snapshot to an array
@@ -27,11 +27,19 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 // ==================
 export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role' | 'activeStoreId'>): Promise<void> {
   const userRef = ref(db, `users/${user.id}`);
-  await set(userRef, {
+   await set(userRef, {
     name: user.name,
     email: user.email,
-    authorized: true, // New users are now authorized by default
-    role: 'user', // New users are assigned 'user' role by default
+    authorized: true,
+    role: 'user',
+  });
+  await logActivity({
+      type: 'User',
+      action: 'Created',
+      details: `New user account created for ${user.name} (${user.email}).`,
+      targetId: user.id,
+      userId: user.id,
+      userName: user.name
   });
 }
 
@@ -51,6 +59,14 @@ export async function updateUserAuthorization(userId: string, authorized: boolea
             authorized: authorized,
             updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
         });
+        const targetUser = snapshot.val();
+        await logActivity({
+            type: 'User',
+            action: 'Authorization',
+            details: `Access for ${targetUser?.name || 'user'} was ${authorized ? 'granted' : 'revoked'}.`,
+            targetId: userId,
+            ...updatedBy,
+        });
     } else {
         throw new Error('User not found');
     }
@@ -58,11 +74,19 @@ export async function updateUserAuthorization(userId: string, authorized: boolea
 
 export async function updateUserRole(userId: string, role: 'admin' | 'user', updatedBy: Omit<ChangeTracker, 'timestamp'>): Promise<void> {
     const userRef = ref(db, `users/${userId}`);
-    const snapshot = await get(userRef);
+     const snapshot = await get(userRef);
     if (snapshot.exists()) {
         await update(userRef, {
             role: role,
             updatedBy: { ...updatedBy, timestamp: getCurrentPHTISOString() },
+        });
+        const targetUser = snapshot.val();
+        await logActivity({
+            type: 'RoleChange',
+            action: 'Updated',
+            details: `${targetUser?.name || 'user'} was assigned the role: ${role}.`,
+            targetId: userId,
+            ...updatedBy,
         });
     } else {
         throw new Error('User not found');
@@ -89,6 +113,117 @@ export async function getStoreMembers(storeId: string): Promise<StoreMemberInfo[
       }));
   }
   return [];
+}
+
+const generateJoinCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+export async function createStore(storeName: string, user: { id: string; name: string; email: string; }) {
+    const userRef = ref(db, `users/${user.id}`);
+    
+    const newStoreRef = push(ref(db, 'stores'));
+    const joinCode = generateJoinCode();
+    const newStore: Omit<Store, 'id'> = {
+        name: storeName,
+        ownerId: user.id,
+        ownerName: user.name,
+        joinCode: joinCode,
+        createdBy: { userId: user.id, userName: user.name, timestamp: getCurrentPHTISOString() },
+    };
+    await set(newStoreRef, newStore);
+    const newStoreId = newStoreRef.key!;
+
+    const memberRef = ref(db, `storeMembers/${newStoreId}/${user.id}`);
+    await set(memberRef, {
+        name: user.name,
+        email: user.email,
+        status: 'approved',
+        role: 'owner',
+    });
+
+    await addAccount(newStoreId, {
+        accountName: 'N/A',
+        bankName: 'N/A',
+        accountNumber: 'N/A',
+        balance: 0,
+    }, { userId: user.id, userName: user.name });
+
+    await update(userRef, { activeStoreId: newStoreId });
+
+    await logActivity({
+        type: 'Store',
+        action: 'Created',
+        details: `Store "${storeName}" was created.`,
+        targetId: newStoreId,
+        userId: user.id,
+        userName: user.name,
+    });
+}
+
+export async function joinStore(joinCode: string, user: { id: string; name: string; email: string; }) {
+    const storesRef = ref(db, 'stores');
+    const q = query(storesRef, orderByChild('joinCode'), equalTo(joinCode));
+    const snapshot = await get(q);
+
+    if (!snapshot.exists()) {
+        throw new Error('Invalid join code.');
+    }
+
+    const storeId = Object.keys(snapshot.val())[0];
+    const storeData = Object.values(snapshot.val())[0] as Store;
+
+    const memberRef = ref(db, `storeMembers/${storeId}/${user.id}`);
+    const memberSnap = await get(memberRef);
+    if (memberSnap.exists()) {
+        const memberData = memberSnap.val();
+        if(memberData.status === 'pending') {
+            throw new Error('You have already requested to join this store.');
+        } else if (memberData.status === 'approved') {
+            throw new Error('You are already a member of this store.');
+        }
+    }
+
+    await set(memberRef, {
+        name: user.name,
+        email: user.email,
+        status: 'pending',
+        role: 'member',
+    });
+
+    await logActivity({
+        type: 'StoreMember',
+        action: 'Created',
+        details: `User "${user.name}" requested to join store "${storeData.name}".`,
+        targetId: storeId,
+        userId: user.id,
+        userName: user.name,
+    });
+}
+
+export async function approveMember(storeId: string, memberId: string, user: { userId: string; userName: string; }) {
+    const storeRef = ref(db, `stores/${storeId}`);
+    const storeSnap = await get(storeRef);
+    if (!storeSnap.exists() || storeSnap.val().ownerId !== user.userId) {
+        throw new Error("You are not the owner of this store.");
+    }
+    const storeData = storeSnap.val();
+
+    const memberRef = ref(db, `storeMembers/${storeId}/${memberId}`);
+    const memberSnap = await get(memberRef);
+    if (!memberSnap.exists()) {
+        throw new Error("Member not found.");
+    }
+
+    await update(memberRef, { status: 'approved' });
+
+    await logActivity({
+        type: 'StoreMember',
+        action: 'Updated',
+        details: `Membership for "${memberSnap.val().name}" was approved in store "${storeData.name}".`,
+        targetId: storeId,
+        ...user,
+    });
 }
 
 
@@ -362,7 +497,17 @@ export async function addCashTransaction(storeId: string, transactionData: Omit<
 
   await set(newTransactionRef, dataToSave);
   
+  await logActivity({
+    type: 'CashIO',
+    action: 'Created',
+    details: `${transactionData.transactionType} of ₱${transactionData.amount.toFixed(2)} for "${transactionData.accountName}" was recorded.`,
+    targetId: newTransactionRef.key!,
+    ...createdBy,
+  });
+  
   const result = { ...dataToSave, id: newTransactionRef.key! };
+  await updateCashIOReport(storeId, result, 'allTransactions');
+
   return result;
 }
 
@@ -399,8 +544,8 @@ export async function updateCashTransaction(
 
         const newAccountUsedId = transactionData.accountUsedId || oldTransaction.accountUsedId;
         const newTransactionType = transactionData.transactionType || oldTransaction.transactionType;
-        const newAmount = transactionData.amount || oldTransaction.amount;
-        const newFee = transactionData.fee || oldTransaction.fee;
+        const newAmount = transactionData.amount ?? oldTransaction.amount;
+        const newFee = transactionData.fee ?? oldTransaction.fee;
         
         const newAccountRef = ref(db, `storeData/${storeId}/accounts/${newAccountUsedId}`);
         const newAccountSnapshot = await get(newAccountRef);
@@ -441,8 +586,28 @@ export async function updateCashTransaction(
     delete dataToSave.datetime;
 
     await set(transactionRef, dataToSave);
+    
+    const newTransaction = { id, ...dataToSave };
 
-    return { id, ...dataToSave };
+    await updateCashIOReport(storeId, oldTransaction, 'allTransactions', undefined, -1);
+    if (oldTransaction.customerId) {
+        await updateCashIOReport(storeId, oldTransaction, 'orderedTransactions', oldTransaction.customerId, -1);
+    }
+    await updateCashIOReport(storeId, newTransaction, 'allTransactions');
+    if (newTransaction.customerId) {
+        await updateCashIOReport(storeId, newTransaction, 'orderedTransactions', newTransaction.customerId);
+    }
+
+    await logActivity({
+        type: 'CashIO',
+        action: 'Updated',
+        details: `Transaction for "${newTransaction.accountName}" was updated.`,
+        targetId: newTransaction.id,
+        ...updatedBy,
+    });
+
+
+    return newTransaction;
 }
 
 export async function deleteCashTransaction(storeId: string, id: string): Promise<CashTransaction | null> {
@@ -466,7 +631,7 @@ export async function deleteCashTransaction(storeId: string, id: string): Promis
 // Image Upload Function
 // =======================
 export async function finalizeReceiptImage(storeId: string, dataUrl: string, folder: 'cashin' | 'cashout', fileName: string): Promise<string> {
-  const mainfolder = process.env.IMAGE_FOLDER;
+  const mainfolder = process.env.IMAGE_FOLDER || 'receipts';
   const path = `${mainfolder}/${storeId}/${folder}/${fileName}`;
     const imageRef = storageRef(storage, path);
     // Directly upload the data URL string
@@ -568,6 +733,146 @@ export async function deleteCollection(storeId: string, id: string): Promise<Col
 // ==================
 // Order Functions
 // ==================
+
+type ProcessOrderPayload = {
+    customerId: string;
+    customerName: string;
+    items: CartItem[];
+    subtotal: number;
+    discount: number;
+    total: number;
+    amountTendered: number;
+    applyCustomerBalance: boolean;
+    initialCustomerBalance: number;
+    settlementType: 'pay_order' | 'add_to_balance';
+};
+
+
+export async function processOrder(storeId: string, orderData: ProcessOrderPayload, user: { userId: string; userName: string; }) {
+    const {
+        customerId,
+        customerName,
+        items,
+        subtotal,
+        discount,
+        total,
+        amountTendered,
+        applyCustomerBalance,
+        initialCustomerBalance,
+        settlementType,
+    } = orderData;
+    
+    let updatedTransaction: CashTransaction | null = null;
+    
+    for (const item of items) {
+        switch (item.category) {
+            case 'CashIO':
+                if (item.originalTransactionId) {
+                    const cashTx = await getCashTransactionById(storeId, item.originalTransactionId);
+                    if (cashTx) {
+                        const finalStatus = cashTx.transactionType === 'Cash In' ? 'Delivered' : 'Claimed';
+                        updatedTransaction = await updateCashTransaction(storeId, cashTx.id, { 
+                            status: finalStatus,
+                            customerId,
+                        }, user);
+                        await logActivity({
+                            type: 'CashIO',
+                            action: 'Updated',
+                            details: `Transaction for "${customerName}" was marked as ${finalStatus} via checkout.`,
+                            targetId: item.originalTransactionId,
+                            ...user
+                        });
+                    }
+                }
+                break;
+            case 'E-loading': {
+                const description = typeof item.description === 'string' ? item.description : '';
+                const { fee } = getCostAndFeeFromDescription(description);
+                const serviceType = item.name.replace('E-loading: ', '').trim();
+                const totalCost = item.price - fee;
+                await updateEloadingReports(storeId, { serviceType, cost: totalCost, fee });
+                break;
+            }
+            case 'Printing': {
+                const serviceType = item.name.replace('Printing: ', '').trim();
+                const size = item.dimensions !== 'N/A' ? item.dimensions : '';
+                await updatePrintingReports(storeId, { serviceType, size, quantity: item.quantity, sales: item.price * item.quantity });
+                break;
+            }
+            case 'Other Service': {
+                const { fee } = getCostAndFeeFromDescription(item.description || '');
+                const totalCost = item.price - fee;
+                await updateOtherServiceReports(storeId, { cost: totalCost, fee });
+                break;
+            }
+            case 'Financial':
+                break;
+            default:
+                await updateProductReports(storeId, item.id, item.quantity, item.price * item.quantity);
+                break;
+        }
+    }
+
+    const isUnknownCustomer = customerId === 'unknown';
+    const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
+    
+    const finalAmountTendered = total < 0 ? 0 : amountTendered;
+    let changeToBalance = 0;
+
+    if (settlementType === 'add_to_balance') {
+      changeToBalance = finalAmountTendered - total;
+    }
+
+    const totalBalanceUpdate = changeToBalance - balanceUsed;
+    
+    const orderPayload: Omit<Order, 'id'> = {
+        customerId,
+        customerName,
+        items,
+        subtotal,
+        discount,
+        total,
+        amountTendered: finalAmountTendered,
+        settlementType,
+        applyCustomerBalance: applyCustomerBalance,
+        createdAt: '',
+    };
+
+    if (!isUnknownCustomer) {
+        orderPayload.initialCustomerBalance = initialCustomerBalance;
+        orderPayload.newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
+    }
+
+    const newOrder = await addOrder(storeId, orderPayload, user);
+    
+    if (updatedTransaction) {
+        await updateCashIOReport(storeId, updatedTransaction, 'orderedTransactions', customerId);
+    }
+
+    await logActivity({
+        type: 'Order',
+        action: 'Created',
+        details: `New order placed for ${customerName} for ₱${total.toFixed(2)}.`,
+        targetId: newOrder.id,
+        ...user,
+    });
+    
+    await updateSalesReports(storeId, newOrder);
+    const orderValueForReport = Math.abs(total);
+    await updateCustomerReports(storeId, 'order', customerId, orderValueForReport);
+
+    if (!isUnknownCustomer && totalBalanceUpdate !== 0) {
+        await updateCustomerBalance(storeId, customerId, totalBalanceUpdate);
+        await logActivity({
+            type: 'Customer',
+            action: 'Updated',
+            details: `Balance for ${customerName} updated by ₱${totalBalanceUpdate.toFixed(2)} from an order.`,
+            targetId: customerId,
+            ...user,
+        });
+    }
+}
+
 
 export async function addOrder(storeId: string, orderData: Omit<Order, 'id'>, createdBy: Omit<ChangeTracker, 'timestamp'>): Promise<Order> {
     const newOrderRef = push(ref(db, `storeData/${storeId}/orders`));

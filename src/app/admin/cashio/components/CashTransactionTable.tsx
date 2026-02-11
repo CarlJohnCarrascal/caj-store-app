@@ -60,7 +60,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { deleteCashTransactionAction } from '@/lib/actions';
-import { getStoreData, setStoreData, deleteItem, getReportData } from '@/lib/offline';
+import { getStoreData, setStoreData, deleteItem, getReportData, deleteCashTransaction } from '@/lib/offline';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 
@@ -114,7 +114,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
   const [page, setPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
   const [sort, setSort] = React.useState<{key: string, order: 'asc' | 'desc'}>({ key: 'transactionDate', order: 'desc' });
-  const [viewMode, setViewMode] = React.useState<'grid' | 'grid'>('grid');
+  const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('grid');
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<any | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = React.useState(false);
@@ -303,7 +303,8 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     }
     startDeleteTransition(async () => {
         try {
-            await deleteCashTransactionAction(activeStoreId, id, { userId: user.uid, userName: user.displayName || user.email! });
+            await deleteCashTransaction(activeStoreId, id);
+            await deleteCashTransactionAction();
             await deleteItem('cashTransactions', id);
             toast({ title: 'Success', description: 'Transaction deleted successfully.' });
             setSelectedTransaction(null);
@@ -586,8 +587,6 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map(t => {
                 const isValidDate = t.transactionDate && !isNaN(new Date(t.transactionDate).getTime());
-                const displayDate = isValidDate ? new Date(t.transactionDate) : null;
-
                 return (
                 <div
                   key={t.id}
@@ -1023,3 +1022,4 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     </div>
   );
 }
+
