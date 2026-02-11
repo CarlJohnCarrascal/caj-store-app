@@ -22,6 +22,27 @@ const generateJoinCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+export async function regenerateJoinCode(storeId: string, user: { userId: string, userName: string }) {
+    const storeRef = ref(db, `stores/${storeId}`);
+    const storeSnap = await get(storeRef);
+    if (!storeSnap.exists() || storeSnap.val().ownerId !== user.userId) {
+        throw new Error("Only the store owner can regenerate the join code.");
+    }
+
+    const newJoinCode = generateJoinCode();
+    await update(storeRef, { joinCode: newJoinCode });
+
+    await logActivity({
+        type: 'Store',
+        action: 'Updated',
+        details: `Join code for store "${storeSnap.val().name}" was regenerated.`,
+        targetId: storeId,
+        ...user,
+    });
+
+    return newJoinCode;
+}
+
 export async function createStore(storeName: string, user: { id: string; name: string; email: string; }) {
     const userRef = ref(db, `users/${user.id}`);
     
@@ -126,5 +147,46 @@ export async function approveMember(storeId: string, memberId: string, user: { u
         details: `Membership for "${memberSnap.val().name}" was approved in store "${storeData.name}".`,
         targetId: storeId,
         ...user,
+    });
+}
+
+export async function removeStoreMember(storeId: string, memberId: string, adminUser: { userId: string, userName: string }) {
+    const storeRef = ref(db, `stores/${storeId}`);
+    const storeSnap = await get(storeRef);
+    if (!storeSnap.exists() || storeSnap.val().ownerId !== adminUser.userId) {
+        throw new Error("You are not the owner of this store.");
+    }
+    const storeData = storeSnap.val();
+
+    if (storeData.ownerId === memberId) {
+        throw new Error("Cannot remove the store owner.");
+    }
+
+    const memberRef = ref(db, `storeMembers/${storeId}/${memberId}`);
+    const memberSnap = await get(memberRef);
+    if (!memberSnap.exists()) {
+        throw new Error("Member not found.");
+    }
+
+    const memberData = memberSnap.val();
+    await remove(memberRef);
+    
+    // Also remove their activeStoreId if it was this store
+    const targetUserRef = ref(db, `users/${memberId}`);
+    const targetUserSnap = await get(targetUserRef);
+    if (targetUserSnap.exists() && targetUserSnap.val().activeStoreId === storeId) {
+        await update(targetUserRef, { activeStoreId: null });
+    }
+
+    const logMessage = memberData.status === 'pending' 
+        ? `Membership request for "${memberData.name}" was rejected.`
+        : `Member "${memberData.name}" was removed from store "${storeData.name}".`;
+
+    await logActivity({
+        type: 'StoreMember',
+        action: 'Deleted',
+        details: logMessage,
+        targetId: storeId,
+        ...adminUser,
     });
 }

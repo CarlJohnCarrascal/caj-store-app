@@ -202,3 +202,11 @@ export async function joinStoreAction() {
 export async function approveMemberAction() {
     revalidatePath('/admin/stores');
 }
+
+export async function regenerateJoinCodeAction() {
+    revalidatePath('/admin/stores');
+}
+
+export async function removeStoreMemberAction() {
+    revalidatePath('/admin/stores');
+}
