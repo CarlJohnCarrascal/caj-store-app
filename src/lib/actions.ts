@@ -11,9 +11,6 @@ import {
   getUserById, 
   updateUserRole, 
   regenerateCashIOReports,
-  createStore,
-  joinStore,
-  approveMember,
 } from './data';
 
 // ==================
@@ -193,22 +190,15 @@ export async function regenerateCashIOReportsAction(user: { userId: string; user
     revalidatePath('/admin/reports/cashio');
 }
 
-export async function createStoreAction(storeName: string, user: { userId: string; userName: string }) {
-    const appUser = await getUserById(user.userId);
-    if (!appUser) {
-      throw new Error("User creating store not found.");
-    }
-    await createStore(storeName, { id: appUser.id, name: appUser.name, email: appUser.email });
+export async function createStoreAction() {
     revalidatePath('/admin/stores');
     revalidatePath('/admin');
 }
 
-export async function joinStoreAction(joinCode: string, user: { id: string; name: string; email: string; }) {
-    await joinStore(joinCode, user);
+export async function joinStoreAction() {
     revalidatePath('/admin/stores');
 }
 
-export async function approveMemberAction(storeId: string, memberId: string, user: { userId: string; userName: string; }) {
-    await approveMember(storeId, memberId, user);
+export async function approveMemberAction() {
     revalidatePath('/admin/stores');
 }

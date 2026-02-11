@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { createStoreAction, joinStoreAction, approveMemberAction } from '@/lib/actions';
-import { getStoreMembers } from '@/lib/data';
+import { getStoreMembers, createStore, joinStore, approveMember } from '@/lib/data';
 import { StoreMemberInfo } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,7 +34,8 @@ export default function StoreManager() {
     if (!user || !appUser || !newStoreName) return;
     startTransition(async () => {
       try {
-        await createStoreAction(newStoreName, { userId: user.uid, userName: appUser.name });
+        await createStore(newStoreName, { id: user.uid, name: appUser.name, email: appUser.email! });
+        await createStoreAction();
         toast({ title: 'Store Created!', description: `"${newStoreName}" has been created and set as your active store.`});
         setIsCreateOpen(false);
         setNewStoreName('');
@@ -48,7 +49,8 @@ export default function StoreManager() {
     if (!user || !appUser || !joinCode) return;
     startTransition(async () => {
       try {
-        await joinStoreAction(joinCode, { id: user.uid, name: appUser.name, email: appUser.email });
+        await joinStore(joinCode, { id: user.uid, name: appUser.name, email: appUser.email! });
+        await joinStoreAction();
         toast({ title: 'Request Sent!', description: `Your request to join the store has been sent for approval.`});
         setIsJoinOpen(false);
         setJoinCode('');
@@ -69,7 +71,8 @@ export default function StoreManager() {
     if(!activeStoreId || !user || !appUser) return;
     startTransition(async () => {
         try {
-            await approveMemberAction(activeStoreId, memberId, { userId: user.uid, userName: appUser.name });
+            await approveMember(activeStoreId, memberId, { userId: user.uid, userName: appUser.name });
+            await approveMemberAction();
             toast({ title: 'Member Approved!' });
             const updatedMembers = await getStoreMembers(activeStoreId);
             setMembers(updatedMembers);
