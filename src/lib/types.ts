@@ -1,7 +1,4 @@
 
-
-'use server';
-
 export interface ChangeTracker {
   userId: string;
   userName: string;

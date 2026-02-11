@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { addCustomerAction, updateCustomerAction } from '@/lib/actions';
 import { useTransition } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { addCustomer, updateCustomer, logActivity } from '@/lib/data';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -35,7 +36,7 @@ interface CustomerFormProps {
 export default function CustomerForm({ customer, onSuccess, onCancel }: CustomerFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<CustomerFormValues>({
@@ -51,41 +52,47 @@ export default function CustomerForm({ customer, onSuccess, onCancel }: Customer
   });
 
   const onSubmit = (data: CustomerFormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have an active store.' });
         return;
     }
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            formData.append(key, String(value));
-          }
-        });
-        
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
+        const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
 
         if (customer) {
-          const updatedCustomer = await updateCustomerAction(customer.id, formData);
+          const updatedCustomer = await updateCustomer(activeStoreId, customer.id, data, userPayload);
+           await logActivity({
+            type: 'Customer',
+            action: 'Updated',
+            details: `Customer "${data.name}" was updated.`,
+            targetId: customer.id,
+            ...userPayload
+          });
+          await updateCustomerAction(customer.id);
           toast({ title: 'Success', description: 'Customer updated successfully.' });
           if (onSuccess) {
             onSuccess(updatedCustomer);
           } else {
             router.push('/admin/customers');
-            router.refresh();
           }
         } else {
-          const newCustomer = await addCustomerAction(formData);
+          const newCustomer = await addCustomer(activeStoreId, data, userPayload);
+          await logActivity({
+            type: 'Customer',
+            action: 'Created',
+            details: `Customer "${newCustomer.name}" was created.`,
+            targetId: newCustomer.id,
+            ...userPayload
+          });
+          await addCustomerAction();
           toast({ title: 'Success', description: 'Customer added successfully.' });
-          form.reset();
           if (onSuccess) {
             onSuccess(newCustomer);
           } else {
             router.push('/admin/customers');
-            router.refresh();
           }
+          form.reset();
         }
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });

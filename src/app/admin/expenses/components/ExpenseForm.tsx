@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +20,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/hooks/use-auth';
+import { addExpense, updateExpense, logActivity } from '@/lib/data';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -39,7 +41,7 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -58,34 +60,41 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
   });
 
   const onSubmit = (data: FormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have an active store.' });
         return;
     }
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined) {
-            formData.append(key, String(value));
-          }
-        });
-
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
+        const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
+        
         if (expense) {
-          await updateExpenseAction(expense.id, formData);
+          await updateExpense(activeStoreId, expense.id, data, userPayload);
+          await logActivity({
+            type: 'Expense',
+            action: 'Updated',
+            details: `Expense "${data.description}" was updated.`,
+            targetId: expense.id,
+            ...userPayload
+          });
+          await updateExpenseAction(expense.id);
           toast({ title: 'Success', description: 'Expense updated successfully.' });
         } else {
-          await addExpenseAction(formData);
+          const newExpense = await addExpense(activeStoreId, data, userPayload);
+           await logActivity({
+            type: 'Expense',
+            action: 'Created',
+            details: `Expense "${newExpense.description}" of ₱${newExpense.amount.toFixed(2)} was created.`,
+            targetId: newExpense.id,
+            ...userPayload
+          });
+          await addExpenseAction();
           toast({ title: 'Success', description: 'Expense added successfully.' });
           form.reset();
         }
         router.push('/admin/expenses');
-        router.refresh();
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };

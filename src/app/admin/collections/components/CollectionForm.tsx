@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +19,7 @@ import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 import { useAuth } from '@/hooks/use-auth';
+import { addCollection, updateCollection, logActivity } from '@/lib/data';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -37,7 +39,7 @@ interface CollectionFormProps {
 export default function CollectionForm({ collection, customers: initialCustomers, collectionNames }: CollectionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, activeStoreId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
@@ -57,34 +59,41 @@ export default function CollectionForm({ collection, customers: initialCustomers
   });
 
   const onSubmit = (data: CollectionFormValues) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeStoreId) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have an active store.' });
         return;
     }
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined) {
-            formData.append(key, String(value));
-          }
-        });
-
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
+        const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
+        
         if (collection) {
-          await updateCollectionAction(collection.id, formData);
+          await updateCollection(activeStoreId, { id: collection.id, ...data }, userPayload);
+          await logActivity({
+            type: 'Collection',
+            action: 'Updated',
+            details: `Collection for customer was updated.`,
+            targetId: collection.id,
+            ...userPayload
+          });
+          await updateCollectionAction(collection.id);
           toast({ title: 'Success', description: 'Collection updated successfully.' });
         } else {
-          await addCollectionAction(formData);
+          const newCollection = await addCollection(activeStoreId, data, userPayload);
+          await logActivity({
+            type: 'Collection',
+            action: 'Created',
+            details: `Collection "${newCollection.name}" for was created.`,
+            targetId: newCollection.id,
+            ...userPayload
+          });
+          await addCollectionAction();
           toast({ title: 'Success', description: 'Collection added successfully.' });
           form.reset();
         }
         router.push('/admin/collections');
-        router.refresh();
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
     });
   };

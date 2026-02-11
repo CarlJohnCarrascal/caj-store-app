@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { addAccountAction } from '@/lib/actions';
 import { useTransition } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { addAccount, logActivity } from '@/lib/data';
 
 const formSchema = z.object({
   accountName: z.string().min(1, 'Account name is required'),
@@ -50,24 +52,25 @@ export default function AccountForm({ account }: AccountFormProps) {
     }
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-            formData.append(key, String(value));
-        });
+        const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
         
-        formData.append('userId', user.uid);
-        formData.append('userName', user.displayName || user.email!);
-
         if (account) {
-          // TODO: Implement update account action
+          // TODO: Implement update account logic
           toast({ title: 'Success', description: 'Account updated successfully.' });
         } else {
-          await addAccountAction(activeStoreId, formData);
+          const newAccount = await addAccount(activeStoreId, data, userPayload);
+          await logActivity({
+            type: 'Account',
+            action: 'Created',
+            details: `Account "${newAccount.accountName}" was created.`,
+            targetId: newAccount.id,
+            ...userPayload,
+          });
+          await addAccountAction();
           toast({ title: 'Success', description: 'Account added successfully.' });
           form.reset();
         }
         router.push('/admin/accounts');
-        router.refresh();
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
