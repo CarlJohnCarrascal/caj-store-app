@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -113,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 updateUserStores();
             });
 
-            storeMembersUnsubscribe = onValue(membersSnap, (membersSnap) => {
+            storeMembersUnsubscribe = onValue(storeMembersRef, (membersSnap) => {
                 allStoreMembers = membersSnap.val() || {};
                 updateUserStores();
             });
