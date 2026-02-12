@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe, update, get } from 'firebase/database';
 import { AppUser, Store, StoreMemberInfo } from '@/lib/types';
@@ -144,7 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
+    await signInWithPopup(auth, provider);
   };
   
   const signInWithEmail = async (email: string, password: string) => {
