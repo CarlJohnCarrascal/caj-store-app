@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -28,6 +27,22 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// These functions don't depend on the component's state, so they can be defined outside.
+// This prevents them from being recreated on every render, improving stability.
+const signInWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
+};
+
+const signInWithEmail = async (email: string, password: string) => {
+  await signInWithEmailAndPassword(auth, email, password);
+};
+
+const signOut = async () => {
+  await firebaseSignOut(auth);
+};
+
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -98,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 updateUserStores();
             });
 
-            storeMembersUnsubscribe = onValue(storeMembersRef, (membersSnap) => {
+            storeMembersUnsubscribe = onValue(membersSnap, (membersSnap) => {
                 allStoreMembers = membersSnap.val() || {};
                 updateUserStores();
             });
@@ -141,19 +156,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       cleanup();
     };
   }, []);
-  
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-  
-  const signInWithEmail = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const signOut = async () => {
-    await firebaseSignOut(auth);
-  };
   
   const switchStore = async (storeId: string) => {
     if (user) {
