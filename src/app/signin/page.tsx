@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,6 +9,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getRedirectResult } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { ref, get } from 'firebase/database';
 
 // SVG for Google icon
 const GoogleIcon = () => (
@@ -24,18 +26,62 @@ export default function SignInPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
+
 
   useEffect(() => {
-    // If the user is already logged in, redirect them away from the sign-in page.
-    if (!loading && user) {
-        if (appUser) {
-            router.replace(appUser.authorized ? '/admin' : '/unauthorized');
+    // This effect handles the result of a redirect-based sign-in (like Google)
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          const user = result.user;
+          const userRef = ref(db, `users/${user.uid}`);
+          const userSnap = await get(userRef);
+
+          if (userSnap.exists()) {
+            const dbUser = userSnap.val();
+            if (dbUser.authorized) {
+              router.push('/admin');
+            } else {
+              router.push('/unauthorized');
+            }
+          } else {
+            router.push('/auth/complete-profile');
+          }
         } else {
-            // New user, but not yet in our DB.
-            router.replace('/auth/complete-profile');
+          // No redirect result, proceed with normal auth state checking
+          setIsProcessingRedirect(false);
         }
+      } catch (err: any) {
+        console.error("Auth redirect error:", err);
+        toast({
+          variant: 'destructive',
+          title: 'Sign In Error',
+          description: err.code === 'auth/account-exists-with-different-credential'
+            ? 'An account already exists with the same email address but different sign-in credentials. Try signing in with the original method.'
+            : err.message,
+        });
+        setIsProcessingRedirect(false);
+      }
+    };
+    handleRedirect();
+  }, [router, toast]);
+
+
+  useEffect(() => {
+    // This effect handles what to do once we know the user's auth state
+    // (and we're not busy processing a redirect).
+    if (!isProcessingRedirect && !loading) {
+      if (user) {
+        if (appUser) {
+          router.replace(appUser.authorized ? '/admin' : '/unauthorized');
+        } else {
+          router.replace('/auth/complete-profile');
+        }
+      }
     }
-  }, [user, appUser, loading, router]);
+  }, [user, appUser, loading, isProcessingRedirect, router]);
 
   const handleEmailSignIn = async () => {
     if (!email || !password) {
@@ -53,13 +99,13 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-      // The user will be redirected to Google and then back to /auth/action
+      // This will redirect the user. The result is handled by the useEffect.
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Sign-in Failed', description: error.message || 'An unknown error occurred with Google Sign-In.' });
     }
   };
   
-  if (loading || user) {
+  if (loading || isProcessingRedirect || user) {
     return (
         <div className="min-h-screen flex items-center justify-center">
             <p>Checking authentication status...</p>
