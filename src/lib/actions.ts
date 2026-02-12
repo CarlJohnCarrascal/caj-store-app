@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -6,7 +5,6 @@ import {
   AppUser,
 } from './types';
 import { 
-  createUserProfile, 
   updateUserAuthorization, 
   getUserById, 
   updateUserRole, 
@@ -36,6 +34,7 @@ export async function deleteProductAction() {
 
 export async function addCustomerAction() {
   revalidatePath('/admin/customers');
+  revalidatePath('/admin/customers/[id]', 'page');
 }
 
 export async function updateCustomerAction(id: string) {
@@ -45,6 +44,7 @@ export async function updateCustomerAction(id: string) {
 
 export async function deleteCustomerAction() {
   revalidatePath('/admin/customers');
+  revalidatePath('/admin/customers/[id]', 'page');
 }
 
 export async function processOrderAction() {
@@ -155,8 +155,7 @@ export async function deletePrintingPriceAction() {
 // These actions run on the server and are protected by role checks.
 // The security rules in database.rules.json must allow these operations.
 // ======================================
-export async function createUserProfileAction(userData: Omit<AppUser, 'authorized' | 'role' | 'activeStoreId'>) {
-    await createUserProfile(userData);
+export async function createUserProfileAction() {
     revalidatePath('/admin/users');
 }
 

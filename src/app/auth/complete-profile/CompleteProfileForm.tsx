@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useTransition } from 'react';
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { createUserProfileAction } from '@/lib/actions';
+import { createUserProfile } from '@/lib/data';
 
 export default function CompleteProfileForm() {
   const { user, appUser, loading } = useAuth();
@@ -41,12 +41,15 @@ export default function CompleteProfileForm() {
 
     startTransition(async () => {
       try {
-        // Create our app user profile in the database
-        await createUserProfileAction({
+        // Create our app user profile on the client
+        await createUserProfile({
             id: user.uid,
             name: user.displayName!,
             email: user.email!,
         });
+        // Revalidate the path on the server
+        await createUserProfileAction();
+
         toast({ title: 'Profile Created!', description: "Welcome! Your account is pending admin approval." });
         // Redirect to unauthorized, which will then redirect to /admin if approved
         router.push('/unauthorized'); 
