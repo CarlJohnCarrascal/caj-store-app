@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Store, PlusCircle, LogIn, Users, CheckCircle, Clock, RefreshCw, XCircle, Copy } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Separator } from '@/components/ui/separator';
 
 
 export default function StoreManager() {
@@ -42,6 +43,18 @@ export default function StoreManager() {
   
   const [members, setMembers] = useState<StoreMemberInfo[]>([]);
   const [managingStore, setManagingStore] = useState<StoreType | null>(null);
+
+  const groupedMembers = useMemo(() => {
+    if (!members) return {};
+    return members.reduce((acc, member) => {
+      const { status } = member;
+      if (!acc[status]) {
+        acc[status] = [];
+      }
+      acc[status].push(member);
+      return acc;
+    }, {} as Record<StoreMemberInfo['status'], StoreMemberInfo[]>);
+  }, [members]);
 
   const handleCreateStore = () => {
     if (!user || !appUser || !newStoreName) return;
@@ -251,57 +264,82 @@ export default function StoreManager() {
                     <DialogTitle>Manage Members for {managingStore.name}</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh]">
-                    <div className="pr-6 space-y-2">
-                    {members.map(member => (
-                        <div key={member.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
+                    <div className="pr-6 space-y-6">
+                        {groupedMembers.pending?.length > 0 && (
                             <div>
-                                <p className="font-medium">{member.name} {member.id === user?.id && '(You)'}</p>
-                                <p className="text-sm text-muted-foreground">{member.email}</p>
+                                <h3 className="text-lg font-semibold">Pending Requests</h3>
+                                <Separator className="my-2" />
+                                <div className="space-y-2">
+                                    {groupedMembers.pending.map(member => (
+                                        <div key={member.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
+                                            <div>
+                                                <p className="font-medium">{member.name}</p>
+                                                <p className="text-sm text-muted-foreground">{member.email}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button size="sm" onClick={() => handleApproveMember(member.id)} disabled={isPending}>
+                                                    <CheckCircle className="mr-2 h-4 w-4" /> Approve
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button size="icon" variant="ghost" disabled={isPending}><XCircle className="h-4 w-4 text-destructive" /></Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Reject Member?</AlertDialogTitle>
+                                                            <AlertDialogDescription>Are you sure you want to reject this request?</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleRemoveMember(member.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">Reject</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Badge variant={member.status === 'approved' ? 'default' : 'secondary'}>{member.status}</Badge>
-                                {member.status === 'pending' && (
-                                    <>
-                                        <Button size="sm" onClick={() => handleApproveMember(member.id)} disabled={isPending}>
-                                            <CheckCircle className="mr-2 h-4 w-4" /> Approve
-                                        </Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button size="sm" variant="destructive" disabled={isPending}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Reject Member?</AlertDialogTitle>
-                                                    <AlertDialogDescription>Are you sure you want to reject this request?</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleRemoveMember(member.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">Reject</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </>
-                                )}
-                                {member.status === 'approved' && member.id !== managingStore.ownerId && (
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button size="sm" variant="destructive" disabled={isPending}><XCircle className="mr-2 h-4 w-4" /> Remove</Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Remove Member?</AlertDialogTitle>
-                                                <AlertDialogDescription>Are you sure you want to remove {member.name} from this store?</AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleRemoveMember(member.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                )}
+                        )}
+                        {groupedMembers.approved?.length > 0 && (
+                            <div>
+                                <h3 className="text-lg font-semibold">Approved Members</h3>
+                                 <Separator className="my-2" />
+                                <div className="space-y-2">
+                                    {groupedMembers.approved.map(member => (
+                                       <div key={member.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
+                                           <div>
+                                               <p className="font-medium">{member.name} {member.id === user?.id && '(You)'}</p>
+                                               <p className="text-sm text-muted-foreground">{member.email}</p>
+                                           </div>
+                                           <div className="flex items-center gap-2">
+                                               <Badge variant={member.role === 'owner' ? 'default' : 'outline'}>{member.role}</Badge>
+                                               {member.id !== managingStore.ownerId && (
+                                                   <AlertDialog>
+                                                       <AlertDialogTrigger asChild>
+                                                          <Button size="icon" variant="ghost" disabled={isPending}><XCircle className="h-4 w-4 text-destructive" /></Button>
+                                                       </AlertDialogTrigger>
+                                                       <AlertDialogContent>
+                                                           <AlertDialogHeader>
+                                                               <AlertDialogTitle>Remove Member?</AlertDialogTitle>
+                                                               <AlertDialogDescription>Are you sure you want to remove {member.name} from this store?</AlertDialogDescription>
+                                                           </AlertDialogHeader>
+                                                           <AlertDialogFooter>
+                                                               <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                               <AlertDialogAction onClick={() => handleRemoveMember(member.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction>
+                                                           </AlertDialogFooter>
+                                                       </AlertDialogContent>
+                                                   </AlertDialog>
+                                               )}
+                                           </div>
+                                       </div>
+                                   ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        )}
+                         {(!groupedMembers.pending || groupedMembers.pending.length === 0) && (!groupedMembers.approved || groupedMembers.approved.length === 0) && (
+                            <p className="text-muted-foreground text-center py-8">No members found for this store.</p>
+                        )}
                     </div>
                 </ScrollArea>
             </DialogContent>
