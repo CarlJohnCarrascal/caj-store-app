@@ -4,7 +4,7 @@
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Store, PlusCircle, LogIn, Users, CheckCircle, Clock, RefreshCw, XCircle } from 'lucide-react';
+import { Store, PlusCircle, LogIn, Users, CheckCircle, Clock, RefreshCw, XCircle, Copy } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -123,6 +123,14 @@ export default function StoreManager() {
     });
   };
 
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code).then(() => {
+        toast({ title: "Copied!", description: "Join code copied to clipboard." });
+    }).catch(err => {
+        toast({ variant: 'destructive', title: 'Failed to copy', description: 'Could not copy code to clipboard.' });
+    });
+  };
+
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
@@ -216,7 +224,10 @@ export default function StoreManager() {
                                         <Label htmlFor={`join-code-${store.id}`} className="text-sm font-medium">Join Code:</Label>
                                         <div className="flex items-center gap-1 rounded-md bg-muted px-2 py-1">
                                             <span id={`join-code-${store.id}`} className="font-mono text-sm">{store.joinCode}</span>
-                                             <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRegenerateCode(store.id)} disabled={isPending}>
+                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleCopyCode(store.joinCode)}>
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRegenerateCode(store.id)} disabled={isPending}>
                                                 <RefreshCw className="h-4 w-4" />
                                             </Button>
                                         </div>

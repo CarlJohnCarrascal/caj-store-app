@@ -6,6 +6,7 @@ import { User, onAuthStateChanged, signOut as firebaseSignOut, GoogleAuthProvide
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, Unsubscribe, update, get } from 'firebase/database';
 import { AppUser, Store, StoreMemberInfo } from '@/lib/types';
+import { snapshotToArray } from '@/lib/data';
 
 interface AuthContextType {
   user: User | null;
@@ -40,12 +41,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     let appUserUnsubscribe: Unsubscribe | null = null;
-    let memberStoresUnsubscribe: Unsubscribe | null = null;
+    let storesUnsubscribe: Unsubscribe | null = null;
+    let storeMembersUnsubscribe: Unsubscribe | null = null;
     let roleUnsubscribe: Unsubscribe | null = null;
 
     const cleanup = () => {
       if (appUserUnsubscribe) appUserUnsubscribe();
-      if (memberStoresUnsubscribe) memberStoresUnsubscribe();
+      if (storesUnsubscribe) storesUnsubscribe();
+      if (storeMembersUnsubscribe) storeMembersUnsubscribe();
       if (roleUnsubscribe) roleUnsubscribe();
     };
 
@@ -63,30 +66,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const newActiveStoreId = dbUser.activeStoreId || null;
             setActiveStoreId(newActiveStoreId);
 
-            // Listen for user's stores
-            const memberRef = ref(db, `storeMembers`);
-            memberStoresUnsubscribe = onValue(memberRef, async (allMembersSnapshot) => {
-                const userStores: Store[] = [];
-                if (allMembersSnapshot.exists()) {
-                    const allStoresMembers = allMembersSnapshot.val();
-                    const storePromises = Object.keys(allStoresMembers).map(async (storeId) => {
-                        const members = allStoresMembers[storeId];
+            // Listen to all stores and all store members
+            const storesRef = ref(db, 'stores');
+            const storeMembersRef = ref(db, 'storeMembers');
+
+            let allStores: Store[] = [];
+            let allStoreMembers: any = {};
+
+            const updateUserStores = () => {
+                const userStoreIds = new Set<string>();
+                if (allStoreMembers) {
+                    for (const storeId of Object.keys(allStoreMembers)) {
+                        const members = allStoreMembers[storeId];
                         if (members && members[user.uid] && members[user.uid].status === 'approved') {
-                            const storeSnap = await get(ref(db, `stores/${storeId}`));
-                            if (storeSnap.exists()) {
-                                userStores.push({ id: storeId, ...storeSnap.val() });
-                            }
+                            userStoreIds.add(storeId);
                         }
-                    });
-                    await Promise.all(storePromises);
+                    }
                 }
-                setMemberStores(userStores);
                 
+                const userStores = allStores.filter(store => userStoreIds.has(store.id));
+                setMemberStores(userStores);
+
                 // Auto-set active store if none is set and there are available stores
                 if (!dbUser.activeStoreId && userStores.length > 0) {
-                  // This will cause a re-render, but it's an important UX improvement
-                  await update(ref(db, `users/${user.uid}`), { activeStoreId: userStores[0].id });
+                    update(ref(db, `users/${user.uid}`), { activeStoreId: userStores[0].id });
                 }
+            };
+            
+            storesUnsubscribe = onValue(storesRef, (storesSnap) => {
+                allStores = snapshotToArray<Store>(storesSnap);
+                updateUserStores();
+            });
+
+            storeMembersUnsubscribe = onValue(storeMembersRef, (membersSnap) => {
+                allStoreMembers = membersSnap.val() || {};
+                updateUserStores();
             });
             
             // Listen for role in the currently active store
