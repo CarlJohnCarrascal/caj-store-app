@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function AdminLayout({
   children,
@@ -38,11 +39,16 @@ export default function AdminLayout({
 
   // Show content if not using auth, or if logged in, authorized, and either has an active store OR is on the stores page.
   const showContent = !authEnabled || (!loading && user && isAuthorized && (activeStoreId || pathname === '/admin/stores'));
+  
+  const isPosMode = pathname === '/admin/pos-mode';
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className={cn(
+        "flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8",
+        isPosMode && "max-w-full px-4"
+        )}>
         {firebaseConfigMissing && (
            <Alert variant="destructive" className="mb-6">
             <Terminal className="h-4 w-4" />

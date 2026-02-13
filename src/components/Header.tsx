@@ -1,8 +1,7 @@
-
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -78,6 +77,9 @@ export default function Header() {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pl-10 space-y-1">
+                                    <Link href="/admin/pos-mode" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                        <Laptop className="h-5 w-5 text-muted-foreground" /><span>POS Mode</span>
+                                    </Link>
                                     <Link href="/admin/store" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                         <Store className="h-5 w-5 text-muted-foreground" /><span>Store</span>
                                     </Link>
@@ -211,6 +213,8 @@ export default function Header() {
                       Point of Sale <ChevronDown className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                      <DropdownMenuItem asChild><Link href="/admin/pos-mode" className="flex items-center gap-2 cursor-pointer"><Laptop className="h-4 w-4" /> POS Mode</Link></DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem asChild><Link href="/admin/store" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Store</Link></DropdownMenuItem>
                       <DropdownMenuItem asChild><Link href="/admin/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
                       <DropdownMenuItem asChild><Link href="/admin/printing" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</Link></DropdownMenuItem>

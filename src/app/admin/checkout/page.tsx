@@ -1,16 +1,13 @@
-
-
 'use client';
 
 import { useState, useEffect, useMemo, useTransition } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Plus, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import Link from 'next/link';
 
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
-import { processOrderAction } from '@/lib/actions';
 import { Customer } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
@@ -39,6 +36,7 @@ import {
   } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { processOrder } from '@/lib/data';
+import { processOrderAction } from '@/lib/actions';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -486,4 +484,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
