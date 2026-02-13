@@ -157,27 +157,38 @@ export default function ProductAnalytics() {
     const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [reportsLoading, setReportsLoading] = useState(true);
+    const [productsLoading, setProductsLoading] = useState(true);
 
+    const isLoading = reportsLoading || productsLoading;
+    
     const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
     useEffect(() => {
         if (!activeStoreId) {
-            setIsLoading(false);
+            setReportsLoading(false);
+            setProductsLoading(false);
             return;
         }
+
+        setReportsLoading(true);
+        setProductsLoading(true);
 
         let reportsUnsubscribe: Unsubscribe | null = null;
         let productsUnsubscribe: Unsubscribe | null = null;
 
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('productReports');
-            if (cachedReports) setReports(cachedReports);
+            if (cachedReports) {
+                setReports(cachedReports);
+                setReportsLoading(false);
+            }
 
             const cachedProducts = await getStoreData<Product>('products');
-            if (cachedProducts.length > 0) setProducts(cachedProducts);
-
-            if(cachedReports && cachedProducts.length > 0) setIsLoading(false);
+            if (cachedProducts.length > 0) {
+                setProducts(cachedProducts);
+                setProductsLoading(false);
+            }
         };
         loadFromCache();
 
@@ -185,20 +196,20 @@ export default function ProductAnalytics() {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('productReports', reportData);
-            if(products.length > 0) setIsLoading(false);
+            setReportsLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            if(products.length > 0) setIsLoading(false);
+            console.error("Firebase listener for productReports failed:", error);
+            setReportsLoading(false);
         });
 
         productsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/products`), (snapshot) => {
             const productList = snapshotToArray<Product>(snapshot);
             setProducts(productList);
             setStoreData('products', productList);
-            if(reports) setIsLoading(false);
+            setProductsLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            if(reports) setIsLoading(false);
+            console.error("Firebase listener for products failed:", error);
+            setProductsLoading(false);
         });
 
         return () => {

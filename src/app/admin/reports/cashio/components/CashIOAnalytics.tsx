@@ -548,37 +548,51 @@ export default function CashIOAnalytics() {
     const [reports, setReports] = useState<AllReports | null>(null);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [reportsLoading, setReportsLoading] = useState(true);
+    const [customersLoading, setCustomersLoading] = useState(true);
+    const [accountsLoading, setAccountsLoading] = useState(true);
 
+    const isLoading = reportsLoading || customersLoading || accountsLoading;
+    
     const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
     const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.accountName])), [accounts]);
 
     useEffect(() => {
         if (!activeStoreId) {
-            setIsLoading(false);
+            setReportsLoading(false);
+            setCustomersLoading(false);
+            setAccountsLoading(false);
             setReports(null);
             setCustomers([]);
             setAccounts([]);
             return;
         }
 
-        setIsLoading(true);
+        setReportsLoading(true);
+        setCustomersLoading(true);
+        setAccountsLoading(true);
+
         let reportsUnsubscribe: Unsubscribe | null = null;
         let customersUnsubscribe: Unsubscribe | null = null;
         let accountsUnsubscribe: Unsubscribe | null = null;
 
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('cashIOReports');
-            if (cachedReports) setReports(cachedReports);
+            if (cachedReports) {
+                setReports(cachedReports);
+                setReportsLoading(false);
+            }
 
             const cachedCustomers = await getStoreData<Customer>('customers');
-            if (cachedCustomers.length > 0) setCustomers(cachedCustomers);
+            if (cachedCustomers.length > 0) {
+                setCustomers(cachedCustomers);
+                setCustomersLoading(false);
+            }
 
             const cachedAccounts = await getStoreData<Account>('accounts');
-            if (cachedAccounts.length > 0) setAccounts(cachedAccounts);
-
-            if (cachedReports && cachedCustomers.length > 0 && cachedAccounts.length > 0) {
-                setIsLoading(false);
+            if (cachedAccounts.length > 0) {
+                setAccounts(cachedAccounts);
+                setAccountsLoading(false);
             }
         };
         loadFromCache();
@@ -589,36 +603,30 @@ export default function CashIOAnalytics() {
               setReports(reportData);
               setReportData('cashIOReports', reportData);
             }
-            if (customers.length > 0 && accounts.length > 0) {
-                setIsLoading(false);
-            }
+            setReportsLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            setIsLoading(false);
+            console.error("Firebase listener for cashIOReports failed:", error);
+            setReportsLoading(false);
         });
 
         customersUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/customers`), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList);
-             if (reports && accounts.length > 0) {
-                setIsLoading(false);
-            }
+            setCustomersLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            setIsLoading(false);
+            console.error("Firebase listener for customers failed:", error);
+            setCustomersLoading(false);
         });
 
         accountsUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/accounts`), (snapshot) => {
             const accountList = snapshotToArray<Account>(snapshot);
             setAccounts(accountList);
             setStoreData('accounts', accountList);
-            if (reports && customers.length > 0) {
-                setIsLoading(false);
-            }
+            setAccountsLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            setIsLoading(false);
+            console.error("Firebase listener for accounts failed:", error);
+            setAccountsLoading(false);
         });
 
         return () => {

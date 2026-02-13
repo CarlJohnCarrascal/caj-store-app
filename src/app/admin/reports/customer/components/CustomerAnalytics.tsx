@@ -258,28 +258,37 @@ export default function CustomerAnalytics() {
     const { activeStoreId } = useAuth();
     const [reports, setReports] = useState<AllReports | null>(null);
     const [customers, setCustomers] = useState<Customer[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [reportsLoading, setReportsLoading] = useState(true);
+    const [customersLoading, setCustomersLoading] = useState(true);
+
+    const isLoading = reportsLoading || customersLoading;
 
     const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c.name])), [customers]);
 
     useEffect(() => {
         if (!activeStoreId) {
-            setIsLoading(false);
+            setReportsLoading(false);
+            setCustomersLoading(false);
             return;
         }
+
+        setReportsLoading(true);
+        setCustomersLoading(true);
 
         let reportsUnsubscribe: Unsubscribe | null = null;
         let customersUnsubscribe: Unsubscribe | null = null;
 
         const loadFromCache = async () => {
             const cachedReports = await getReportData<AllReports>('customerReports');
-            if (cachedReports) setReports(cachedReports);
+            if (cachedReports) {
+                setReports(cachedReports);
+                setReportsLoading(false);
+            }
 
             const cachedCustomers = await getStoreData<Customer>('customers');
-            if (cachedCustomers.length > 0) setCustomers(cachedCustomers);
-            
-            if (cachedReports && cachedCustomers.length > 0) {
-                setIsLoading(false);
+            if (cachedCustomers.length > 0) {
+                setCustomers(cachedCustomers);
+                setCustomersLoading(false);
             }
         };
         loadFromCache();
@@ -288,20 +297,20 @@ export default function CustomerAnalytics() {
             const reportData = snapshot.exists() ? snapshot.val() : null;
             setReports(reportData);
             setReportData('customerReports', reportData);
-            if (customers.length > 0) setIsLoading(false);
+            setReportsLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            if (customers.length > 0) setIsLoading(false);
+            console.error("Firebase listener for customerReports failed:", error);
+            setReportsLoading(false);
         });
 
         customersUnsubscribe = onValue(ref(db, `storeData/${activeStoreId}/customers`), (snapshot) => {
             const customerList = snapshotToArray<Customer>(snapshot);
             setCustomers(customerList);
             setStoreData('customers', customerList);
-            if (reports) setIsLoading(false);
+            setCustomersLoading(false);
         }, (error) => {
-            console.error("Firebase listener failed:", error);
-            if (reports) setIsLoading(false);
+            console.error("Firebase listener for customers failed:", error);
+            setCustomersLoading(false);
         });
 
         return () => {
