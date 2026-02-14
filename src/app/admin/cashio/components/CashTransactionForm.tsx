@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Account, Product, CashTransaction, FeeThreshold } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { addCashTransactionAction, updateCashTransactionAction } from '@/lib/actions';
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -61,6 +61,7 @@ interface CashTransactionFormProps {
 export default function CashTransactionForm({ accounts, transaction }: CashTransactionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [isGenerating, setIsGenerating] = useState(false);
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
@@ -264,6 +265,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     }
     startTransition(async () => {
       try {
+        const redirectPath = pathname.startsWith('/pos') ? '/pos/cashio' : '/admin/cashio';
         const isDuplicate = await isReferenceNumberDuplicate(activeStoreId, data.reference);
         if (isDuplicate) {
           toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists' });
@@ -292,7 +294,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
         }
 
         toast({ title: 'Success', description: 'Transaction saved successfully.' });
-        router.push('/admin/cashio');
+        router.push(redirectPath);
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
@@ -306,6 +308,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     }
     startTransition(async () => {
       try {
+        const redirectPath = pathname.startsWith('/pos') ? '/pos/cashio' : '/admin/cashio';
         const isDuplicate = await isReferenceNumberDuplicate(activeStoreId, data.reference);
         if (isDuplicate) {
             toast({ variant: 'destructive', title: 'Duplicate!', description: 'The transaction reference already exists.' });
@@ -358,7 +361,7 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
 
         toast({ title: 'Success', description: 'Transaction added to order.' });
         setCartOpen(true);
-        router.push('/admin/cashio');
+        router.push(redirectPath);
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }
@@ -372,12 +375,13 @@ export default function CashTransactionForm({ accounts, transaction }: CashTrans
     }
     startTransition(async () => {
         try {
+            const redirectPath = pathname.startsWith('/pos') ? '/pos/cashio' : '/admin/cashio';
             localStorage.setItem('lastUsedAccountId', data.accountUsedId);
             await updateCashTransaction(activeStoreId, transaction.id, data, { userId: user.uid, userName: user.displayName || user.email! });
             await updateCashTransactionAction(transaction.id);
             
             toast({ title: 'Success', description: 'Transaction updated successfully.' });
-            router.push('/admin/cashio');
+            router.push(redirectPath);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
         }
