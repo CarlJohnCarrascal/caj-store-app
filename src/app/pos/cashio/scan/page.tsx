@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -42,8 +41,7 @@ interface ExtractedData {
 }
 
 export default function ScanImagePage() {
-  const [step, setStep] = useState(1);
-  const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
+  const [transactionType, setTransactionType] = useState<TransactionType>('Cash In');
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -75,12 +73,12 @@ export default function ScanImagePage() {
   }, [activeStoreId]);
 
   useEffect(() => {
-    if (step !== 2) {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      return;
+    if (previewImage) {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        return;
     }
 
     const getCameraPermission = async () => {
@@ -116,12 +114,7 @@ export default function ScanImagePage() {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [step, facingMode, toast]);
-  
-  const handleSelectType = (type: TransactionType) => {
-    setTransactionType(type);
-    setStep(2);
-  };
+  }, [previewImage, facingMode, toast]);
   
   const handleCameraSwitch = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
@@ -130,7 +123,6 @@ export default function ScanImagePage() {
   const processImage = async (imageDataUri: string) => {
     if (!activeStoreId) return;
     setPreviewImage(imageDataUri); 
-    if (step !== 3) setStep(3);
     setIsProcessing(true);
     setExtractedData(null);
     setRawExtractionResult(null);
@@ -242,10 +234,7 @@ export default function ScanImagePage() {
     try {
         const queryParams = new URLSearchParams();
         
-        
-        if(transactionType) {
-            queryParams.set('transactionType', transactionType);
-        }
+        queryParams.set('transactionType', transactionType);
 
         extractedData['imageId'] = new Date().getTime().toString();
         
@@ -334,8 +323,6 @@ export default function ScanImagePage() {
   };
 
   const reset = () => {
-    setStep(1);
-    setTransactionType(null);
     setExtractedData(null);
     setRawExtractionResult(null);
     setDuplicateTransaction(null);
@@ -349,51 +336,30 @@ export default function ScanImagePage() {
 
   return (
     <div className="h-full overflow-y-auto pr-4 -mr-4">
-        <div className="space-y-6">
-        <Button asChild variant="outline" onClick={step === 1 ? undefined : reset}>
-            <Link href={step === 1 ? "/pos/cashio" : "#"}>
+      <div className="space-y-6">
+        <Button asChild variant="outline">
+            <Link href="/pos/cashio">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
             </Link>
-            </Button>
+        </Button>
+
         <Card className="w-full max-w-full">
             <CardHeader>
             <CardTitle>Scan Transaction Image</CardTitle>
             <CardDescription>
-                {step === 1 && 'First, select the type of transaction you are scanning.'}
-                {step === 2 && 'Position the receipt in the frame and scan, or upload an image.'}
-                {step === 3 && 'Verify the extracted details and proceed.'}
+                Capture an image of a transaction receipt. The AI will extract the details.
             </CardDescription>
             </CardHeader>
             <CardContent>
-            {step === 1 && (
-                <RadioGroup className="grid grid-cols-2 gap-4">
-                    <div>
-                    <RadioGroupItem value="Cash In" id="r-cashin" className="sr-only peer" onClick={() => handleSelectType('Cash In')} />
-                    <Label
-                        htmlFor="r-cashin"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer"
-                    >
-                        <ArrowUp className="mb-3 h-6 w-6 text-green-500" />
-                        Cash In
-                    </Label>
-                    </div>
-                    <div>
-                    <RadioGroupItem value="Cash Out" id="r-cashout" className="sr-only peer" onClick={() => handleSelectType('Cash Out')} />
-                    <Label
-                        htmlFor="r-cashout"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer"
-                    >
-                        <ArrowDown className="mb-3 h-6 w-6 text-red-500" />
-                        Cash Out
-                    </Label>
-                    </div>
-                </RadioGroup>
-            )}
-
-            {step === 2 && (
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+                {/* --- LEFT COLUMN --- */}
                 <div className="space-y-4">
-                    <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                    {previewImage && !isProcessing ? (
+                    <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
+                    ) : (
+                    <>
                         <video ref={videoRef} className={cn("w-full h-full object-cover", hasCameraPermission === false && "hidden")} autoPlay muted playsInline />
                         {hasCameraPermission === null && <p>Requesting camera...</p>}
                         {hasCameraPermission === false && (
@@ -412,9 +378,10 @@ export default function ScanImagePage() {
                                 <SwitchCamera className="h-5 w-5" />
                             </Button>
                         )}
-                    </div>
-
-                    {hasCameraPermission === false && (
+                    </>
+                    )}
+                </div>
+                {hasCameraPermission === false && (
                         <Alert variant="destructive">
                             <AlertTitle>Camera Access Required</AlertTitle>
                             <AlertDescription>
@@ -422,120 +389,100 @@ export default function ScanImagePage() {
                             </AlertDescription>
                         </Alert>
                     )}
-                    
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isProcessing}
-                    />
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" disabled={isProcessing} />
+                </div>
+
+                {/* --- RIGHT COLUMN --- */}
+                <div className="space-y-6">
+                    <RadioGroup value={transactionType} onValueChange={(v) => setTransactionType(v as TransactionType)} className="grid grid-cols-2 gap-4">
+                        <div>
+                        <RadioGroupItem value="Cash In" id="r-cashin" className="sr-only peer" />
+                        <Label htmlFor="r-cashin" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer">
+                            <ArrowUp className="mb-3 h-6 w-6 text-green-500" />
+                            Cash In
+                        </Label>
+                        </div>
+                        <div>
+                        <RadioGroupItem value="Cash Out" id="r-cashout" className="sr-only peer" />
+                        <Label htmlFor="r-cashout" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer">
+                            <ArrowDown className="mb-3 h-6 w-6 text-red-500" />
+                            Cash Out
+                        </Label>
+                        </div>
+                    </RadioGroup>
 
                     <div className="grid grid-cols-2 gap-2">
                         <Button size="lg" className="w-full" onClick={handleScanClick} disabled={!hasCameraPermission || isProcessing}>
-                            {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
-                            Scan
+                            <Camera className="mr-2 h-5 w-5" /> Scan
                         </Button>
                         <Button size="lg" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
-                            <FileImage className="mr-2 h-5 w-5" />
-                            Upload
+                            <FileImage className="mr-2 h-5 w-5" /> Upload
                         </Button>
                     </div>
-                </div>
-            )}
-
-            {step === 3 && (
-                 <div className="grid md:grid-cols-2 gap-6 items-start">
-                    <div className="space-y-4">
-                        {previewImage && (
-                            <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
-                                <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
-                            </div>
-                        )}
-                        {isProcessing && (
+                    
+                    <div className="space-y-4 pt-4">
+                        <Label className="text-lg font-semibold">Result</Label>
+                        
+                        {isProcessing ? (
                             <div className="flex items-center justify-center text-muted-foreground py-4">
                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                 <span>Processing image...</span>
                             </div>
-                        )}
-                    </div>
-                    <div className="space-y-4">
-                        {!isProcessing && (
+                        ) : extractedData ? (
                             <>
                                 {duplicateTransaction !== null ? (
                                     isClaimed ? (
                                         <Alert variant="destructive">
                                             <AlertTriangle className="h-4 w-4" />
                                             <AlertTitle>Transaction Already Claimed</AlertTitle>
-                                            <AlertDescription>
-                                                This cash-out transaction has already been claimed and cannot be added to a new order.
-                                            </AlertDescription>
+                                            <AlertDescription>This cash-out transaction has already been claimed and cannot be added to a new order.</AlertDescription>
                                         </Alert>
                                     ) : (
                                         <Alert variant="destructive">
                                             <XCircle className="h-4 w-4" />
                                             <AlertTitle>Transaction Found</AlertTitle>
-                                            <AlertDescription>
-                                                This reference number already exists in your records.
-                                            </AlertDescription>
+                                            <AlertDescription>This reference number already exists in your records.</AlertDescription>
                                         </Alert>
                                     )
                                 ) : (
-                                extractedData && (
                                     <Alert>
                                         <CheckCircle className="h-4 w-4" />
                                         <AlertTitle>New Transaction</AlertTitle>
-                                        <AlertDescription>
-                                            This reference number appears to be new.
-                                        </AlertDescription>
+                                        <AlertDescription>This reference number appears to be new.</AlertDescription>
                                     </Alert>
-                                )
                                 )}
 
                                 <div className="space-y-2 rounded-md border p-4 text-sm">
-                                    {extractedData ? (
-                                        Object.entries(extractedData).map(([key, value]) => {
-                                            if (key === 'accountUsedId') return null;
-                                            return (
-                                                <div key={key} className="flex justify-between">
-                                                    <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                                                    <span className="font-mono text-right">{String(value)}</span>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="text-center text-muted-foreground">No details extracted.</div>
-                                    )}
+                                    {Object.entries(extractedData).map(([key, value]) => {
+                                        if (key === 'accountUsedId') return null;
+                                        return (
+                                            <div key={key} className="flex justify-between">
+                                                <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                                <span className="font-mono text-right">{String(value)}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 
                                 <div className="space-y-2">
                                     {canAddToOrder ? (
-                                        <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isProcessing}>
-                                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add to Order'}
-                                        </Button>
+                                        <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isProcessing}>{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add to Order'}</Button>
                                     ) : (
-                                        <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
-                                            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
-                                            Add Transaction
-                                        </Button>
+                                        <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}><FileUp className="h-4 w-4 mr-2" />Add Transaction</Button>
                                     )}
-                                    <Button variant="outline" className="w-full" onClick={handleRetryExtraction} disabled={isProcessing}>
-                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                        Retry Extraction
-                                    </Button>
-                                    {duplicateTransaction && (
-                                        <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}>
-                                            <Info className="mr-2 h-4 w-4" />
-                                            View Existing Transaction Details
-                                        </Button>
-                                    )}
+                                    <Button variant="outline" className="w-full" onClick={handleRetryExtraction} disabled={isProcessing}><RefreshCw className="mr-2 h-4 w-4" />Retry Extraction</Button>
+                                    {duplicateTransaction && <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}><Info className="mr-2 h-4 w-4" />View Existing Details</Button>}
+                                    <Button variant="ghost" className="w-full" onClick={reset}>Scan Another</Button>
                                 </div>
                             </>
+                        ) : (
+                            <div className="text-center text-muted-foreground py-8 border rounded-md">
+                                Scan or upload an image to see results.
+                            </div>
                         )}
                     </div>
                 </div>
-            )}
+            </div>
             </CardContent>
         </Card>
         
@@ -544,29 +491,18 @@ export default function ScanImagePage() {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            {duplicateTransaction.transactionType === 'Cash In' ? (
-                            <ArrowUp className="h-6 w-6 text-green-600" />
-                            ) : (
-                            <ArrowDown className="h-6 w-6 text-red-600" />
-                            )}
+                            {duplicateTransaction.transactionType === 'Cash In' ? ( <ArrowUp className="h-6 w-6 text-green-600" />) : ( <ArrowDown className="h-6 w-6 text-red-600" />)}
                             <span>{duplicateTransaction.transactionType}</span>
                         </DialogTitle>
                         <DialogDescription>
                             {(() => {
-                            if (!duplicateTransaction.transactionDate) return 'Loading date...';
-                            try {
-                                const date = new Date(duplicateTransaction.transactionDate);
-                                if (!isNaN(date.getTime())) {
-                                return format(date, 'PPpp');
-                                }
-                            } catch(e) {}
-                            return "Invalid Date";
+                                if (!duplicateTransaction.transactionDate) return 'Loading date...';
+                                try { const date = new Date(duplicateTransaction.transactionDate); if (!isNaN(date.getTime())) { return format(date, 'PPpp'); } } catch(e) {}
+                                return "Invalid Date";
                             })()}
                             <br />
                             <span className="font-bold text-xl text-base text-foreground">
-                                {(duplicateTransaction.reference && duplicateTransaction.reference.length === 13)
-                                ? `${duplicateTransaction.reference.slice(0, 4)}-${duplicateTransaction.reference.slice(4, 7)}-${duplicateTransaction.reference.slice(7)}`
-                                : duplicateTransaction.reference}
+                                {(duplicateTransaction.reference && duplicateTransaction.reference.length === 13) ? `${duplicateTransaction.reference.slice(0, 4)}-${duplicateTransaction.reference.slice(4, 7)}-${duplicateTransaction.reference.slice(7)}` : duplicateTransaction.reference}
                             </span>
                         </DialogDescription>
                     </DialogHeader>
@@ -575,119 +511,37 @@ export default function ScanImagePage() {
                             {duplicateTransaction.receiptImageUrl && (
                                 <div>
                                     <h4 className="font-semibold mb-2 text-muted-foreground">Receipt</h4>
-                                    <div
-                                        className="relative h-32 w-32 rounded-md overflow-hidden border-2 border-dashed cursor-pointer"
-                                        onClick={() => setIsImageModalOpen(true)}
-                                    >
-                                        <Image
-                                            src={duplicateTransaction.receiptImageUrl}
-                                            alt="Transaction Receipt"
-                                            fill
-                                            sizes="128px"
-                                            className="object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                            <FileImage className="h-8 w-8 text-white" />
-                                        </div>
+                                    <div className="relative h-32 w-32 rounded-md overflow-hidden border-2 border-dashed cursor-pointer" onClick={() => setIsImageModalOpen(true)}>
+                                        <Image src={duplicateTransaction.receiptImageUrl} alt="Transaction Receipt" fill sizes="128px" className="object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><FileImage className="h-8 w-8 text-white" /></div>
                                     </div>
                                 </div>
                             )}
                             <div className="space-y-2">
-                                <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
-                                    <span className="text-muted-foreground">Amount</span>
-                                    <p className="text-2xl font-bold break-all">
-                                    ₱{duplicateTransaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </p>
-                                </div>
-                                <div className="flex justify-between items-center text-sm px-1">
-                                    <span className="text-muted-foreground">Fee</span>
-                                    <span>₱{duplicateTransaction.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm px-1">
-                                    <span className="text-muted-foreground">Status</span>
-                                    <Badge
-                                        variant={'default'}
-                                        className={cn(
-                                        {
-                                            'bg-green-600 hover:bg-green-700': duplicateTransaction.status === 'Delivered' || duplicateTransaction.status === 'Claimed',
-                                            'bg-cyan-500 hover:bg-cyan-600': duplicateTransaction.status === 'Available',
-                                            'bg-amber-500 hover:bg-amber-600': duplicateTransaction.status === 'Processing',
-                                        }
-                                        )}
-                                    >
-                                        {duplicateTransaction.status}
-                                    </Badge>
-                                </div>
+                                <div className="flex justify-between items-center bg-muted p-3 rounded-lg"><span className="text-muted-foreground">Amount</span><p className="text-2xl font-bold break-all">₱{duplicateTransaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
+                                <div className="flex justify-between items-center text-sm px-1"><span className="text-muted-foreground">Fee</span><span>₱{duplicateTransaction.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                <div className="flex justify-between items-center text-sm px-1"><span className="text-muted-foreground">Status</span><Badge variant={'default'} className={cn({'bg-green-600 hover:bg-green-700': duplicateTransaction.status === 'Delivered' || duplicateTransaction.status === 'Claimed', 'bg-cyan-500 hover:bg-cyan-600': duplicateTransaction.status === 'Available', 'bg-amber-500 hover:bg-amber-600': duplicateTransaction.status === 'Processing',})}>{duplicateTransaction.status}</Badge></div>
                             </div>
-                            
                             <Separator />
-                            
                             <div className="space-y-4">
                                 <div>
                                     <h4 className="font-semibold mb-2 text-muted-foreground">{duplicateTransaction.transactionType === 'Cash In' ? 'To (Receiver)' : 'From (Sender)'}</h4>
-                                    <div className="pl-2 space-y-2 text-sm border-l">
-                                        <div className="flex items-start gap-3">
-                                            <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
-                                            <p className="font-medium break-words">{duplicateTransaction.accountName}</p>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <Wallet className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
-                                            <p className="font-mono break-all">{duplicateTransaction.accountNumber}</p>
-                                        </div>
-                                    </div>
+                                    <div className="pl-2 space-y-2 text-sm border-l"><div className="flex items-start gap-3"><User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" /><p className="font-medium break-words">{duplicateTransaction.accountName}</p></div><div className="flex items-start gap-3"><Wallet className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" /><p className="font-mono break-all">{duplicateTransaction.accountNumber}</p></div></div>
                                 </div>
-
-                                {duplicateTransaction.customerId && (
-                                    <div>
-                                        <h4 className="font-semibold mb-2 text-muted-foreground">Processed By (Store Customer)</h4>
-                                        <div className="pl-2 space-y-2 text-sm border-l">
-                                            <div className="flex items-start gap-3">
-                                                <User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
-                                                <p className="font-medium break-words">{duplicateTransaction.customerName}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <h4 className="font-semibold mb-2 text-muted-foreground">Our Account</h4>
-                                    <div className="pl-2 space-y-2 text-sm border-l">
-                                        <div className="flex items-start gap-3">
-                                            <Landmark className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
-                                            <p className="break-words">{duplicateTransaction.ourAccountName} via {duplicateTransaction.paymentMethod}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
+                                {duplicateTransaction.customerId && (<div><h4 className="font-semibold mb-2 text-muted-foreground">Processed By (Store Customer)</h4><div className="pl-2 space-y-2 text-sm border-l"><div className="flex items-start gap-3"><User className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" /><p className="font-medium break-words">{duplicateTransaction.customerName}</p></div></div></div>)}
+                                <div><h4 className="font-semibold mb-2 text-muted-foreground">Our Account</h4><div className="pl-2 space-y-2 text-sm border-l"><div className="flex items-start gap-3"><Landmark className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/><p className="break-words">{duplicateTransaction.ourAccountName} via {duplicateTransaction.paymentMethod}</p></div></div></div>
                                 <div>
                                     <h4 className="font-semibold mb-2 text-muted-foreground">Details</h4>
                                     <div className="pl-2 space-y-2 text-sm border-l">
-                                        <div className="flex items-start gap-3">
-                                            <Hash className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
-                                            <p className="font-mono break-all">{duplicateTransaction.reference}</p>
-                                        </div>
-                                        {duplicateTransaction.createdAt && (
-                                        <div className="flex items-start gap-3">
-                                            <Clock className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
-                                            <p className="text-muted-foreground">
-                                            Created: {format(new Date(duplicateTransaction.createdAt), 'PPp')}
-                                            </p>
-                                        </div>
-                                        )}
-                                        {duplicateTransaction.message && (
-                                            <div className="flex items-start gap-3">
-                                                <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/>
-                                                <p className="text-muted-foreground break-words">{duplicateTransaction.message}</p>
-                                            </div>
-                                        )}
+                                        <div className="flex items-start gap-3"><Hash className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/><p className="font-mono break-all">{duplicateTransaction.reference}</p></div>
+                                        {duplicateTransaction.createdAt && (<div className="flex items-start gap-3"><Clock className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" /><p className="text-muted-foreground">Created: {format(new Date(duplicateTransaction.createdAt), 'PPp')}</p></div>)}
+                                        {duplicateTransaction.message && (<div className="flex items-start gap-3"><MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5"/><p className="text-muted-foreground break-words">{duplicateTransaction.message}</p></div>)}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </ScrollArea>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
-                    </DialogFooter>
+                    <DialogFooter><Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>Close</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         )}
@@ -695,21 +549,12 @@ export default function ScanImagePage() {
         {duplicateTransaction?.receiptImageUrl && (
             <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
                 <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
-                <DialogHeader className="p-6 pb-0 flex-shrink-0">
-                    <DialogTitle>Receipt Preview</DialogTitle>
-                </DialogHeader>
-                <div className="relative flex-1 w-full h-full p-6 pt-2">
-                    <Image
-                        src={duplicateTransaction.receiptImageUrl}
-                        alt="Transaction Receipt"
-                        fill
-                        className="object-contain"
-                    />
-                </div>
+                <DialogHeader className="p-6 pb-0 flex-shrink-0"><DialogTitle>Receipt Preview</DialogTitle></DialogHeader>
+                <div className="relative flex-1 w-full h-full p-6 pt-2"><Image src={duplicateTransaction.receiptImageUrl} alt="Transaction Receipt" fill className="object-contain" /></div>
                 </DialogContent>
             </Dialog>
         )}
-        </div>
+      </div>
     </div>
   );
 }
