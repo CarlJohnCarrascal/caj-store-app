@@ -1,15 +1,28 @@
 'use client';
+
 import { useState, useEffect, useMemo } from 'react';
 import { Product } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
-import { getStoreData, setStoreData } from '@/lib/offline';
-import { useAuth } from '@/hooks/use-auth';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useCart } from '@/hooks/use-cart';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, SlidersHorizontal, ScanBarcode } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import BarcodeScanner from '@/components/BarcodeScanner';
+import { useCart } from '@/hooks/use-cart';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
+import { getStoreData, setStoreData, getProductByBarcode } from '@/lib/offline';
+import Link from 'next/link';
+
+const ITEMS_PER_PAGE = 12;
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -21,42 +34,37 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   return items;
 }
 
-function ProductGridCard({ product }: { product: Product }) {
+function ProductGridCard({ product, showImage }: { product: Product, showImage: boolean }) {
     const { addToCart } = useCart();
 
     const getSecondaryText = () => {
-        if (product.category === 'Printing') {
-            return `/ Page`;
-        }
-        if (product.unit === 'kg') {
-            return `/ kg`;
-        }
-        if (product.stock > 0) {
-            return `• In Stock`;
-        }
+        if (product.category === 'Printing') return `/ Page`;
+        if (product.unit === 'kg') return `/ kg`;
+        if (product.stock > 0) return `• In Stock`;
         return '';
     }
-
-    const secondaryText = getSecondaryText();
 
     return (
         <div 
             className="rounded-lg flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-primary cursor-pointer group"
             onClick={() => addToCart(product)}
         >
-            <div className="relative aspect-square w-full bg-white flex items-center justify-center p-4">
-                <Image 
-                    src={product.image || 'https://placehold.co/400x400.png'} 
-                    alt={product.name} 
-                    fill 
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                    className="object-contain transition-transform group-hover:scale-105" 
-                />
-            </div>
-            <div className="p-3 bg-slate-800">
+            {showImage && (
+              <div className="relative aspect-square w-full bg-white flex items-center justify-center p-4">
+                  <Image 
+                      src={product.image || 'https://placehold.co/400x400.png'} 
+                      alt={product.name} 
+                      fill 
+                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                      className="object-contain transition-transform group-hover:scale-105" 
+                      data-ai-hint="product photo"
+                  />
+              </div>
+            )}
+            <div className="p-3 bg-slate-800 flex-grow flex flex-col justify-between">
                 <h3 className="font-semibold text-white truncate">{product.name}</h3>
                 <p className="text-sm text-slate-300">
-                    ₱{product.price.toFixed(2)} {secondaryText}
+                    ₱{product.price.toFixed(2)} {getSecondaryText()}
                 </p>
             </div>
         </div>
@@ -67,8 +75,17 @@ export default function PosProductsPage() {
     const { activeStoreId } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [categoryFilter, setCategoryFilter] = useState('all');
-
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showImages, setShowImages] = useState(true);
+    const [filters, setFilters] = useState({ category: 'all', group: 'all' });
+    const [sortOrder, setSortOrder] = useState('name-asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const { addToCart } = useCart();
+    const { toast } = useToast();
+    const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
+    const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
+    
     useEffect(() => {
         if (!activeStoreId) {
             setIsLoading(false);
@@ -99,39 +116,205 @@ export default function PosProductsPage() {
         return () => unsubscribe();
     }, [activeStoreId]);
 
-    const categories = useMemo(() => ['all', ...Array.from(new Set(products.map(p => p.category)))], [products]);
+    const { categories, groups } = useMemo(() => {
+        const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
+        const groups = ['all', ...Array.from(new Set(products.map(p => p.group)))];
+        return { categories, groups };
+    }, [products]);
     
-    const filteredProducts = useMemo(() => {
-        if (categoryFilter === 'all') {
-            return products;
+    const filteredAndSortedProducts = useMemo(() => {
+        let results = [...products];
+
+        if (filters.category !== 'all') {
+            results = results.filter(product => product.category === filters.category);
         }
-        return products.filter(p => p.category === categoryFilter);
-    }, [products, categoryFilter]);
+        
+        if (filters.group !== 'all') {
+            results = results.filter(product => product.group === filters.group);
+        }
+
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            results = results.filter(product =>
+                product.name.toLowerCase().includes(lowercasedTerm) ||
+                product.group.toLowerCase().includes(lowercasedTerm) ||
+                product.category.toLowerCase().includes(lowercasedTerm) ||
+                product.barcode?.includes(lowercasedTerm)
+            );
+        }
+        
+        results.sort((a, b) => {
+            switch (sortOrder) {
+                case 'price-asc': return a.price - b.price;
+                case 'price-desc': return b.price - a.price;
+                case 'name-desc': return b.name.localeCompare(a.name);
+                case 'name-asc': default: return a.name.localeCompare(b.name);
+            }
+        });
+        return results;
+    }, [searchTerm, filters, products, sortOrder]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filteredAndSortedProducts]);
+
+    const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
+
+    const paginatedProducts = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredAndSortedProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [currentPage, filteredAndSortedProducts]);
+
+    const handleFilterChange = (filterType: 'category' | 'group') => (value: string) => {
+        setFilters(prev => ({ ...prev, [filterType]: value }));
+    };
+
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    };
+    
+    const onBarcodeScanned = async (barcode: string) => {
+        if (!activeStoreId) return;
+        setIsScannerOpen(false);
+        const product = await getProductByBarcode(activeStoreId, barcode);
+        if (product) {
+            addToCart(product);
+            toast({ title: 'Product Added', description: `"${product.name}" added to order.` });
+        } else {
+            setNotFoundBarcode(barcode);
+            setIsNotFoundDialogOpen(true);
+        }
+    };
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                <h2 className="text-2xl font-bold">Products</h2>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
+      <div className="flex flex-col h-full">
+            <Accordion type="single" collapsible className="w-full mb-6 flex-shrink-0">
+                <AccordionItem value="filters" className="border rounded-lg bg-card">
+                    <AccordionTrigger className="p-4 hover:no-underline">
+                        <div className="flex items-center gap-2">
+                            <SlidersHorizontal className="h-5 w-5" />
+                            <span className="font-semibold">Search, Filter & View Options</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 pt-0">
+                             <div className="flex gap-2">
+                                <div className="relative flex-grow">
+                                  <Input
+                                  placeholder="Search or scan barcode..."
+                                  value={searchTerm}
+                                  onChange={(e) => setSearchTerm(e.target.value)}
+                                  className="pl-10"
+                                  />
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <Button variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
+                                  <ScanBarcode className="h-5 w-5" />
+                                  <span className="sr-only">Scan Product</span>
+                                </Button>
+                              </div>
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                     <Select onValueChange={handleFilterChange('category')} defaultValue="all">
+                                      <SelectTrigger className="w-full sm:w-[150px]">
+                                        <SelectValue placeholder="All Categories" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {categories.map(category => (
+                                          <SelectItem key={category} value={category}>{category === 'all' ? 'All Categories' : category}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+
+                                    <Select onValueChange={handleFilterChange('group')} defaultValue="all">
+                                      <SelectTrigger className="w-full sm:w-[150px]">
+                                        <SelectValue placeholder="All Groups" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {groups.map(group => (
+                                          <SelectItem key={group} value={group}>{group === 'all' ? 'All Groups' : group}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+
+                                    <Select onValueChange={setSortOrder} defaultValue="name-asc">
+                                        <SelectTrigger className="w-full sm:w-[150px]">
+                                            <SelectValue placeholder="Sort by" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                            <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                                            <SelectItem value="price-asc">Price (Low-High)</SelectItem>
+                                            <SelectItem value="price-desc">Price (High-Low)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                  <Switch id="show-images" checked={showImages} onCheckedChange={setShowImages} />
+                                  <Label htmlFor="show-images" className="text-sm whitespace-nowrap">Show Images</Label>
+                                </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+            
             {isLoading ? (
-                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48" />)}
+                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-48" />)}
                  </div>
             ) : (
+                <>
                 <div className="flex-grow overflow-auto pr-2 -mr-2">
-                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {filteredProducts.map(product => <ProductGridCard key={product.id} product={product} />)}
-                    </div>
+                     {paginatedProducts.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                            {paginatedProducts.map(product => <ProductGridCard key={product.id} product={product} showImage={showImages} />)}
+                        </div>
+                      ) : (
+                        <div className="text-center py-16">
+                            <p className="text-lg text-muted-foreground">No products found</p>
+                            <p className="text-sm text-muted-foreground mt-2">Try adjusting your search or filters.</p>
+                        </div>
+                      )}
                 </div>
+                {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-8 flex-shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</Button>
+                    <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages}>Next</Button>
+                    </div>
+                )}
+                </>
             )}
+
+            <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Scan Product Barcode</DialogTitle>
+                  </DialogHeader>
+                  <BarcodeScanner onResult={onBarcodeScanned} onCancel={() => setIsScannerOpen(false)} />
+                </DialogContent>
+            </Dialog>
+            
+            <AlertDialog open={isNotFoundDialogOpen} onOpenChange={setIsNotFoundDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Product Not Found</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    No product with barcode "{notFoundBarcode}" was found. Would you like to add it now?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction asChild>
+                    <Link href={`/admin/products/new?barcode=${notFoundBarcode}`}>Add Product</Link>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
