@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { getStoreData, setStoreData, getProductByBarcode } from '@/lib/offline';
 import Link from 'next/link';
 import { Slider } from '@/components/ui/slider';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 24;
 
@@ -36,7 +37,7 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   return items;
 }
 
-function ProductGridCard({ product, showImage }: { product: Product, showImage: boolean }) {
+function ProductGridCard({ product, showImage, itemSize }: { product: Product, showImage: boolean, itemSize: number }) {
     const { addToCart } = useCart();
 
     const getSecondaryText = () => {
@@ -44,6 +45,30 @@ function ProductGridCard({ product, showImage }: { product: Product, showImage: 
         if (product.unit === 'kg') return `/ kg`;
         if (product.stock > 0) return `• In Stock`;
         return '';
+    }
+
+    const titleSizeClasses = {
+      1: 'text-xs',    // Extra Small
+      2: 'text-sm',    // Small
+      3: 'text-base',  // Default
+      4: 'text-lg',    // Large
+      5: 'text-xl',    // Extra Large
+    };
+
+    const detailSizeClasses = {
+      1: 'text-xs',
+      2: 'text-xs',
+      3: 'text-sm',
+      4: 'text-sm',
+      5: 'text-base',
+    };
+    
+    const paddingClasses = {
+      1: 'p-1',
+      2: 'p-2',
+      3: 'p-3',
+      4: 'p-4',
+      5: 'p-4',
     }
 
     return (
@@ -63,9 +88,9 @@ function ProductGridCard({ product, showImage }: { product: Product, showImage: 
                   />
               </div>
             )}
-            <div className="p-3 flex-grow flex flex-col justify-between">
-                <h3 className="font-semibold text-card-foreground truncate">{product.name}</h3>
-                <p className="text-sm text-muted-foreground">
+            <div className={cn("flex-grow flex flex-col justify-between", paddingClasses[itemSize as keyof typeof paddingClasses])}>
+                <h3 className={cn("font-semibold text-card-foreground truncate", titleSizeClasses[itemSize as keyof typeof titleSizeClasses])}>{product.name}</h3>
+                <p className={cn("text-muted-foreground", detailSizeClasses[itemSize as keyof typeof detailSizeClasses])}>
                     ₱{product.price.toFixed(2)} {getSecondaryText()}
                 </p>
             </div>
@@ -301,7 +326,7 @@ export default function PosProductsPage() {
                 <div className="flex-grow overflow-auto pr-2 -mr-2">
                      {paginatedProducts.length > 0 ? (
                         <div className={`grid ${gridClassName}`}>
-                            {paginatedProducts.map(product => <ProductGridCard key={product.id} product={product} showImage={showImages} />)}
+                            {paginatedProducts.map(product => <ProductGridCard key={product.id} product={product} showImage={showImages} itemSize={itemSize} />)}
                         </div>
                       ) : (
                         <div className="text-center py-16">
