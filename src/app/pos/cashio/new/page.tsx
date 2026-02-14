@@ -68,11 +68,10 @@ function PosNewCashTransactionForm() {
 
 export default function PosNewCashTransactionPage() {
   return (
-    <div className="space-y-6">
-       <h1 className="text-3xl font-bold">Add New Cash Transaction</h1>
-        <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-          <PosNewCashTransactionForm />
-        </Suspense>
+    <div className="h-full overflow-y-auto pr-4 -mr-4">
+      <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+        <PosNewCashTransactionForm />
+      </Suspense>
     </div>
   );
 }
