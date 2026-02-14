@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PosSidebar } from './components/PosSidebar';
@@ -7,7 +6,6 @@ import { PosHeader } from './components/PosHeader';
 import { Providers } from '@/components/Providers';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import OrderHistoryDialog from '@/app/admin/components/OrderHistoryDialog';
 
 export default function PosLayout({
   children,
@@ -15,7 +13,6 @@ export default function PosLayout({
   children: React.ReactNode;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   return (
     <Providers>
@@ -25,18 +22,13 @@ export default function PosLayout({
           "flex-grow grid grid-rows-1 gap-6 p-6 overflow-hidden transition-[grid-template-columns] duration-300",
           isCollapsed ? "grid-cols-[80px_1fr_380px]" : "grid-cols-[280px_1fr_380px]"
         )}>
-            <PosSidebar isCollapsed={isCollapsed} onHistoryClick={() => setIsHistoryOpen(true)} />
+            <PosSidebar isCollapsed={isCollapsed} />
             <main className="flex flex-col overflow-hidden">
             {children}
             </main>
             <PosCheckout />
         </div>
         </div>
-        <OrderHistoryDialog 
-            isOpen={isHistoryOpen} 
-            onOpenChange={setIsHistoryOpen}
-            category="all"
-        />
     </Providers>
   );
 }

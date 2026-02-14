@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -13,21 +12,21 @@ const navItems = [
   { name: 'E-loading', href: '/pos/e-loading', icon: Smartphone },
   { name: 'Other Services', href: '/pos/other-services', icon: Wrench },
   { name: 'Expenses', href: '/admin/expenses', icon: Receipt },
+  { name: 'History', href: '/pos/history', icon: History },
 ];
 
 interface PosSidebarProps {
   isCollapsed: boolean;
-  onHistoryClick: () => void;
 }
 
-export function PosSidebar({ isCollapsed, onHistoryClick }: PosSidebarProps) {
+export function PosSidebar({ isCollapsed }: PosSidebarProps) {
   const pathname = usePathname();
 
   return (
     <aside className="bg-card rounded-lg p-4 flex flex-col gap-2">
       <div className="flex-grow space-y-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname.startsWith(item.href) && (item.href !== '/pos' || pathname === '/pos');
           return (
             <Button 
               key={item.name} 
@@ -43,17 +42,6 @@ export function PosSidebar({ isCollapsed, onHistoryClick }: PosSidebarProps) {
             </Button>
           );
         })}
-      </div>
-      <div className="flex-shrink-0">
-        <Button 
-            variant='ghost'
-            className={cn("w-full justify-start text-base h-14", isCollapsed && "justify-center")}
-            title={isCollapsed ? "Order History" : ""}
-            onClick={onHistoryClick}
-        >
-            <History className={cn("h-6 w-6", !isCollapsed && "mr-4")} />
-            {!isCollapsed && <span>History</span>}
-        </Button>
       </div>
     </aside>
   );
