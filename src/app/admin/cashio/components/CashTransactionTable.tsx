@@ -63,6 +63,7 @@ import { deleteCashTransactionAction } from '@/lib/actions';
 import { getStoreData, setStoreData, deleteItem, getReportData, deleteCashTransaction } from '@/lib/offline';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
+import { usePathname } from 'next/navigation';
 
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
@@ -121,6 +122,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
   const { toast } = useToast();
   const { addToCart, setCartCustomer, setCartOpen } = useCart();
   const { user, loading: authLoading, activeStoreId } = useAuth();
+  const pathname = usePathname();
   
   const [referenceSearch, setReferenceSearch] = React.useState('');
   const [isSearchingByRef, setIsSearchingByRef] = React.useState(false);
@@ -954,7 +956,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
             <DialogFooter className="sm:justify-between gap-2">
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button asChild variant="secondary" className="flex-1">
-                  <Link href={`/admin/cashio/edit/${selectedTransaction.id}`}>
+                  <Link href={`${pathname.startsWith('/pos') ? '/pos/cashio/edit' : '/admin/cashio/edit'}/${selectedTransaction.id}`}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Link>
                 </Button>
@@ -1022,4 +1024,3 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
     </div>
   );
 }
-
