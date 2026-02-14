@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -355,7 +356,7 @@ export default function ScanImagePage() {
                 Back
             </Link>
             </Button>
-        <Card className="max-w-md mx-auto">
+        <Card className="w-full max-w-full">
             <CardHeader>
             <CardTitle>Scan Transaction Image</CardTitle>
             <CardDescription>
@@ -392,7 +393,7 @@ export default function ScanImagePage() {
 
             {step === 2 && (
                 <div className="space-y-4">
-                    <div className="w-full aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                    <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
                         <video ref={videoRef} className={cn("w-full h-full object-cover", hasCameraPermission === false && "hidden")} autoPlay muted playsInline />
                         {hasCameraPermission === null && <p>Requesting camera...</p>}
                         {hasCameraPermission === false && (
@@ -445,92 +446,94 @@ export default function ScanImagePage() {
             )}
 
             {step === 3 && (
-                <div className="space-y-4">
-                    {previewImage && (
-                        <div className="relative w-full aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center">
-                            <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
-                        </div>
-                    )}
-                    
-                    {isProcessing && (
-                        <div className="flex items-center justify-center text-muted-foreground py-4">
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            <span>Processing image...</span>
-                        </div>
-                    )}
-
-                    {!isProcessing && (
-                        <>
-                            {duplicateTransaction !== null ? (
-                                isClaimed ? (
-                                    <Alert variant="destructive">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertTitle>Transaction Already Claimed</AlertTitle>
-                                        <AlertDescription>
-                                            This cash-out transaction has already been claimed and cannot be added to a new order.
-                                        </AlertDescription>
-                                    </Alert>
+                 <div className="grid md:grid-cols-2 gap-6 items-start">
+                    <div className="space-y-4">
+                        {previewImage && (
+                            <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
+                                <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
+                            </div>
+                        )}
+                        {isProcessing && (
+                            <div className="flex items-center justify-center text-muted-foreground py-4">
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                <span>Processing image...</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="space-y-4">
+                        {!isProcessing && (
+                            <>
+                                {duplicateTransaction !== null ? (
+                                    isClaimed ? (
+                                        <Alert variant="destructive">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertTitle>Transaction Already Claimed</AlertTitle>
+                                            <AlertDescription>
+                                                This cash-out transaction has already been claimed and cannot be added to a new order.
+                                            </AlertDescription>
+                                        </Alert>
+                                    ) : (
+                                        <Alert variant="destructive">
+                                            <XCircle className="h-4 w-4" />
+                                            <AlertTitle>Transaction Found</AlertTitle>
+                                            <AlertDescription>
+                                                This reference number already exists in your records.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )
                                 ) : (
-                                    <Alert variant="destructive">
-                                        <XCircle className="h-4 w-4" />
-                                        <AlertTitle>Transaction Found</AlertTitle>
+                                extractedData && (
+                                    <Alert>
+                                        <CheckCircle className="h-4 w-4" />
+                                        <AlertTitle>New Transaction</AlertTitle>
                                         <AlertDescription>
-                                            This reference number already exists in your records.
+                                            This reference number appears to be new.
                                         </AlertDescription>
                                     </Alert>
                                 )
-                            ) : (
-                            extractedData && (
-                                <Alert>
-                                    <CheckCircle className="h-4 w-4" />
-                                    <AlertTitle>New Transaction</AlertTitle>
-                                    <AlertDescription>
-                                        This reference number appears to be new.
-                                    </AlertDescription>
-                                </Alert>
-                            )
-                            )}
+                                )}
 
-                            <div className="space-y-2 rounded-md border p-4 text-sm">
-                                {extractedData ? (
-                                    Object.entries(extractedData).map(([key, value]) => {
-                                        if (key === 'accountUsedId') return null;
-                                        return (
-                                            <div key={key} className="flex justify-between">
-                                                <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                                                <span className="font-mono text-right">{String(value)}</span>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="text-center text-muted-foreground">No details extracted.</div>
-                                )}
-                            </div>
-                            
-                            <div className="space-y-2">
-                                {canAddToOrder ? (
-                                    <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isProcessing}>
-                                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add to Order'}
+                                <div className="space-y-2 rounded-md border p-4 text-sm">
+                                    {extractedData ? (
+                                        Object.entries(extractedData).map(([key, value]) => {
+                                            if (key === 'accountUsedId') return null;
+                                            return (
+                                                <div key={key} className="flex justify-between">
+                                                    <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                                    <span className="font-mono text-right">{String(value)}</span>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center text-muted-foreground">No details extracted.</div>
+                                    )}
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    {canAddToOrder ? (
+                                        <Button className="w-full" size="lg" onClick={handleAddToOrder} disabled={isProcessing}>
+                                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add to Order'}
+                                        </Button>
+                                    ) : (
+                                        <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
+                                            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
+                                            Add Transaction
+                                        </Button>
+                                    )}
+                                    <Button variant="outline" className="w-full" onClick={handleRetryExtraction} disabled={isProcessing}>
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Retry Extraction
                                     </Button>
-                                ) : (
-                                    <Button className="w-full" size="lg" onClick={submitTransaction} disabled={!!duplicateTransaction || isProcessing}>
-                                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4 mr-2" />}
-                                        Add Transaction
-                                    </Button>
-                                )}
-                                <Button variant="outline" className="w-full" onClick={handleRetryExtraction} disabled={isProcessing}>
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Retry Extraction
-                                </Button>
-                                {duplicateTransaction && (
-                                    <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}>
-                                        <Info className="mr-2 h-4 w-4" />
-                                        View Existing Transaction Details
-                                    </Button>
-                                )}
-                            </div>
-                        </>
-                    )}
+                                    {duplicateTransaction && (
+                                        <Button variant="secondary" className="w-full" onClick={() => setIsDetailsModalOpen(true)}>
+                                            <Info className="mr-2 h-4 w-4" />
+                                            View Existing Transaction Details
+                                        </Button>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
             </CardContent>
