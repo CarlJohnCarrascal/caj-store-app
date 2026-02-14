@@ -1,29 +1,32 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useTransition } from 'react';
 import { Product } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, SlidersHorizontal, ScanBarcode } from 'lucide-react';
+import { Search, SlidersHorizontal, ScanBarcode, History } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getStoreData, setStoreData, getProductByBarcode } from '@/lib/offline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
-import { getStoreData, setStoreData, getProductByBarcode } from '@/lib/offline';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import OrderHistoryDialog from '../admin/components/OrderHistoryDialog';
+import { useAuth } from '@/hooks/use-auth';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+
 
 const ITEMS_PER_PAGE = 24;
 
@@ -48,11 +51,11 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
     }
 
     const titleSizeClasses = {
-      1: 'text-xs',    // Extra Small
-      2: 'text-sm',    // Small
-      3: 'text-base',  // Default
-      4: 'text-lg',    // Large
-      5: 'text-xl',    // Extra Large
+      1: 'text-xs',
+      2: 'text-sm',
+      3: 'text-base',
+      4: 'text-base',
+      5: 'text-lg',
     };
 
     const detailSizeClasses = {
@@ -60,7 +63,7 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
       2: 'text-xs',
       3: 'text-sm',
       4: 'text-sm',
-      5: 'text-base',
+      5: 'text-sm',
     };
     
     const paddingClasses = {
@@ -175,7 +178,7 @@ export default function PosProductsPage() {
             switch (sortOrder) {
                 case 'price-asc': return a.price - b.price;
                 case 'price-desc': return b.price - a.price;
-                case 'name-desc': return b.name.localeCompare(a.name);
+                case 'name-desc': return b.name.localeCompare(b.name);
                 case 'name-asc': default: return a.name.localeCompare(b.name);
             }
         });
@@ -299,7 +302,7 @@ export default function PosProductsPage() {
                                     />
                                     <Label htmlFor="show-images" className="text-sm whitespace-nowrap">Show Images</Label>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 min-w-[150px]">
                                     <Label htmlFor="item-size-slider" className="text-sm whitespace-nowrap">Size</Label>
                                     <Slider
                                         id="item-size-slider"
@@ -308,7 +311,7 @@ export default function PosProductsPage() {
                                         max={5}
                                         step={1}
                                         onValueChange={(value) => setItemSize(value[0])}
-                                        className="w-[100px]"
+                                        className="w-full"
                                     />
                                 </div>
                             </div>
