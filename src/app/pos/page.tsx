@@ -274,8 +274,8 @@ export default function PosProductsPage() {
                                     />
                                     <Label htmlFor="show-images" className="text-sm whitespace-nowrap">Show Images</Label>
                                 </div>
-                                <div className="flex items-center gap-2 w-full max-w-[150px]">
-                                    <Label htmlFor="item-size-slider" className="text-sm">Size</Label>
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="item-size-slider" className="text-sm whitespace-nowrap">Size</Label>
                                     <Slider
                                         id="item-size-slider"
                                         defaultValue={[itemSize]}
@@ -283,6 +283,7 @@ export default function PosProductsPage() {
                                         max={5}
                                         step={1}
                                         onValueChange={(value) => setItemSize(value[0])}
+                                        className="w-[100px]"
                                     />
                                 </div>
                             </div>
