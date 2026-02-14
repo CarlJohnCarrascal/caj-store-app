@@ -355,7 +355,7 @@ export default function ScanImagePage() {
             <div className="grid md:grid-cols-2 gap-8 items-start">
                 {/* --- LEFT COLUMN --- */}
                 <div className="space-y-4">
-                <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
+                <div className="w-full max-w-sm mx-auto aspect-[9/16] bg-muted rounded-md overflow-hidden flex items-center justify-center relative">
                     {previewImage && !isProcessing ? (
                     <Image src={previewImage} alt="Scanned preview" layout="fill" objectFit="contain" />
                     ) : (
