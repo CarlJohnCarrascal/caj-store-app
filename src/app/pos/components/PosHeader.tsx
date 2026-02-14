@@ -43,10 +43,7 @@ export function PosHeader({ isCollapsed, onToggleCollapse }: PosHeaderProps) {
           {activeStore?.name || 'POS Mode'}
         </div>
       </div>
-      <div className="w-full max-w-lg relative hidden md:block">
-        <Input placeholder="Search..." className="pl-10 h-11 bg-input" />
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-      </div>
+      
       <div className="flex items-center gap-4">
         <span className="font-medium text-lg hidden sm:inline">{time}</span>
         <DropdownMenu>
