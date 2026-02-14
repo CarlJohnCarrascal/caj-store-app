@@ -28,7 +28,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const handleItemClick = (itemId: string) => {
-    setSelectedItemId(prevId => prevId === itemId ? null : itemId);
+    setSelectedItemId(prevId => (prevId === itemId ? null : itemId));
   };
 
   return (
@@ -50,11 +50,14 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   const isOtherService = item.category === 'Other Service';
                   const step = isKg ? 0.01 : 1;
                   const min = isKg ? 0.01 : 1;
-                  
+
                   return (
                     <div
                       key={item.id}
-                      className={cn("py-4 space-y-2 cursor-pointer transition-colors", isSelected && "bg-muted/50")}
+                      className={cn(
+                        'py-4 space-y-2 cursor-pointer transition-colors',
+                        isSelected && 'bg-muted/50'
+                      )}
                       onClick={() => handleItemClick(item.id)}
                     >
                       <div className="flex items-center space-x-4 px-6">
@@ -65,7 +68,17 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             fill
                             sizes="64px"
                             className="object-cover"
-                            data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : isEloading ? 'loading service' : isOtherService ? 'service icon' : 'product photo'}
+                            data-ai-hint={
+                              isPrinting
+                                ? 'printing service'
+                                : isCashIO
+                                ? 'transaction'
+                                : isEloading
+                                ? 'loading service'
+                                : isOtherService
+                                ? 'service icon'
+                                : 'product photo'
+                            }
                           />
                         </div>
                         <div className="flex-1">
@@ -73,24 +86,35 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             <h3 className="flex-1 pr-2">{item.name}</h3>
                             <p className="pl-4">₱{(item.price * item.quantity).toFixed(2)}</p>
                           </div>
-                           {!(isCashIO) && <p className="text-sm text-muted-foreground">{item.quantity} x ₱{item.price.toFixed(2)}{isKg ? ' / kg' : ''}</p>}
-                          {(isPrinting || isCashIO || isEloading || isOtherService) && item.description && (
-                            <p className="text-xs text-muted-foreground mt-1 max-w-[200px] break-words">{item.description}</p>
+                          {!(isCashIO) && (
+                            <p className="text-sm text-muted-foreground">
+                              {item.quantity} x ₱{item.price.toFixed(2)}
+                              {isKg ? ' / kg' : ''}
+                            </p>
                           )}
+                          {(isPrinting || isCashIO || isEloading || isOtherService) &&
+                            item.description && (
+                              <p className="text-xs text-muted-foreground mt-1 max-w-[200px] break-words">
+                                {item.description}
+                              </p>
+                            )}
                         </div>
                       </div>
 
                       {isSelected && (
                         <div className="flex items-center justify-between pl-28 pr-6 pt-2">
-                           {!(isCashIO) ? (
+                          {!(isCashIO) ? (
                             <div className="flex items-center">
                               <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={(e) => {
+                                onClick={e => {
                                   e.stopPropagation();
-                                  const newQuantity = Math.max(min, parseFloat((item.quantity - step).toPrecision(10)));
+                                  const newQuantity = Math.max(
+                                    min,
+                                    parseFloat((item.quantity - step).toPrecision(10))
+                                  );
                                   updateQuantity(item.id, newQuantity);
                                 }}
                               >
@@ -101,15 +125,15 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                 step={step}
                                 min={min}
                                 value={item.quantity}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => {
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
                                   e.stopPropagation();
                                   const val = parseFloat(e.target.value);
                                   if (!isNaN(val)) {
                                     updateQuantity(item.id, val);
                                   }
                                 }}
-                                onBlur={(e) => {
+                                onBlur={e => {
                                   const val = parseFloat(e.target.value);
                                   if (isNaN(val) || val < min) {
                                     updateQuantity(item.id, min);
@@ -121,21 +145,25 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                 variant="outline"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={(e) => {
+                                onClick={e => {
                                   e.stopPropagation();
-                                  const newQuantity = parseFloat((item.quantity + step).toPrecision(10));
+                                  const newQuantity = parseFloat(
+                                    (item.quantity + step).toPrecision(10)
+                                  );
                                   updateQuantity(item.id, newQuantity);
                                 }}
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
                             </div>
-                          ) : <div />}
+                          ) : (
+                            <div />
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
                             className="text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
+                            onClick={e => {
                               e.stopPropagation();
                               removeFromCart(item.id);
                             }}
