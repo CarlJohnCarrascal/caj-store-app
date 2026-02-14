@@ -3,13 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, DollarSign, ArrowRightLeft, Printer, History, Smartphone, Wrench, Receipt } from 'lucide-react';
+import { ShoppingCart, ArrowRightLeft, Printer, History, Smartphone, Wrench, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { name: 'Products', href: '/pos', icon: ShoppingCart },
-  { name: 'Cash In', href: '/pos/cash-in', icon: DollarSign },
-  { name: 'Cash Out', href: '/pos/cash-out', icon: ArrowRightLeft },
+  { name: 'Cash IO', href: '/pos/cashio', icon: ArrowRightLeft },
   { name: 'Printing', href: '/pos/printing', icon: Printer },
   { name: 'E-loading', href: '/pos/e-loading', icon: Smartphone },
   { name: 'Other Services', href: '/pos/other-services', icon: Wrench },
