@@ -23,15 +23,42 @@ function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
 
 function ProductGridCard({ product }: { product: Product }) {
     const { addToCart } = useCart();
+
+    const getSecondaryText = () => {
+        if (product.category === 'Printing') {
+            return `/ Page`;
+        }
+        if (product.unit === 'kg') {
+            return `/ kg`;
+        }
+        if (product.stock > 0) {
+            return `• In Stock`;
+        }
+        return '';
+    }
+
+    const secondaryText = getSecondaryText();
+
     return (
-        <div className="bg-card p-4 rounded-lg flex flex-col items-center text-center transition-all hover:shadow-lg hover:ring-2 hover:ring-primary">
-            <div className="relative w-24 h-24 mb-4">
-                <Image src={product.image || 'https://placehold.co/100x100.png'} alt={product.name} fill sizes="100px" className="object-contain" />
+        <div 
+            className="rounded-lg flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-primary cursor-pointer group"
+            onClick={() => addToCart(product)}
+        >
+            <div className="relative aspect-square w-full bg-white flex items-center justify-center p-4">
+                <Image 
+                    src={product.image || 'https://placehold.co/400x400.png'} 
+                    alt={product.name} 
+                    fill 
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    className="object-contain transition-transform group-hover:scale-105" 
+                />
             </div>
-            <h3 className="font-semibold flex-grow">{product.name}</h3>
-            <p className="text-lg font-bold mt-1">₱{product.price.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">In Stock: {product.stock}</p>
-            <Button onClick={() => addToCart(product)} className="mt-4 w-full">Add</Button>
+            <div className="p-3 bg-slate-800">
+                <h3 className="font-semibold text-white truncate">{product.name}</h3>
+                <p className="text-sm text-slate-300">
+                    ₱{product.price.toFixed(2)} {secondaryText}
+                </p>
+            </div>
         </div>
     );
 }
