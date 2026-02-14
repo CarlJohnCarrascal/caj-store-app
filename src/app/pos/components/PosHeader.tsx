@@ -1,6 +1,7 @@
+
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, User, LayoutDashboard } from 'lucide-react';
+import { Search, ChevronDown, User, LayoutDashboard, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
@@ -14,9 +15,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 
-export function PosHeader() {
+interface PosHeaderProps {
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+export function PosHeader({ isCollapsed, onToggleCollapse }: PosHeaderProps) {
   const [time, setTime] = useState('');
-  const { user, signOut } = useAuth();
+  const { user, signOut, activeStore } = useAuth();
 
   useEffect(() => {
     const updateClock = () => {
@@ -29,15 +35,20 @@ export function PosHeader() {
 
   return (
     <header className="flex items-center justify-between px-6 h-20 border-b border-border flex-shrink-0">
-      <div className="text-2xl font-bold">
-        LOGO
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={onToggleCollapse}>
+          {isCollapsed ? <PanelLeftOpen className="h-6 w-6" /> : <PanelLeftClose className="h-6 w-6" />}
+        </Button>
+        <div className="text-2xl font-bold">
+          {activeStore?.name || 'POS Mode'}
+        </div>
       </div>
-      <div className="w-full max-w-lg relative">
+      <div className="w-full max-w-lg relative hidden md:block">
         <Input placeholder="Search..." className="pl-10 h-11 bg-input" />
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
       </div>
       <div className="flex items-center gap-4">
-        <span className="font-medium text-lg">{time}</span>
+        <span className="font-medium text-lg hidden sm:inline">{time}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2">

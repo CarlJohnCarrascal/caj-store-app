@@ -1,3 +1,4 @@
+
 import { db } from '../firebase';
 import { ref, get, set, push, query, orderByChild, equalTo, limitToLast } from 'firebase/database';
 import type { Order, CartItem, CashTransaction } from '../types';
@@ -187,24 +188,27 @@ export async function getOrdersByCustomerId(storeId: string, customerId: string)
     return ordersWithDates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function getRecentOrdersByCategory(storeId: string, category: string, limit: number = 20): Promise<Order[]> {
+export async function getRecentOrdersByCategory(storeId: string, category: 'Store' | 'Printing' | 'E-loading' | 'Other Service' | 'CashIO' | 'all', limit: number = 20): Promise<Order[]> {
     const ordersRef = ref(db, `storeData/${storeId}/orders`);
-    const q = query(ordersRef, limitToLast(limit * 5)); // Fetch more to filter client-side
+    const q = query(ordersRef, limitToLast(category === 'all' ? limit : limit * 5));
     const snapshot = await get(q);
     if (!snapshot.exists()) {
         return [];
     }
     
     const allRecentOrders = snapshotToArray<Order>(snapshot);
+    const sortedOrders = allRecentOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (category === 'all') {
+        return sortedOrders.slice(0, limit);
+    }
     
-    const filteredOrders = allRecentOrders.filter(order => {
+    const filteredOrders = sortedOrders.filter(order => {
         if (category === 'Store') {
             return order.items.some(item => !['Printing', 'E-loading', 'Other Service', 'CashIO', 'Financial'].includes(item.category));
         }
         return order.items.some(item => item.category === category);
     });
 
-    return filteredOrders
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, limit);
+    return filteredOrders.slice(0, limit);
 }

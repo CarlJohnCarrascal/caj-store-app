@@ -16,12 +16,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/use-auth';
 
 
 interface OrderHistoryDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  category: 'Store' | 'Printing' | 'E-loading' | 'Other Service' | 'CashIO';
+  category: 'Store' | 'Printing' | 'E-loading' | 'Other Service' | 'CashIO' | 'all';
 }
 
 export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: OrderHistoryDialogProps) {
@@ -30,13 +31,14 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
   const [selectedTransaction, setSelectedTransaction] = useState<CashTransaction | null>(null);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const { activeStoreId } = useAuth();
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && activeStoreId) {
       const fetchHistory = async () => {
         setIsLoading(true);
         try {
-          const recentOrders = await getRecentOrdersByCategory(category, 20);
+          const recentOrders = await getRecentOrdersByCategory(activeStoreId, category, 20);
           setOrders(recentOrders);
         } catch (error) {
           console.error(`Failed to fetch order history for ${category}:`, error);
@@ -46,9 +48,12 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
       };
       fetchHistory();
     }
-  }, [isOpen, category]);
+  }, [isOpen, category, activeStoreId]);
   
   const filterItemsByCategory = (items: CartItem[]): CartItem[] => {
+    if (category === 'all') {
+        return items;
+    }
     if (category === 'Store') {
         return items.filter(item => !['Printing', 'E-loading', 'Other Service', 'CashIO', 'Financial'].includes(item.category));
     }
@@ -62,9 +67,10 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
   }
   
   const handleViewDetails = async (transactionId: string) => {
+    if (!activeStoreId) return;
     setIsFetchingDetails(true);
     try {
-        const tx = await getCashTransactionById(transactionId);
+        const tx = await getCashTransactionById(activeStoreId, transactionId);
         if (tx) {
             setSelectedTransaction(tx);
         } else {
@@ -82,9 +88,9 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Recent {category} Orders</DialogTitle>
+            <DialogTitle>Recent {category === 'all' ? '' : category} Orders</DialogTitle>
             <DialogDescription>
-              Showing the last 20 orders containing {category} items.
+              Showing the last 20 orders {category !== 'all' && `containing ${category} items`}.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
@@ -145,7 +151,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                                   <TableHeader>
                                       <TableRow>
                                       <TableHead>Item</TableHead>
-                                      {(category === 'E-loading' || category === 'Other Service') && <TableHead>Description</TableHead>}
+                                      {(category === 'E-loading' || category === 'Other Service' || category === 'all') && <TableHead>Description</TableHead>}
                                       {category === 'Printing' && <TableHead>Dimensions</TableHead>}
                                       <TableHead>Quantity</TableHead>
                                       <TableHead className="text-right">Subtotal</TableHead>
@@ -155,7 +161,7 @@ export default function OrderHistoryDialog({ isOpen, onOpenChange, category }: O
                                       {relevantItems.map(item => (
                                       <TableRow key={item.id}>
                                           <TableCell className="font-medium">{item.name}</TableCell>
-                                          {(category === 'E-loading' || category === 'Other Service') && <TableCell>{formatDescription(item.description)}</TableCell>}
+                                          {(category === 'E-loading' || category === 'Other Service' || category === 'all') && <TableCell>{formatDescription(item.description)}</TableCell>}
                                           {category === 'Printing' && <TableCell>{item.dimensions !== 'N/A' ? item.dimensions : '-'}</TableCell>}
                                           <TableCell>{item.quantity}</TableCell>
                                           <TableCell className="text-right">₱{(item.price * item.quantity).toFixed(2)}</TableCell>
