@@ -40,6 +40,8 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import BarcodeScanner from '@/components/BarcodeScanner';
 
+const ADMIN_PRODUCTS_FILTERS_KEY = 'adminProductsFilters';
+
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
   if (snapshot.exists()) {
@@ -65,6 +67,24 @@ export default function ProductTable() {
   const [sortOrder, setSortOrder] = useState('name-asc');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
+  useEffect(() => {
+    const saved = localStorage.getItem(ADMIN_PRODUCTS_FILTERS_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSearchTerm(parsed.searchTerm ?? '');
+        setFilters(parsed.filters ?? { category: 'all', group: 'all' });
+        setSortOrder(parsed.sortOrder ?? 'name-asc');
+      } catch (e) {
+        console.error('Failed to parse product filters', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const toSave = { searchTerm, filters, sortOrder };
+    localStorage.setItem(ADMIN_PRODUCTS_FILTERS_KEY, JSON.stringify(toSave));
+  }, [searchTerm, filters, sortOrder]);
 
   useEffect(() => {
     if (!activeStoreId) {
@@ -327,4 +347,3 @@ export default function ProductTable() {
     </>
   );
 }
-

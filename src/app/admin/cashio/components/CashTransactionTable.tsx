@@ -101,6 +101,8 @@ interface CashTransactionTableProps {
   onSearchOpenChange: (isOpen: boolean) => void;
 }
 
+const ADMIN_CASHIO_FILTERS_KEY = 'adminCashIOFilters';
+
 export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange }: CashTransactionTableProps) {
   const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
   const [accounts, setAccounts] = React.useState<Account[]>([]);
@@ -137,6 +139,46 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
   const [method, setMethod] = React.useState('all');
   const [accountUsed, setAccountUsed] = React.useState('all');
   const [status, setStatus] = React.useState('all');
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem(ADMIN_CASHIO_FILTERS_KEY);
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            setSearch(parsed.search ?? '');
+            setItemsPerPage(parsed.itemsPerPage ?? 10);
+            setSort(parsed.sort ?? { key: 'transactionDate', order: 'desc' });
+            setViewMode(parsed.viewMode ?? 'grid');
+            if (parsed.date?.from) {
+                setDate({
+                    from: new Date(parsed.date.from),
+                    to: parsed.date.to ? new Date(parsed.date.to) : undefined,
+                });
+            }
+            setType(parsed.type ?? 'all');
+            setMethod(parsed.method ?? 'all');
+            setAccountUsed(parsed.accountUsed ?? 'all');
+            setStatus(parsed.status ?? 'all');
+        } catch (e) {
+            console.error("Failed to parse cashio filters", e);
+        }
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const toSave = {
+        search,
+        itemsPerPage,
+        sort,
+        viewMode,
+        date: date ? { from: date.from?.toISOString(), to: date.to?.toISOString() } : undefined,
+        type,
+        method,
+        accountUsed,
+        status,
+    };
+    localStorage.setItem(ADMIN_CASHIO_FILTERS_KEY, JSON.stringify(toSave));
+  }, [search, itemsPerPage, sort, viewMode, date, type, method, accountUsed, status]);
 
 
   React.useEffect(() => {

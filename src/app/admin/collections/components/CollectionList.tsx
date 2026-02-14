@@ -29,6 +29,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 
+const ADMIN_COLLECTIONS_FILTERS_KEY = 'adminCollectionsFilters';
+
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
   if (snapshot.exists()) {
@@ -52,6 +54,25 @@ export default function CollectionList() {
   const [selectedCustomer, setSelectedCustomer] = useState('all');
   const [selectedCollectionName, setSelectedCollectionName] = useState('all');
   const { user } = useAuth();
+
+  useEffect(() => {
+    const saved = localStorage.getItem(ADMIN_COLLECTIONS_FILTERS_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSearchTerm(parsed.searchTerm ?? '');
+        setSelectedCustomer(parsed.selectedCustomer ?? 'all');
+        setSelectedCollectionName(parsed.selectedCollectionName ?? 'all');
+      } catch (e) {
+        console.error('Failed to parse collection filters', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const toSave = { searchTerm, selectedCustomer, selectedCollectionName };
+    localStorage.setItem(ADMIN_COLLECTIONS_FILTERS_KEY, JSON.stringify(toSave));
+  }, [searchTerm, selectedCustomer, selectedCollectionName]);
 
   useEffect(() => {
     let collectionsLoadedFromCache = false;

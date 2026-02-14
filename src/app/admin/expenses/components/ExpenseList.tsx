@@ -26,7 +26,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -37,6 +37,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 import { deleteExpense, logActivity } from '@/lib/data';
 
+const ADMIN_EXPENSES_FILTERS_KEY = 'adminExpensesFilters';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
@@ -58,9 +59,37 @@ export default function ExpenseList() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [date, setDate] = useState<DateRange | undefined>();
+  const [date, setDate] = useState<DateRange | undefined>({ from: subDays(new Date(), 30), to: new Date() });
   const { user, activeStoreId } = useAuth();
   
+  useEffect(() => {
+    const saved = localStorage.getItem(ADMIN_EXPENSES_FILTERS_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSearchTerm(parsed.searchTerm ?? '');
+        setCategoryFilter(parsed.categoryFilter ?? 'all');
+        if (parsed.date?.from) {
+          setDate({
+            from: new Date(parsed.date.from),
+            to: parsed.date.to ? new Date(parsed.date.to) : undefined,
+          });
+        }
+      } catch (e) {
+        console.error('Failed to parse expense filters', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const toSave = {
+      searchTerm,
+      categoryFilter,
+      date: date ? { from: date.from?.toISOString(), to: date.to?.toISOString() } : undefined,
+    };
+    localStorage.setItem(ADMIN_EXPENSES_FILTERS_KEY, JSON.stringify(toSave));
+  }, [searchTerm, categoryFilter, date]);
+
   useEffect(() => {
     if (!activeStoreId) {
         setIsLoading(false);

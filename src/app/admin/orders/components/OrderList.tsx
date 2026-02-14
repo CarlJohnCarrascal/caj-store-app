@@ -29,6 +29,8 @@ import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
+const ADMIN_ORDERS_FILTERS_KEY = 'adminOrdersFilters';
+
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
   if (snapshot.exists()) {
@@ -55,6 +57,38 @@ export default function OrderList() {
     from: subDays(new Date(), 30),
     to: new Date(),
   });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(ADMIN_ORDERS_FILTERS_KEY);
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            setItemsPerPage(parsed.itemsPerPage ?? 10);
+            setSearchTerm(parsed.searchTerm ?? '');
+            setSettlementFilter(parsed.settlementFilter ?? 'all');
+            setServiceFilter(parsed.serviceFilter ?? 'all');
+            if (parsed.date?.from) {
+                setDate({
+                    from: new Date(parsed.date.from),
+                    to: parsed.date.to ? new Date(parsed.date.to) : undefined,
+                });
+            }
+        } catch (e) {
+            console.error('Failed to parse order filters', e);
+        }
+    }
+  }, []);
+
+  useEffect(() => {
+    const toSave = {
+        itemsPerPage,
+        searchTerm,
+        settlementFilter,
+        serviceFilter,
+        date: date ? { from: date.from?.toISOString(), to: date.to?.toISOString() } : undefined,
+    };
+    localStorage.setItem(ADMIN_ORDERS_FILTERS_KEY, JSON.stringify(toSave));
+  }, [itemsPerPage, searchTerm, settlementFilter, serviceFilter, date]);
 
   useEffect(() => {
     const loadFromCache = async () => {

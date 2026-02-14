@@ -31,6 +31,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { deletePrintingPrice, logActivity } from '@/lib/data';
 
+const ADMIN_PRINTING_PRICES_FILTERS_KEY = 'adminPrintingPricesFilters';
+
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
   const items: (T & { id: string })[] = [];
   if (snapshot.exists()) {
@@ -57,6 +59,25 @@ export default function PrintingPriceList() {
   const [serviceFilter, setServiceFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sizeSearch, setSizeSearch] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(ADMIN_PRINTING_PRICES_FILTERS_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setServiceFilter(parsed.serviceFilter ?? 'all');
+        setTypeFilter(parsed.typeFilter ?? 'all');
+        setSizeSearch(parsed.sizeSearch ?? '');
+      } catch (e) {
+        console.error('Failed to parse printing price filters', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const toSave = { serviceFilter, typeFilter, sizeSearch };
+    localStorage.setItem(ADMIN_PRINTING_PRICES_FILTERS_KEY, JSON.stringify(toSave));
+  }, [serviceFilter, typeFilter, sizeSearch]);
 
   useEffect(() => {
     if (!activeStoreId) {
@@ -263,5 +284,3 @@ export default function PrintingPriceList() {
     </>
   );
 }
-
-      

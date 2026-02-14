@@ -53,7 +53,7 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
     const titleSizeClasses = {
       1: 'text-xs',
       2: 'text-sm',
-      3: 'text-base',
+      3: 'text-sm',
       4: 'text-base',
       5: 'text-lg',
     };
@@ -61,7 +61,7 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
     const detailSizeClasses = {
       1: 'text-xs',
       2: 'text-xs',
-      3: 'text-sm',
+      3: 'text-xs',
       4: 'text-sm',
       5: 'text-sm',
     };
@@ -101,6 +101,8 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
     );
 }
 
+const POS_PRODUCTS_FILTERS_KEY = 'posProductsFilters';
+
 export default function PosProductsPage() {
     const { activeStoreId } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
@@ -117,6 +119,27 @@ export default function PosProductsPage() {
     const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
     const [itemSize, setItemSize] = useState(3);
     
+    useEffect(() => {
+      const saved = localStorage.getItem(POS_PRODUCTS_FILTERS_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setSearchTerm(parsed.searchTerm ?? '');
+          setShowImages(parsed.showImages ?? true);
+          setFilters(parsed.filters ?? { category: 'all', group: 'all' });
+          setSortOrder(parsed.sortOrder ?? 'name-asc');
+          setItemSize(parsed.itemSize ?? 3);
+        } catch (e) {
+          console.error('Failed to parse POS product filters', e);
+        }
+      }
+    }, []);
+
+    useEffect(() => {
+      const toSave = { searchTerm, showImages, filters, sortOrder, itemSize };
+      localStorage.setItem(POS_PRODUCTS_FILTERS_KEY, JSON.stringify(toSave));
+    }, [searchTerm, showImages, filters, sortOrder, itemSize]);
+
     useEffect(() => {
         if (!activeStoreId) {
             setIsLoading(false);
