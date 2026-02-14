@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCart } from '@/hooks/use-cart';
@@ -186,7 +187,7 @@ export function PosCheckout() {
         <Separator />
         <div className="space-y-2 pt-4">
              <Button asChild className="w-full h-14 text-lg">
-                <Link href="/admin/checkout">
+                <Link href="/pos/checkout">
                   CHECKOUT <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
              </Button>
