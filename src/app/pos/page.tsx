@@ -55,23 +55,23 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
       2: 'text-sm',
       3: 'text-sm',
       4: 'text-base',
-      5: 'text-lg',
+      5: 'text-base',
     };
 
     const detailSizeClasses = {
       1: 'text-xs',
       2: 'text-xs',
-      3: 'text-xs',
+      3: 'text-sm',
       4: 'text-sm',
       5: 'text-sm',
     };
     
     const paddingClasses = {
-      1: 'p-1',
-      2: 'p-2',
-      3: 'p-3',
+      1: 'p-2',
+      2: 'p-3',
+      3: 'p-4',
       4: 'p-4',
-      5: 'p-4',
+      5: 'p-5',
     }
 
     return (
@@ -201,7 +201,7 @@ export default function PosProductsPage() {
             switch (sortOrder) {
                 case 'price-asc': return a.price - b.price;
                 case 'price-desc': return b.price - a.price;
-                case 'name-desc': return b.name.localeCompare(b.name);
+                case 'name-desc': return b.name.localeCompare(a.name);
                 case 'name-asc': default: return a.name.localeCompare(b.name);
             }
         });
