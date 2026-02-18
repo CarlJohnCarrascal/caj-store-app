@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -19,17 +20,25 @@ import {
 export async function addProductAction() {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
+  revalidatePath('/admin/inventory');
 }
 
 export async function updateProductAction(id: string) {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
   revalidatePath(`/admin/products/edit/${id}`);
+  revalidatePath('/admin/inventory');
 }
 
 export async function deleteProductAction() {
   revalidatePath('/admin/products');
   revalidatePath('/admin/store');
+  revalidatePath('/admin/inventory');
+}
+
+export async function updateStockAction() {
+  revalidatePath('/admin/inventory');
+  revalidatePath('/admin/products');
 }
 
 export async function addCustomerAction() {
@@ -59,6 +68,7 @@ export async function processOrderAction() {
   revalidatePath('/admin/reports/e-loading');
   revalidatePath('/admin/reports/printing');
   revalidatePath('/admin/reports/other-service');
+  revalidatePath('/admin/inventory');
 }
 
 export async function createFinancialTransactionOrderAction() {

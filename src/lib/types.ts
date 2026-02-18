@@ -32,6 +32,22 @@ export interface AppUser {
   updatedBy?: ChangeTracker;
 }
 
+export interface StockHistoryEntry {
+  id: string;
+  type: 'initial' | 'stock-in' | 'stock-out' | 'sale' | 'return' | 'correction';
+  quantityChange: number;
+  newStock: number;
+  price?: number;
+  cost?: number;
+  notes?: string;
+  timestamp: string; // ISO string
+  user: {
+    id: string;
+    name: string;
+  };
+  orderId?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -39,7 +55,10 @@ export interface Product {
   show: boolean;
   category: string;
   price: number;
+  cost?: number;
   stock: number;
+  lowStockThreshold?: number;
+  criticalStockThreshold?: number;
   barcode?: string;
   material?: string;
   dimensions?: string;
@@ -48,6 +67,7 @@ export interface Product {
   unit: 'each' | 'kg';
   originalTransactionId?: string;
   fromScanned?: string;
+  history?: Record<string, StockHistoryEntry>;
   createdBy?: ChangeTracker;
   updatedBy?: ChangeTracker;
 }

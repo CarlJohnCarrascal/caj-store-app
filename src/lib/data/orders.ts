@@ -7,7 +7,7 @@ import { snapshotToArray, getCostAndFeeFromDescription } from './helpers';
 import { getCashTransactionById, updateCashTransaction } from './cash-transactions';
 import { logActivity } from './activity';
 import { updateEloadingReports, updatePrintingReports, updateOtherServiceReports, updateProductReports, updateCashIOReport, updateSalesReports, updateCustomerReports } from './reports';
-import { updateCustomerBalance } from './customers';
+import { updateCustomerBalance, updateProductStock } from '.';
 
 type ProcessOrderPayload = {
     customerId: string;
@@ -36,6 +36,38 @@ export async function processOrder(storeId: string, orderData: ProcessOrderPaylo
         initialCustomerBalance,
         settlementType,
     } = orderData;
+    
+    const isUnknownCustomer = customerId === 'unknown';
+    const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
+    
+    const finalAmountTendered = total < 0 ? 0 : amountTendered;
+    let changeToBalance = 0;
+
+    if (settlementType === 'add_to_balance') {
+      changeToBalance = finalAmountTendered - total;
+    }
+
+    const totalBalanceUpdate = changeToBalance - balanceUsed;
+    
+    const orderPayload: Omit<Order, 'id'> = {
+        customerId,
+        customerName,
+        items,
+        subtotal,
+        discount,
+        total,
+        amountTendered: finalAmountTendered,
+        settlementType,
+        applyCustomerBalance: applyCustomerBalance,
+        createdAt: '',
+    };
+
+    if (!isUnknownCustomer) {
+        orderPayload.initialCustomerBalance = initialCustomerBalance;
+        orderPayload.newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
+    }
+
+    const newOrder = await addOrder(storeId, orderPayload, user);
     
     let updatedTransaction: CashTransaction | null = null;
     
@@ -84,42 +116,15 @@ export async function processOrder(storeId: string, orderData: ProcessOrderPaylo
                 break;
             default:
                 await updateProductReports(storeId, item.id, item.quantity, item.price * item.quantity);
+                await updateProductStock(storeId, item.id, {
+                    type: 'sale',
+                    quantityChange: -item.quantity,
+                    orderId: newOrder.id,
+                }, user);
                 break;
         }
     }
 
-    const isUnknownCustomer = customerId === 'unknown';
-    const balanceUsed = applyCustomerBalance && !isUnknownCustomer ? initialCustomerBalance : 0;
-    
-    const finalAmountTendered = total < 0 ? 0 : amountTendered;
-    let changeToBalance = 0;
-
-    if (settlementType === 'add_to_balance') {
-      changeToBalance = finalAmountTendered - total;
-    }
-
-    const totalBalanceUpdate = changeToBalance - balanceUsed;
-    
-    const orderPayload: Omit<Order, 'id'> = {
-        customerId,
-        customerName,
-        items,
-        subtotal,
-        discount,
-        total,
-        amountTendered: finalAmountTendered,
-        settlementType,
-        applyCustomerBalance: applyCustomerBalance,
-        createdAt: '',
-    };
-
-    if (!isUnknownCustomer) {
-        orderPayload.initialCustomerBalance = initialCustomerBalance;
-        orderPayload.newCustomerBalance = initialCustomerBalance + totalBalanceUpdate;
-    }
-
-    const newOrder = await addOrder(storeId, orderPayload, user);
-    
     if (updatedTransaction) {
         await updateCashIOReport(storeId, updatedTransaction, 'orderedTransactions', customerId);
     }

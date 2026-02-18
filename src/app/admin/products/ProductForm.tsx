@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +30,10 @@ const formSchema = z.object({
   show: z.boolean().default(true),
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Price must be a positive number'),
+  cost: z.coerce.number().min(0, 'Cost cannot be negative').optional(),
   stock: z.coerce.number().min(0, 'Stock cannot be negative'),
+  lowStockThreshold: z.coerce.number().min(0).optional(),
+  criticalStockThreshold: z.coerce.number().min(0).optional(),
   barcode: z.string().optional(),
   material: z.string().optional(),
   dimensions: z.string().optional(),
@@ -59,14 +61,26 @@ export default function ProductForm({ product, storeId }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: product
-      ? { ...product, price: Number(product.price), stock: Number(product.stock), unit: product.unit || 'each', barcode: product.barcode || '' }
+      ? { 
+          ...product, 
+          price: Number(product.price), 
+          stock: Number(product.stock),
+          cost: product.cost ? Number(product.cost) : undefined,
+          lowStockThreshold: product.lowStockThreshold ? Number(product.lowStockThreshold) : undefined,
+          criticalStockThreshold: product.criticalStockThreshold ? Number(product.criticalStockThreshold) : undefined,
+          unit: product.unit || 'each', 
+          barcode: product.barcode || '' 
+        }
       : {
           name: '',
           group: '',
           show: true,
           category: '',
           price: 0,
+          cost: 0,
           stock: 0,
+          lowStockThreshold: 10,
+          criticalStockThreshold: 5,
           barcode: '',
           material: '',
           dimensions: '',
@@ -238,13 +252,36 @@ export default function ProductForm({ product, storeId }: ProductFormProps) {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="stock" render={({ field }) => (
+                  <FormField control={form.control} name="cost" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Stock</FormLabel>
-                      <FormControl><Input type="number" placeholder="e.g. 50" {...field} /></FormControl>
+                      <FormLabel>Cost (Optional)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" placeholder="e.g. 150.00" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                    <FormField control={form.control} name="stock" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Initial Stock</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 50" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                     <FormField control={form.control} name="lowStockThreshold" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Low Stock At</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                     <FormField control={form.control} name="criticalStockThreshold" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Critical At</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 5" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                 </div>
                  <FormField control={form.control} name="image" render={({ field }) => (
                   <FormItem>

@@ -1,7 +1,8 @@
+
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -113,6 +114,9 @@ export default function Header() {
                                     </Link>
                                     <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                         <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
+                                    </Link>
+                                     <Link href="/admin/inventory" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                        <Boxes className="h-5 w-5 text-muted-foreground" /><span>Inventory</span>
                                     </Link>
                                     <Link href="/admin/orders" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                         <ShoppingCart className="h-5 w-5 text-muted-foreground" /><span>Orders</span>
@@ -231,6 +235,7 @@ export default function Header() {
                     <DropdownMenuContent>
                       <DropdownMenuItem asChild><Link href="/admin/stores" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Stores</Link></DropdownMenuItem>
                       <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
+                      <DropdownMenuItem asChild><Link href="/admin/inventory" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Inventory</Link></DropdownMenuItem>
                       <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild><Link href="/admin/printing/prices" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing Prices</Link></DropdownMenuItem>
