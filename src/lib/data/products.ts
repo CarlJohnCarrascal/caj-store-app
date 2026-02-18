@@ -1,6 +1,6 @@
 
 import { db } from '../firebase';
-import { ref, get, set, push, update, remove, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, get, set, push, update, remove, query, orderByChild, equalTo, runTransaction } from 'firebase/database';
 import type { Product, ChangeTracker, StockHistoryEntry } from '../types';
 import { getCurrentPHTISOString } from '../utils';
 import { snapshotToArray } from './helpers';
