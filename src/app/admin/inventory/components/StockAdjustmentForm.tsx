@@ -41,7 +41,7 @@ export default function StockAdjustmentForm({ product, onSuccess, onCancel }: St
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: 'stock-in',
-      quantity: undefined,
+      quantity: 0,
       notes: '',
       newPrice: product.price,
       newCost: product.cost,
