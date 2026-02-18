@@ -62,14 +62,18 @@ export default function ProductForm({ product, storeId }: ProductFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: product
       ? { 
-          ...product, 
+          ...product,
           price: Number(product.price), 
           stock: Number(product.stock),
-          cost: product.cost ? Number(product.cost) : undefined,
-          lowStockThreshold: product.lowStockThreshold ? Number(product.lowStockThreshold) : undefined,
-          criticalStockThreshold: product.criticalStockThreshold ? Number(product.criticalStockThreshold) : undefined,
+          cost: product.cost ?? 0,
+          lowStockThreshold: product.lowStockThreshold ?? 10,
+          criticalStockThreshold: product.criticalStockThreshold ?? 5,
           unit: product.unit || 'each', 
-          barcode: product.barcode || '' 
+          barcode: product.barcode || '',
+          material: product.material || '',
+          dimensions: product.dimensions || '',
+          description: product.description || '',
+          image: product.image || '',
         }
       : {
           name: '',
