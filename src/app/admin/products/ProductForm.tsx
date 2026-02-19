@@ -37,7 +37,7 @@ const formSchema = z.object({
   barcode: z.string().optional(),
   material: z.string().optional(),
   dimensions: z.string().optional(),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
+  description: z.string().optional(),
   image: z.string().url('Image must be a valid URL').or(z.literal('')).optional(),
   unit: z.enum(['each', 'kg']).default('each'),
 });
