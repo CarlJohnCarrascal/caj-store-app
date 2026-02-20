@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -38,7 +37,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
-  const { user, signOut, isAdmin, activeStoreId } = useAuth();
+  const { user, appUser, signOut, isAdmin, activeStoreId } = useAuth();
 
   return (
     <>
@@ -297,14 +296,14 @@ export default function Header() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                        <Avatar className="h-8 w-8">
-                         <AvatarFallback>{user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.[0].toUpperCase()}</AvatarFallback>
+                         <AvatarFallback>{appUser?.name?.charAt(0)?.toUpperCase() || user.displayName?.charAt(0)?.toUpperCase() || user.email?.[0]?.toUpperCase()}</AvatarFallback>
                        </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                        <p className="text-sm font-medium leading-none">{appUser?.name || user.displayName || 'User'}</p>
                         <p className="text-xs leading-none text-muted-foreground truncate">
                           {user.email}
                         </p>
