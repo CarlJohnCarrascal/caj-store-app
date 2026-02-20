@@ -12,6 +12,7 @@ export * from './data/fees';
 export * from './data/orders';
 export * from './data/printing';
 export * from './data/products';
+export * from './data/public-products';
 export * from './data/reports';
 export * from './data/storage';
 export * from './data/stores';

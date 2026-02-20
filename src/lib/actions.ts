@@ -36,6 +36,19 @@ export async function deleteProductAction() {
   revalidatePath('/admin/inventory');
 }
 
+export async function addPublicProductAction() {
+  revalidatePath('/admin/public-products');
+}
+
+export async function updatePublicProductAction(id: string) {
+  revalidatePath('/admin/public-products');
+  revalidatePath(`/admin/public-products/edit/${id}`);
+}
+
+export async function deletePublicProductAction() {
+  revalidatePath('/admin/public-products');
+}
+
 export async function updateStockAction() {
   revalidatePath('/admin/inventory');
   revalidatePath('/admin/products');

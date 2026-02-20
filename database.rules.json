@@ -9,6 +9,10 @@
         ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'"
       }
     },
+    "publicProducts": {
+      ".read": "auth != null",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+    },
     "stores": {
       ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
       ".indexOn": "joinCode",

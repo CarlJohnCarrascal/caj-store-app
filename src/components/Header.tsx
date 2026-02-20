@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -137,6 +137,11 @@ export default function Header() {
                                         <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                             <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
                                         </Link>
+                                        {isAdmin && (
+                                            <Link href="/admin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                                <Boxes className="h-5 w-5 text-muted-foreground" /><span>Public Products</span>
+                                            </Link>
+                                        )}
                                          <Link href="/admin/inventory" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                             <Boxes className="h-5 w-5 text-muted-foreground" /><span>Inventory</span>
                                         </Link>
@@ -271,6 +276,9 @@ export default function Header() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
+                         {isAdmin && (
+                            <DropdownMenuItem asChild><Link href="/admin/public-products" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Public Products</Link></DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild><Link href="/admin/inventory" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Inventory</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
                         <DropdownMenuSeparator />
