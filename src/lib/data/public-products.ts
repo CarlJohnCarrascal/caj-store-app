@@ -1,4 +1,4 @@
-'use server';
+
 import { db } from '../firebase';
 import { ref, get, set, push, remove } from 'firebase/database';
 import type { Product, ChangeTracker } from '../types';
