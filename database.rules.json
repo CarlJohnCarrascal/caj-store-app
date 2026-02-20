@@ -2,16 +2,18 @@
 {
   "rules": {
     "users": {
-      ".read": "auth != null",
+      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
       ".indexOn": ["role"],
       "$uid": {
+        ".read": "auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
         ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'"
       }
     },
     "stores": {
-      ".read": "auth != null",
+      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
       ".indexOn": "joinCode",
       "$storeId": {
+        ".read": "root.child('storeMembers').child($storeId).child(auth.uid).exists()",
         ".write": "auth != null && (!data.exists() || data.child('ownerId').val() === auth.uid)"
       }
     },
