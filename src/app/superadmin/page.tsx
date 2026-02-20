@@ -1,11 +1,8 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Store, BarChart2 } from 'lucide-react';
-import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { snapshotToArray } from '@/lib/data';
@@ -51,9 +48,9 @@ export default function SuperAdminDashboard() {
   if (loading) {
     return (
         <div className="space-y-8">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold tracking-tight">Super Admin Dashboard</h1>
-              <p className="mt-2 text-lg text-muted-foreground">System-wide overview and management tools.</p>
+            <div className="text-left">
+              <h1 className="text-3xl font-bold tracking-tight">Super Admin Dashboard</h1>
+              <p className="mt-1 text-lg text-muted-foreground">System-wide overview and management tools.</p>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card>
@@ -95,9 +92,9 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Super Admin Dashboard</h1>
-        <p className="mt-2 text-lg text-muted-foreground">System-wide overview and management tools.</p>
+      <div className="text-left">
+        <h1 className="text-3xl font-bold tracking-tight">Super Admin Dashboard</h1>
+        <p className="mt-1 text-lg text-muted-foreground">System-wide overview and management tools.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -136,29 +133,6 @@ export default function SuperAdminDashboard() {
                 Analytics integration required.
                 </p>
             </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto pt-8">
-        <Card className="hover:shadow-lg transition-shadow flex flex-col items-center justify-center text-center p-6">
-            <Users className="h-10 w-10 mb-4 text-primary" />
-            <CardTitle className="text-xl font-medium mb-2">Manage Users</CardTitle>
-            <CardDescription className="mb-4">
-                Authorize new users and manage existing user roles and access.
-            </CardDescription>
-            <Button asChild className="w-full max-w-xs">
-                <Link href="/admin/users">Go to Users</Link>
-            </Button>
-        </Card>
-        <Card className="hover:shadow-lg transition-shadow flex flex-col items-center justify-center text-center p-6">
-            <Store className="h-10 w-10 mb-4 text-primary" />
-            <CardTitle className="text-xl font-medium mb-2">Manage Stores</CardTitle>
-            <CardDescription className="mb-4">
-                Create, view, and manage all stores across the platform.
-            </CardDescription>
-            <Button asChild className="w-full max-w-xs">
-                <Link href="/admin/stores">Go to Stores</Link>
-            </Button>
         </Card>
       </div>
     </div>
