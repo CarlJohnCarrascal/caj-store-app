@@ -87,6 +87,9 @@ export default function Header() {
                                     <Link href="/admin/stores" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                         <Store className="h-5 w-5 text-muted-foreground" /><span>Stores</span>
                                     </Link>
+                                    <Link href="/superadmin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                        <Boxes className="h-5 w-5 text-muted-foreground" /><span>Public Products</span>
+                                    </Link>
                                 </AccordionContent>
                               </AccordionItem>
                             )}
@@ -137,11 +140,6 @@ export default function Header() {
                                         <Link href="/admin/products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                             <Package className="h-5 w-5 text-muted-foreground" /><span>Products</span>
                                         </Link>
-                                        {isAdmin && (
-                                            <Link href="/admin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                                <Boxes className="h-5 w-5 text-muted-foreground" /><span>Public Products</span>
-                                            </Link>
-                                        )}
                                          <Link href="/admin/inventory" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                             <Boxes className="h-5 w-5 text-muted-foreground" /><span>Inventory</span>
                                         </Link>
@@ -249,6 +247,7 @@ export default function Header() {
                         <DropdownMenuItem asChild><Link href="/superadmin" className="flex items-center gap-2 cursor-pointer"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link href="/admin/users" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Users</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link href="/admin/stores" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Stores</Link></DropdownMenuItem>
+                        <DropdownMenuItem asChild><Link href="/superadmin/public-products" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Public Products</Link></DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -276,9 +275,6 @@ export default function Header() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
-                         {isAdmin && (
-                            <DropdownMenuItem asChild><Link href="/admin/public-products" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Public Products</Link></DropdownMenuItem>
-                        )}
                         <DropdownMenuItem asChild><Link href="/admin/inventory" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Inventory</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
                         <DropdownMenuSeparator />
