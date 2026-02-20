@@ -11,7 +11,9 @@
     },
     "publicProducts": {
       ".read": "auth != null",
-      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      "$productId": {
+        ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
     },
     "stores": {
       ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
