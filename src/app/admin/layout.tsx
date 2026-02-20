@@ -15,7 +15,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
-  const { user, appUser, loading, isAuthorized, activeStoreId } = useAuth();
+  const { user, appUser, loading, isAuthorized, isAdmin, activeStoreId } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -24,21 +24,27 @@ export default function AdminLayout({
       if (!user) {
         router.push('/signin');
       } else if (!appUser) {
-        // Logged in with Firebase Auth, but no profile in DB yet
         router.push('/auth/complete-profile');
       } else if (!isAuthorized) {
         router.push('/unauthorized');
+      } else if (isAdmin) {
+        // If user is admin and they land on the root dashboard, redirect to superadmin.
+        // Admins are not required to have an active store.
+        if (pathname === '/admin') {
+            router.replace('/admin/superadmin');
+        }
       } else if (!activeStoreId && pathname !== '/admin/stores') {
-        // Authorized for the app, but hasn't created/joined/selected a store
+        // For non-admins, redirect to stores page if no active store.
         router.push('/admin/stores');
       }
     }
-  }, [authEnabled, loading, user, appUser, isAuthorized, activeStoreId, router, pathname]);
+  }, [authEnabled, loading, user, appUser, isAuthorized, activeStoreId, router, pathname, isAdmin]);
 
   const firebaseConfigMissing = !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-  // Show content if not using auth, or if logged in, authorized, and either has an active store OR is on the stores page.
-  const showContent = !authEnabled || (!loading && user && isAuthorized && (activeStoreId || pathname === '/admin/stores'));
+  // For Admins, show content if they are authorized.
+  // For non-admins, they must have an active store or be on the stores page.
+  const showContent = !authEnabled || (!loading && user && isAuthorized && (isAdmin || activeStoreId || pathname === '/admin/stores'));
   
   const isPosMode = pathname === '/admin/pos-mode';
 
