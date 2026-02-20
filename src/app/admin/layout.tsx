@@ -31,7 +31,7 @@ export default function AdminLayout({
         // If user is admin and they land on the root dashboard, redirect to superadmin.
         // Admins are not required to have an active store.
         if (pathname === '/admin') {
-            router.replace('/admin/superadmin');
+            router.replace('/superadmin');
         }
       } else if (!activeStoreId && pathname !== '/admin/stores') {
         // For non-admins, redirect to stores page if no active store.
