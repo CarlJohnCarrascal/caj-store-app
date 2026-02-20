@@ -1,12 +1,12 @@
-
 'use client';
 
 import StoreManager from './components/StoreManager';
+import AllStoresList from './components/AllStoresList';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StoresPage() {
-  const { loading } = useAuth();
+  const { isAdmin, loading } = useAuth();
 
   return (
     <div className="space-y-6">
@@ -18,6 +18,8 @@ export default function StoresPage() {
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-64 w-full" />
         </div>
+      ) : isAdmin ? (
+        <AllStoresList />
       ) : (
         <StoreManager />
       )}
