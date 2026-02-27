@@ -41,3 +41,5 @@ next-env.d.ts
 # This will ignore any .json file in the root directory.
 # Make sure your GOOGLE_APPLICATION_CREDENTIALS file is a .json file.
 *.json
+
+commerceflow-5n0h2-9a9b6bbbdfcd.json

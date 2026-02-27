@@ -27,8 +27,8 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        {process.env.NEXT_PUBLIC_FIREBASE_API_KEY && (
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_FIREBASE_API_KEY} />
+        {process.env.NEXT_PUBLIC_FIREBASE_MESUREMENT_ID && (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_FIREBASE_MESUREMENT_ID} />
         )}
       </body>
     </html>

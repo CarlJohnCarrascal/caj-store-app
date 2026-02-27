@@ -31,6 +31,7 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { ScrollArea } from './ui/scroll-area';
 import { StoreSwitcher } from './StoreSwitcher';
+import { Separator } from './ui/separator';
 
 export default function Header() {
   const { cartCount, isCartOpen, setCartOpen } = useCart();
@@ -68,31 +69,24 @@ export default function Header() {
                     </div>
                     <ScrollArea className="flex-1">
                       <nav className="flex flex-col space-y-1 p-6 pt-2">
+                        {isAdmin && (
+                            <>
+                                <Link href="/superadmin" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <LayoutDashboard className="h-5 w-5 text-muted-foreground" /><span>Dashboard</span>
+                                </Link>
+                                <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Users className="h-5 w-5 text-muted-foreground" /><span>Users</span>
+                                </Link>
+                                <Link href="/admin/stores" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Store className="h-5 w-5 text-muted-foreground" /><span>Stores</span>
+                                </Link>
+                                <Link href="/superadmin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Boxes className="h-5 w-5 text-muted-foreground" /><span>Public Products</span>
+                                </Link>
+                                <Separator className="my-2" />
+                            </>
+                        )}
                         <Accordion type="multiple" className="w-full">
-                            {isAdmin && (
-                              <AccordionItem value="superadmin" className="border-b-0">
-                                <AccordionTrigger className="flex items-center gap-4 px-3 py-4 text-lg font-medium rounded-md hover:bg-accent transition-colors hover:no-underline">
-                                    <div className="flex items-center gap-4">
-                                      <Settings className="h-6 w-6" />
-                                      Super Admin
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pl-10 space-y-1">
-                                    <Link href="/superadmin" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                        <LayoutDashboard className="h-5 w-5 text-muted-foreground" /><span>Dashboard</span>
-                                    </Link>
-                                    <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                        <Users className="h-5 w-5 text-muted-foreground" /><span>Users</span>
-                                    </Link>
-                                    <Link href="/admin/stores" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                        <Store className="h-5 w-5 text-muted-foreground" /><span>Stores</span>
-                                    </Link>
-                                    <Link href="/superadmin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
-                                        <Boxes className="h-5 w-5 text-muted-foreground" /><span>Public Products</span>
-                                    </Link>
-                                </AccordionContent>
-                              </AccordionItem>
-                            )}
                             {activeStoreId && (
                               <>
                                 <AccordionItem value="pos" className="border-b-0">
@@ -239,17 +233,12 @@ export default function Header() {
               {/* Desktop Nav */}
               <nav className="hidden md:flex items-center space-x-6">
                 {isAdmin && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm">
-                        Super Admin <ChevronDown className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem asChild><Link href="/superadmin" className="flex items-center gap-2 cursor-pointer"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/users" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Users</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/stores" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Stores</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/superadmin/public-products" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Public Products</Link></DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                   <>
+                    <Link href="/superadmin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Dashboard</Link>
+                    <Link href="/admin/users" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Users</Link>
+                    <Link href="/admin/stores" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Stores</Link>
+                    <Link href="/superadmin/public-products" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Public Products</Link>
+                  </>
                 )}
                 {activeStoreId && (
                   <>
