@@ -5,6 +5,7 @@
 export * from './data/helpers';
 export * from './data/activity';
 export * from './data/accounts';
+export * from './data/analytics';
 export * from './data/collections';
 export * from './data/customers';
 export * from './data/expenses';

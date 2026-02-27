@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Store, BarChart2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
-import { snapshotToArray } from '@/lib/data';
+import { getWebVisits, snapshotToArray } from '@/lib/data';
 import type { AppUser, Store as StoreType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,9 +14,15 @@ export default function SuperAdminDashboard() {
   const { isAdmin } = useAuth();
   const [stats, setStats] = useState({ userCount: 0, storeCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [analyticsStats, setAnalyticsStats] = useState<{ activeUsers?: string; error?: string } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+        setLoading(false);
+        setAnalyticsLoading(false);
+        return;
+    };
 
     const usersRef = ref(db, 'users');
     const storesRef = ref(db, 'stores');
@@ -39,13 +45,20 @@ export default function SuperAdminDashboard() {
         console.error("Failed to fetch store stats:", error);
     }));
     
+    setAnalyticsLoading(true);
+    getWebVisits()
+      .then(setAnalyticsStats)
+      .finally(() => setAnalyticsLoading(false));
+    
     return () => {
         unsubs.forEach(unsub => unsub());
     }
 
   }, [isAdmin]);
 
-  if (loading) {
+  const statsLoading = loading || analyticsLoading;
+
+  if (statsLoading) {
     return (
         <div className="space-y-8">
             <div className="text-left">
@@ -75,14 +88,12 @@ export default function SuperAdminDashboard() {
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Web Visits</CardTitle>
+                        <CardTitle className="text-sm font-medium">Active Users (7 days)</CardTitle>
                         <BarChart2 className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">N/A</div>
-                        <p className="text-xs text-muted-foreground">
-                        Analytics integration required.
-                        </p>
+                        <Skeleton className="h-8 w-12"/>
+                        <Skeleton className="h-4 w-32 mt-2"/>
                     </CardContent>
                 </Card>
              </div>
@@ -124,13 +135,21 @@ export default function SuperAdminDashboard() {
         </Card>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Web Visits</CardTitle>
+                <CardTitle className="text-sm font-medium">Active Users (7 days)</CardTitle>
                 <BarChart2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">N/A</div>
+                {analyticsStats?.error ? (
+                  <div className="text-sm text-destructive font-semibold" title={analyticsStats.error}>
+                      Error
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold">
+                      {analyticsStats?.activeUsers || '0'}
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                Analytics integration required.
+                    From Google Analytics
                 </p>
             </CardContent>
         </Card>
