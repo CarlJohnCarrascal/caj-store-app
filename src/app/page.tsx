@@ -21,8 +21,8 @@ export default function WelcomePage() {
                     Click the button below to access the main application dashboard where you can handle all your business needs.
                 </p>
                 <Button asChild size="lg">
-                    <Link href="/admin">
-                    Go To Admin <MoveRight className="ml-2 h-5 w-5" />
+                    <Link href="/signin">
+                    Login <MoveRight className="ml-2 h-5 w-5" />
                     </Link>
                 </Button>
                 </CardContent>
