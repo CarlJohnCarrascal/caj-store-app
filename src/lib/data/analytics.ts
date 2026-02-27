@@ -4,14 +4,14 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 // This will be initialized with credentials from the environment.
 const analyticsDataClient = new BetaAnalyticsDataClient();
-const propertyId = process.env.GA_PROPERTY_ID;
+const propertyId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export async function getWebVisits() {
     if (!propertyId) {
         // Don't throw an error, just return an error state.
         // This is a more graceful failure for the UI.
         return {
-            error: 'GA_PROPERTY_ID not set.',
+            error: 'NEXT_PUBLIC_GA_MEASUREMENT_ID not set.',
         };
     }
 
