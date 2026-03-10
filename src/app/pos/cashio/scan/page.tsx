@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImage, Loader2, CheckCircle, XCircle, AlertTriangle, FileUp, Info, User, Wallet, Landmark, Hash, Clock, MessageSquare, RefreshCw, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -61,6 +61,10 @@ export default function ScanImagePage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [isTorchSupported, setIsTorchSupported] = useState(false);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+
   const { user, activeStoreId } = useAuth();
 
   useEffect(() => {
@@ -78,6 +82,7 @@ export default function ScanImagePage() {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
+        setIsTorchOn(false); // Turn off torch when switching away from camera
         return;
     }
 
@@ -91,6 +96,16 @@ export default function ScanImagePage() {
           video: { facingMode: facingMode }
         });
         streamRef.current = stream;
+
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+            videoTrackRef.current = track;
+            const capabilities = track.getCapabilities();
+            setIsTorchSupported(!!capabilities.torch);
+        } else {
+            setIsTorchSupported(false);
+        }
+        
         setHasCameraPermission(true);
 
         if (videoRef.current) {
@@ -118,6 +133,25 @@ export default function ScanImagePage() {
   
   const handleCameraSwitch = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  const handleToggleTorch = async () => {
+    if (!videoTrackRef.current || !isTorchSupported) return;
+
+    try {
+      const newTorchState = !isTorchOn;
+      await videoTrackRef.current.applyConstraints({
+        advanced: [{ torch: newTorchState }],
+      });
+      setIsTorchOn(newTorchState);
+    } catch (err) {
+      console.error("Failed to toggle torch:", err);
+      toast({
+        variant: 'destructive',
+        title: 'Flash Error',
+        description: 'Could not control the camera flash.',
+      });
+    }
   };
   
   const processImage = async (imageDataUri: string) => {
@@ -369,6 +403,7 @@ export default function ScanImagePage() {
                             </div>
                         )}
                         {hasCameraPermission && (
+                          <>
                             <Button
                                 variant="outline"
                                 size="icon"
@@ -377,6 +412,20 @@ export default function ScanImagePage() {
                             >
                                 <SwitchCamera className="h-5 w-5" />
                             </Button>
+                            {isTorchSupported && (
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleToggleTorch}
+                                    className={cn(
+                                        "absolute top-2 right-14 bg-black/50 hover:bg-black/70 border-white/50 text-white hover:text-white",
+                                        isTorchOn && "bg-amber-400/80 text-white border-amber-400/80 hover:bg-amber-500/80"
+                                    )}
+                                >
+                                    <Zap className="h-5 w-5" />
+                                </Button>
+                            )}
+                          </>
                         )}
                     </>
                     )}
