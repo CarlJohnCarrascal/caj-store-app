@@ -1,15 +1,13 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useTransition } from 'react';
 import { Product } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, SlidersHorizontal, ScanBarcode, History } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ScanBarcode, History } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -26,7 +24,7 @@ import OrderHistoryDialog from '../admin/components/OrderHistoryDialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-
+import Image from 'next/image';
 
 const ITEMS_PER_PAGE = 24;
 
@@ -201,7 +199,7 @@ export default function PosProductsPage() {
             switch (sortOrder) {
                 case 'price-asc': return a.price - b.price;
                 case 'price-desc': return b.price - a.price;
-                case 'name-desc': return b.name.localeCompare(a.name);
+                case 'name-desc': return b.name.localeCompare(b.name);
                 case 'name-asc': default: return a.name.localeCompare(b.name);
             }
         });
