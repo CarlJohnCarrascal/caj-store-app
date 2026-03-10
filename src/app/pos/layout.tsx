@@ -16,7 +16,7 @@ export default function PosLayout({
 
   return (
     <Providers>
-        <div className="h-screen w-full bg-background text-foreground flex flex-col">
+        <div className="h-screen w-full bg-background text-foreground flex flex-col min-w-[1024px]">
         <PosHeader isCollapsed={isCollapsed} onToggleCollapse={() => setIsCollapsed(!isCollapsed)} />
         <div className={cn(
           "flex-grow grid grid-rows-1 gap-6 p-6 overflow-hidden transition-[grid-template-columns] duration-300",
