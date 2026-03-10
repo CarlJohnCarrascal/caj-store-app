@@ -131,6 +131,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange,
   const [isSearchingByRef, setIsSearchingByRef] = React.useState(false);
   const [foundTransaction, setFoundTransaction] = React.useState<any | null>(null);
   const [searchAttempted, setSearchAttempted] = React.useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false);
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
@@ -441,6 +442,130 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange,
 
   const overallLoading = authLoading || isLoading;
 
+  const filterControls = (
+    <div className="p-4 pt-0 space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+        <div className="col-span-2 md:col-span-1">
+            <Label>Date Range</Label>
+            <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                id="date"
+                variant={"outline"}
+                disabled={isFetching}
+                className={cn(
+                    "justify-start text-left font-normal w-full",
+                    !date && "text-muted-foreground"
+                )}
+                >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                <span className="truncate">
+                    {date?.from ? (
+                    date.to ? (
+                        <>
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
+                        </>
+                    ) : (
+                        format(date.from, "LLL dd, y")
+                    )
+                    ) : (
+                    "Pick a date range"
+                    )}
+                </span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                />
+            </PopoverContent>
+            </Popover>
+        </div>
+            <div>
+            <Label>Type</Label>
+            <Select onValueChange={setType} defaultValue="all">
+                <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="Cash In">Cash In</SelectItem>
+                <SelectItem value="Cash Out">Cash Out</SelectItem>
+                </SelectContent>
+            </Select>
+            </div>
+            <div>
+            <Label>Method</Label>
+            <Select onValueChange={setMethod} defaultValue="all">
+                <SelectTrigger><SelectValue placeholder="All Methods" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Methods</SelectItem>
+                <SelectItem value="Gcash">Gcash</SelectItem>
+                <SelectItem value="Maya">Maya</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+            </Select>
+            </div>
+            <div>
+            <Label>Account</Label>
+            <Select onValueChange={setAccountUsed} defaultValue="all">
+                <SelectTrigger><SelectValue placeholder="All Accounts" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Accounts</SelectItem>
+                {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.accountName}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            </div>
+        <div>
+            <Label>Status</Label>
+            <Select onValueChange={setStatus} defaultValue="all">
+                <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="Processing">Processing</SelectItem>
+                <SelectItem value="Delivered">Delivered</SelectItem>
+                <SelectItem value="Available">Available</SelectItem>
+                <SelectItem value="Claimed">Claimed</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+        </div>
+        <Separator />
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Label htmlFor="sort-by" className="text-sm flex-shrink-0">Sort by:</Label>
+            <Select onValueChange={(value) => {
+                const [key, order] = value.split('-');
+                setSort({ key, order: order as 'asc' | 'desc' });
+            }} defaultValue={`${sort.key}-${sort.order}`}>
+                <SelectTrigger id="sort-by" className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Sort by..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="transactionDate-desc">Transaction Date (Newest)</SelectItem>
+                    <SelectItem value="transactionDate-asc">Transaction Date (Oldest)</SelectItem>
+                    <SelectItem value="createdAt-desc">Creation Date (Newest)</SelectItem>
+                    <SelectItem value="createdAt-asc">Creation Date (Oldest)</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+        <div className="flex items-center gap-2 justify-self-end">
+            <span className="text-sm text-muted-foreground">View:</span>
+            <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                <LayoutGrid className="h-5 w-5" />
+            </Button>
+            <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
+                <List className="h-5 w-5" />
+            </Button>
+            </div>
+        </div>
+    </div>
+  );
+
   if (overallLoading) {
     return (
        <div className="space-y-4">
@@ -487,141 +612,38 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange,
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         </div>
+        {!showSummary && (
+            <Button variant="outline" onClick={() => setIsFilterModalOpen(true)}>
+                <SlidersHorizontal className="h-5 w-5 mr-2" />
+                Filters & Options
+            </Button>
+        )}
       </div>
       
-       <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="filters" className="border rounded-lg bg-card">
-          <AccordionTrigger className="p-4 hover:no-underline">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal className="h-5 w-5" />
-              <span className="font-semibold">Filters & Options</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="p-4 pt-0 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
-                <div className="col-span-2 md:col-span-1">
-                  <Label>Date Range</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="date"
-                        variant={"outline"}
-                        disabled={isFetching}
-                        className={cn(
-                          "justify-start text-left font-normal w-full",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        <span className="truncate">
-                          {date?.from ? (
-                            date.to ? (
-                              <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
-                              </>
-                            ) : (
-                              format(date.from, "LLL dd, y")
-                            )
-                          ) : (
-                            "Pick a date range"
-                          )}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={date?.from}
-                        selected={date}
-                        onSelect={setDate}
-                        numberOfMonths={2}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                 <div>
-                    <Label>Type</Label>
-                    <Select onValueChange={setType} defaultValue="all">
-                        <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
-                        <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="Cash In">Cash In</SelectItem>
-                        <SelectItem value="Cash Out">Cash Out</SelectItem>
-                        </SelectContent>
-                    </Select>
-                 </div>
-                 <div>
-                    <Label>Method</Label>
-                    <Select onValueChange={setMethod} defaultValue="all">
-                        <SelectTrigger><SelectValue placeholder="All Methods" /></SelectTrigger>
-                        <SelectContent>
-                        <SelectItem value="all">All Methods</SelectItem>
-                        <SelectItem value="Gcash">Gcash</SelectItem>
-                        <SelectItem value="Maya">Maya</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                    </Select>
-                 </div>
-                 <div>
-                    <Label>Account</Label>
-                    <Select onValueChange={setAccountUsed} defaultValue="all">
-                        <SelectTrigger><SelectValue placeholder="All Accounts" /></SelectTrigger>
-                        <SelectContent>
-                        <SelectItem value="all">All Accounts</SelectItem>
-                        {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.accountName}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                 </div>
-                <div>
-                    <Label>Status</Label>
-                    <Select onValueChange={setStatus} defaultValue="all">
-                        <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
-                        <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="Processing">Processing</SelectItem>
-                        <SelectItem value="Delivered">Delivered</SelectItem>
-                        <SelectItem value="Available">Available</SelectItem>
-                        <SelectItem value="Claimed">Claimed</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-              </div>
-              <Separator />
-               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Label htmlFor="sort-by" className="text-sm flex-shrink-0">Sort by:</Label>
-                    <Select onValueChange={(value) => {
-                        const [key, order] = value.split('-');
-                        setSort({ key, order: order as 'asc' | 'desc' });
-                    }} defaultValue={`${sort.key}-${sort.order}`}>
-                        <SelectTrigger id="sort-by" className="w-full sm:w-[220px]">
-                            <SelectValue placeholder="Sort by..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="transactionDate-desc">Transaction Date (Newest)</SelectItem>
-                            <SelectItem value="transactionDate-asc">Transaction Date (Oldest)</SelectItem>
-                            <SelectItem value="createdAt-desc">Creation Date (Newest)</SelectItem>
-                            <SelectItem value="createdAt-asc">Creation Date (Oldest)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2 justify-self-end">
-                      <span className="text-sm text-muted-foreground">View:</span>
-                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
-                        <LayoutGrid className="h-5 w-5" />
-                      </Button>
-                      <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
-                        <List className="h-5 w-5" />
-                      </Button>
+      {showSummary ? (
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="filters" className="border rounded-lg bg-card">
+                <AccordionTrigger className="p-4 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="h-5 w-5" />
+                    <span className="font-semibold">Filters & Options</span>
                     </div>
-                </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+                </AccordionTrigger>
+                <AccordionContent>
+                    {filterControls}
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+      ) : (
+        <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Filters & Options</DialogTitle>
+                </DialogHeader>
+                {filterControls}
+            </DialogContent>
+        </Dialog>
+      )}
 
 
       <Card>
