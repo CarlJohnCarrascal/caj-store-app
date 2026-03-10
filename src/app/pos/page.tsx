@@ -7,10 +7,9 @@ import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/databa
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, LayoutGrid, List, SlidersHorizontal, ScanBarcode, History } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ScanBarcode } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getStoreData, setStoreData, getProductByBarcode } from '@/lib/offline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,7 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import OrderHistoryDialog from '../admin/components/OrderHistoryDialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -99,6 +97,43 @@ function ProductGridCard({ product, showImage, itemSize }: { product: Product, s
     );
 }
 
+function ProductListItem({ product, showImage }: { product: Product, showImage: boolean }) {
+  const { addToCart } = useCart();
+  return (
+    <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/50">
+      <div className="flex flex-col sm:flex-row items-center gap-6 p-4">
+        {showImage && (
+          <div className="relative h-32 w-full sm:h-32 sm:w-32 flex-shrink-0 overflow-hidden rounded-md border">
+            <Image
+              src={product.image || 'https://placehold.co/128x128.png'}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 100vw, 128px"
+              className="object-cover"
+              data-ai-hint="product photo"
+            />
+          </div>
+        )}
+        <div className="flex-grow text-center sm:text-left">
+          <h3 className="text-xl font-bold">{product.name}</h3>
+          <p className="text-sm text-muted-foreground">{product.category} / {product.group}</p>
+          <p className="mt-2 text-sm text-foreground line-clamp-2">{product.description}</p>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-4 flex-shrink-0 w-full sm:w-auto mt-4 sm:mt-0">
+          <p className="text-xl font-bold text-primary">
+            ₱{product.price.toFixed(2)}
+            {product.unit === 'kg' && <span className="text-sm font-normal text-muted-foreground"> / kg</span>}
+          </p>
+          <Button size="sm" onClick={() => addToCart(product)} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" /> Add to Order
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+
 const POS_PRODUCTS_FILTERS_KEY = 'posProductsFilters';
 
 export default function PosProductsPage() {
@@ -106,6 +141,7 @@ export default function PosProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [showImages, setShowImages] = useState(true);
     const [filters, setFilters] = useState({ category: 'all', group: 'all' });
     const [sortOrder, setSortOrder] = useState('name-asc');
@@ -116,6 +152,7 @@ export default function PosProductsPage() {
     const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
     const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
     const [itemSize, setItemSize] = useState(3);
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     
     useEffect(() => {
       const saved = localStorage.getItem(POS_PRODUCTS_FILTERS_KEY);
@@ -123,6 +160,7 @@ export default function PosProductsPage() {
         try {
           const parsed = JSON.parse(saved);
           setSearchTerm(parsed.searchTerm ?? '');
+          setViewMode(parsed.viewMode ?? 'grid');
           setShowImages(parsed.showImages ?? true);
           setFilters(parsed.filters ?? { category: 'all', group: 'all' });
           setSortOrder(parsed.sortOrder ?? 'name-asc');
@@ -134,9 +172,9 @@ export default function PosProductsPage() {
     }, []);
 
     useEffect(() => {
-      const toSave = { searchTerm, showImages, filters, sortOrder, itemSize };
+      const toSave = { searchTerm, viewMode, showImages, filters, sortOrder, itemSize };
       localStorage.setItem(POS_PRODUCTS_FILTERS_KEY, JSON.stringify(toSave));
-    }, [searchTerm, showImages, filters, sortOrder, itemSize]);
+    }, [searchTerm, viewMode, showImages, filters, sortOrder, itemSize]);
 
     useEffect(() => {
         if (!activeStoreId) {
@@ -252,94 +290,27 @@ export default function PosProductsPage() {
 
     return (
       <div className="flex flex-col h-full">
-            <Accordion type="single" collapsible className="w-full mb-6 flex-shrink-0">
-                <AccordionItem value="filters" className="border rounded-lg bg-card">
-                    <AccordionTrigger className="p-4 hover:no-underline">
-                        <div className="flex items-center gap-2">
-                            <SlidersHorizontal className="h-5 w-5" />
-                            <span className="font-semibold">Search, Filter & View Options</span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                         <div className="flex flex-col xl:flex-row gap-4 justify-between items-center p-4 pt-0">
-                            <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center w-full xl:w-auto">
-                                <div className="relative flex-grow w-full sm:w-auto">
-                                    <Input
-                                    placeholder="Search or scan barcode..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10"
-                                    />
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                </div>
-                                <Button variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
-                                    <ScanBarcode className="h-5 w-5" />
-                                    <span className="sr-only">Scan Product</span>
-                                </Button>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center w-full xl:w-auto">
-                                <Select onValueChange={handleFilterChange('category')} defaultValue="all">
-                                <SelectTrigger className="w-full sm:w-[180px]">
-                                    <SelectValue placeholder="All Categories" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map(category => (
-                                    <SelectItem key={category} value={category}>{category === 'all' ? 'All Categories' : category}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                                </Select>
-
-                                <Select onValueChange={handleFilterChange('group')} defaultValue="all">
-                                <SelectTrigger className="w-full sm:w-[180px]">
-                                    <SelectValue placeholder="All Groups" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {groups.map(group => (
-                                    <SelectItem key={group} value={group}>{group === 'all' ? 'All Groups' : group}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                                </Select>
-
-                                <Select onValueChange={setSortOrder} defaultValue="name-asc">
-                                    <SelectTrigger className="w-full sm:w-[180px]">
-                                        <SelectValue placeholder="Sort by" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                                        <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                                        <SelectItem value="price-asc">Price (Low-High)</SelectItem>
-                                        <SelectItem value="price-desc">Price (High-Low)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center space-x-2">
-                                    <Switch
-                                    id="show-images"
-                                    checked={showImages}
-                                    onCheckedChange={setShowImages}
-                                    />
-                                    <Label htmlFor="show-images" className="text-sm whitespace-nowrap">Show Images</Label>
-                                </div>
-                                <div className="flex items-center gap-2 min-w-[150px]">
-                                    <Label htmlFor="item-size-slider" className="text-sm whitespace-nowrap">Size</Label>
-                                    <Slider
-                                        id="item-size-slider"
-                                        defaultValue={[itemSize]}
-                                        min={1}
-                                        max={5}
-                                        step={1}
-                                        onValueChange={(value) => setItemSize(value[0])}
-                                        className="w-full"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+            <div className="flex flex-col sm:flex-row gap-2 mb-6 flex-shrink-0">
+                <div className="relative flex-grow">
+                    <Input
+                        placeholder="Search or scan barcode..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 h-12 text-base"
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" className="h-12 px-3" onClick={() => setIsScannerOpen(true)}>
+                        <ScanBarcode className="h-6 w-6" />
+                        <span className="sr-only sm:not-sr-only sm:ml-2">Scan</span>
+                    </Button>
+                    <Button variant="outline" className="h-12 px-3" onClick={() => setIsFilterModalOpen(true)}>
+                        <SlidersHorizontal className="h-5 w-5" />
+                        <span className="sr-only sm:not-sr-only sm:ml-2">Filters</span>
+                    </Button>
+                </div>
+            </div>
             
             {isLoading ? (
                  <div className={`grid ${gridClassName}`}>
@@ -349,9 +320,17 @@ export default function PosProductsPage() {
                 <>
                 <div className="flex-grow overflow-auto pr-2 -mr-2">
                      {paginatedProducts.length > 0 ? (
-                        <div className={`grid ${gridClassName}`}>
-                            {paginatedProducts.map(product => <ProductGridCard key={product.id} product={product} showImage={showImages} itemSize={itemSize} />)}
-                        </div>
+                        viewMode === 'grid' ? (
+                            <div className={`grid ${gridClassName}`}>
+                                {paginatedProducts.map(product => <ProductGridCard key={product.id} product={product} showImage={showImages} itemSize={itemSize} />)}
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {paginatedProducts.map(product => (
+                                    <ProductListItem key={product.id} product={product} showImage={showImages} />
+                                ))}
+                            </div>
+                        )
                       ) : (
                         <div className="text-center py-16">
                             <p className="text-lg text-muted-foreground">No products found</p>
@@ -368,6 +347,76 @@ export default function PosProductsPage() {
                 )}
                 </>
             )}
+
+            <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Filters & View Options</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6 pt-4">
+                        <div className="space-y-2">
+                            <Label>Category</Label>
+                            <Select onValueChange={handleFilterChange('category')} defaultValue={filters.category}>
+                                <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
+                                <SelectContent>
+                                    {categories.map(category => (
+                                      <SelectItem key={category} value={category}>{category === 'all' ? 'All Categories' : category}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Group</Label>
+                            <Select onValueChange={handleFilterChange('group')} defaultValue={filters.group}>
+                              <SelectTrigger><SelectValue placeholder="All Groups" /></SelectTrigger>
+                              <SelectContent>
+                                {groups.map(group => (
+                                  <SelectItem key={group} value={group}>{group === 'all' ? 'All Groups' : group}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Sort By</Label>
+                            <Select onValueChange={setSortOrder} defaultValue={sortOrder}>
+                                <SelectTrigger><SelectValue placeholder="Sort by" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                                    <SelectItem value="price-asc">Price (Low-High)</SelectItem>
+                                    <SelectItem value="price-desc">Price (High-Low)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3">
+                            <Label htmlFor="show-images" className="text-sm font-medium">Show Images</Label>
+                            <Switch
+                            id="show-images"
+                            checked={showImages}
+                            onCheckedChange={setShowImages}
+                            />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>View Mode</Label>
+                            <div className="flex items-center gap-2">
+                                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} onClick={() => setViewMode('grid')} className="flex-1"><LayoutGrid className="mr-2 h-4 w-4"/>Grid</Button>
+                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} onClick={() => setViewMode('list')} className="flex-1"><List className="mr-2 h-4 w-4"/>List</Button>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <Label htmlFor="item-size-slider" className="text-sm font-medium">Grid Item Size</Label>
+                            <Slider
+                                id="item-size-slider"
+                                defaultValue={[itemSize]}
+                                min={1}
+                                max={5}
+                                step={1}
+                                onValueChange={(value) => setItemSize(value[0])}
+                            />
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
                 <DialogContent>
