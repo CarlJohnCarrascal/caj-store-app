@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export default function PosCashIOPage() {
       </div>
       {/* Make table scrollable to fit layout */}
       <div className="flex-grow overflow-auto">
-        <CashTransactionTable isSearchOpen={isSearchOpen} onSearchOpenChange={setIsSearchOpen} />
+        <CashTransactionTable isSearchOpen={isSearchOpen} onSearchOpenChange={setIsSearchOpen} showSummary={false} />
       </div>
     </div>
   );

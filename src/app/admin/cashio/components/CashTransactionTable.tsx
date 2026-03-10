@@ -99,11 +99,12 @@ type OverallReport = {
 interface CashTransactionTableProps {
   isSearchOpen: boolean;
   onSearchOpenChange: (isOpen: boolean) => void;
+  showSummary?: boolean;
 }
 
 const ADMIN_CASHIO_FILTERS_KEY = 'adminCashIOFilters';
 
-export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange }: CashTransactionTableProps) {
+export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange, showSummary = true }: CashTransactionTableProps) {
   const [transactions, setTransactions] = React.useState<CashTransaction[]>([]);
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -457,21 +458,23 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange 
 
   return (
     <div className="space-y-4">
-       <div className="flex flex-wrap justify-between items-center gap-4 p-4 bg-card rounded-lg border">
-        <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-red-600">
-                <ArrowDown className="h-5 w-5" />
- <span className="font-semibold text-xl">₱{(overallReport?.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex items-center gap-2 text-green-600">
-                <ArrowUp className="h-5 w-5" />
-                <span className="font-semibold text-lg">₱{(overallReport?.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
+      {showSummary && (
+        <div className="flex flex-wrap justify-between items-center gap-4 p-4 bg-card rounded-lg border">
+          <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-red-600">
+                  <ArrowDown className="h-5 w-5" />
+                  <span className="font-semibold text-xl">₱{(overallReport?.cashOutTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex items-center gap-2 text-green-600">
+                  <ArrowUp className="h-5 w-5" />
+                  <span className="font-semibold text-lg">₱{(overallReport?.cashInTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+          </div>
+          <div className="text-sm text-muted-foreground">
+              All-Time Transactions: <span className="font-semibold text-foreground">{(overallReport?.totalTransactions || 0).toLocaleString()}</span>
+          </div>
         </div>
-        <div className="text-sm text-muted-foreground">
-            All-Time Transactions: <span className="font-semibold text-foreground">{(overallReport?.totalTransactions || 0).toLocaleString()}</span>
-        </div>
-      </div>
+      )}
 
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="relative w-full md:w-auto md:max-w-xs">
