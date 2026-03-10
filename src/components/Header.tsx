@@ -74,10 +74,10 @@ export default function Header() {
                                 <Link href="/superadmin" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <LayoutDashboard className="h-5 w-5 text-muted-foreground" /><span>Dashboard</span>
                                 </Link>
-                                <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                <Link href="/superadmin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Users className="h-5 w-5 text-muted-foreground" /><span>Users</span>
                                 </Link>
-                                <Link href="/admin/stores" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                <Link href="/superadmin/stores" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Store className="h-5 w-5 text-muted-foreground" /><span>Stores</span>
                                 </Link>
                                 <Link href="/superadmin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
@@ -156,7 +156,7 @@ export default function Header() {
                                             <Users className="h-5 w-5 text-muted-foreground" /><span>Customers</span>
                                         </Link>
                                         {isAdmin && (
-                                            <Link href="/admin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                            <Link href="/superadmin/users" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                                 <UserIcon className="h-5 w-5 text-muted-foreground" /><span>Users</span>
                                             </Link>
                                         )}
@@ -235,8 +235,8 @@ export default function Header() {
                 {isAdmin && (
                    <>
                     <Link href="/superadmin" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Dashboard</Link>
-                    <Link href="/admin/users" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Users</Link>
-                    <Link href="/admin/stores" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Stores</Link>
+                    <Link href="/superadmin/users" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Users</Link>
+                    <Link href="/superadmin/stores" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Stores</Link>
                     <Link href="/superadmin/public-products" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Public Products</Link>
                   </>
                 )}
