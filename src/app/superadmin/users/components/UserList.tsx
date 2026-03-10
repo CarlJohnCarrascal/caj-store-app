@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import { AppUser } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,6 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import { getStoreData, setStoreData } from '@/lib/offline';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search } from 'lucide-react';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
     const items: (T & { id: string })[] = [];
@@ -36,6 +39,10 @@ export default function UserList() {
   const { toast } = useToast();
   const { appUser } = useAuth();
   const [isPending, startTransition] = useTransition();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     const loadFromCache = async () => {
@@ -60,6 +67,26 @@ export default function UserList() {
 
     return () => unsubscribe();
   }, []);
+
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter(user => {
+        if (statusFilter === 'all') return true;
+        return statusFilter === 'authorized' ? user.authorized : !user.authorized;
+      })
+      .filter(user => {
+        if (roleFilter === 'all') return true;
+        return user.role === roleFilter;
+      })
+      .filter(user => {
+        if (!searchTerm) return true;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return (
+          user.name.toLowerCase().includes(lowercasedTerm) ||
+          user.email.toLowerCase().includes(lowercasedTerm)
+        );
+      });
+  }, [users, searchTerm, roleFilter, statusFilter]);
 
   const handleAuthorizationChange = (userId: string, authorized: boolean) => {
     if (!appUser) {
@@ -142,6 +169,37 @@ export default function UserList() {
 
   return (
     <Card>
+       <div className="flex flex-col md:flex-row items-center gap-4 p-4 border-b">
+          <div className="relative w-full md:w-auto md:flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="authorized">Authorized</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+          </Select>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Filter by role" />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+          </Select>
+      </div>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
@@ -154,7 +212,7 @@ export default function UserList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">
                     <div className="flex items-center gap-3">

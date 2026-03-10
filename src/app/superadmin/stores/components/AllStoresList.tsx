@@ -1,16 +1,16 @@
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Store, PlusCircle, LogIn, Users, CheckCircle, RefreshCw, XCircle, Copy } from 'lucide-react';
+import { Store, Users, CheckCircle, RefreshCw, XCircle, Copy, Search } from 'lucide-react';
 import { useState, useTransition, useMemo, useEffect } from 'react';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { createStoreAction, joinStoreAction, approveMemberAction, regenerateJoinCodeAction, removeStoreMemberAction } from '@/lib/actions';
-import { getStoreMembers, createStore, joinStore, approveMember, regenerateJoinCode, removeStoreMember, snapshotToArray } from '@/lib/data';
+import { approveMemberAction, regenerateJoinCodeAction, removeStoreMemberAction } from '@/lib/actions';
+import { getStoreMembers, approveMember, regenerateJoinCode, removeStoreMember, snapshotToArray } from '@/lib/data';
 import { Store as StoreType, StoreMemberInfo } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,6 +29,7 @@ import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/firebase';
 import { onValue, ref } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function AllStoresList() {
   const { user, appUser } = useAuth();
@@ -37,6 +38,7 @@ export default function AllStoresList() {
 
   const [stores, setStores] = useState<StoreType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isMembersOpen, setIsMembersOpen] = useState(false);
   const [members, setMembers] = useState<StoreMemberInfo[]>([]);
@@ -55,6 +57,15 @@ export default function AllStoresList() {
     });
     return () => unsubscribe();
   }, [toast]);
+  
+  const filteredStores = useMemo(() => {
+    if (!searchTerm) return stores;
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return stores.filter(store => 
+        store.name.toLowerCase().includes(lowercasedTerm) ||
+        store.ownerName.toLowerCase().includes(lowercasedTerm)
+    );
+  }, [stores, searchTerm]);
 
   const groupedMembers = useMemo(() => {
     if (!members) return {};
@@ -142,35 +153,53 @@ export default function AllStoresList() {
           <CardTitle>All Stores ({stores.length})</CardTitle>
           <CardDescription>A list of all stores created on the platform. As an admin, you can manage members for any store.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {stores.map(store => (
-              <div key={store.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border p-4 gap-4">
-                <div>
-                  <div className="flex items-center gap-4">
-                    <Store className="h-6 w-6 text-muted-foreground" />
-                    <div>
-                      <p className="font-semibold">{store.name}</p>
-                      <p className="text-sm text-muted-foreground">Owner: {store.ownerName}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Label className="text-sm font-medium">Join Code:</Label>
-                    <div className="flex items-center gap-1 rounded-md bg-muted px-2 py-1">
-                      <span className="font-mono text-sm">{store.joinCode}</span>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleCopyCode(store.joinCode)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRegenerateCode(store.id)} disabled={isPending}>
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <Button variant="outline" onClick={() => handleOpenMembers(store)}><Users className="mr-2 h-4 w-4" />Manage Members</Button>
-              </div>
-            ))}
+        <div className="flex items-center p-4 border-b">
+          <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+              placeholder="Search by store or owner name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              />
           </div>
+        </div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Store Name</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Join Code</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStores.map(store => (
+                  <TableRow key={store.id}>
+                      <TableCell className="font-medium">{store.name}</TableCell>
+                      <TableCell>{store.ownerName}</TableCell>
+                      <TableCell>
+                          <div className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 w-fit">
+                              <span className="font-mono text-sm">{store.joinCode}</span>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleCopyCode(store.joinCode)}>
+                                  <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRegenerateCode(store.id)} disabled={isPending}>
+                                  <RefreshCw className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                          <Button variant="outline" size="sm" onClick={() => handleOpenMembers(store)}>
+                              <Users className="mr-2 h-4 w-4" />
+                              Manage Members
+                          </Button>
+                      </TableCell>
+                  </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
