@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes, Globe } from 'lucide-react';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes, Globe, CreditCard, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -82,6 +82,9 @@ export default function Header() {
                                 </Link>
                                 <Link href="/superadmin/public-products" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
                                     <Boxes className="h-5 w-5 text-muted-foreground" /><span>Public Products</span>
+                                </Link>
+                                 <Link href="/superadmin/ai-usage" className="flex items-center gap-4 px-3 py-3 text-lg font-medium rounded-md hover:bg-accent transition-colors" onClick={() => setIsMenuOpen(false)}>
+                                    <Sparkles className="h-5 w-5 text-muted-foreground" /><span>AI Usage</span>
                                 </Link>
                                 <Separator className="my-2" />
                             </>
@@ -238,6 +241,7 @@ export default function Header() {
                     <Link href="/superadmin/users" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Users</Link>
                     <Link href="/superadmin/stores" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Stores</Link>
                     <Link href="/superadmin/public-products" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Public Products</Link>
+                    <Link href="/superadmin/ai-usage" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">AI Usage</Link>
                   </>
                 )}
                 {activeStoreId && (
@@ -337,6 +341,12 @@ export default function Header() {
                         </p>
                       </div>
                     </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                     <DropdownMenuItem asChild>
+                        <Link href="/admin/subscription" className="flex items-center gap-2 cursor-pointer">
+                            <CreditCard className="h-4 w-4" /> Subscription
+                        </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => signOut()}>
                       <LogOut className="mr-2 h-4 w-4" />

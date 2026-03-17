@@ -12,6 +12,15 @@ export async function createUserProfile(user: Omit<AppUser, 'authorized' | 'role
     email: user.email,
     authorized: true,
     role: 'user',
+    subscriptionTier: 'free',
+    subscriptionStatus: 'active',
+    aiUsage: {
+        totalTokens: 0,
+        totalCost: 0,
+        monthlyTokens: 0,
+        monthlyCost: 0,
+        lastReset: getCurrentPHTISOString(),
+    }
   });
   await logActivity({
       type: 'User',

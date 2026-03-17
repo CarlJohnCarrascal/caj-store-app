@@ -18,7 +18,7 @@ export type GenerateProductImageInput = z.infer<typeof GenerateProductImageInput
 const GenerateProductImageOutputSchema = z.object({
   imageUrl: z.string().describe('The data URI of the generated image.'),
 });
-export type GenerateProductImageOutput = z.infer<typeof GenerateProductImageOutputSchema>;
+export type GenerateProductImageOutput = z.infer<typeof GenerateProductImageOutputSchema> & { usage?: any };
 
 export async function generateProductImage(
   input: GenerateProductImageInput
@@ -30,10 +30,10 @@ const generateProductImageFlow = ai.defineFlow(
   {
     name: 'generateProductImageFlow',
     inputSchema: GenerateProductImageInputSchema,
-    outputSchema: GenerateProductImageOutputSchema,
+    outputSchema: GenerateProductImageOutputSchema.extend({ usage: z.any() }),
   },
   async (input) => {
-    const { media } = await ai.generate({
+    const { media, usage } = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: `Generate a professional, clean e-commerce product photo on a white background of the following product: ${input.description}`,
       config: {
@@ -45,6 +45,6 @@ const generateProductImageFlow = ai.defineFlow(
       throw new Error('Image generation failed to return an image.');
     }
 
-    return { imageUrl: media.url };
+    return { imageUrl: media.url, usage };
   }
 );

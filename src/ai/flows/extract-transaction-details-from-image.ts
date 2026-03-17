@@ -26,18 +26,18 @@ export async function extractTransactionDetailsFromImage(
   input: ExtractTransactionDetailsFromImageInput
 ): Promise<ExtractTransactionDetailsOutput> {
   try {
-    const rawResult = await extractTransactionDetailsFromImageFlow(input);
-    if (!rawResult) {
-      return { error: "AI did not return a response.", raw: "" };
+    const result = await extractTransactionDetailsFromImageFlow(input);
+    if (!result.text) {
+      return { error: "AI did not return a response.", raw: "", usage: result.usage };
     }
     
     try {
       // The AI might still wrap the response in markdown, let's strip it.
-      const cleanedResult = rawResult.replace(/^```json\n|```$/g, '').trim();
+      const cleanedResult = result.text.replace(/^```json\n|```$/g, '').trim();
       const parsedData = JSON.parse(cleanedResult);
-      return { data: parsedData, raw: cleanedResult };
+      return { data: parsedData, raw: cleanedResult, usage: result.usage };
     } catch (e) {
-      return { error: "Failed to parse AI response as JSON.", raw: rawResult };
+      return { error: "Failed to parse AI response as JSON.", raw: result.text, usage: result.usage };
     }
   } catch (e: any) {
     console.error("Error running Genkit flow:", e);
@@ -87,10 +87,10 @@ const extractTransactionDetailsFromImageFlow = ai.defineFlow(
   {
     name: 'extractTransactionDetailsFromImageFlow',
     inputSchema: ExtractTransactionDetailsFromImageInputSchema,
-    outputSchema: z.string(),
+    outputSchema: z.object({ text: z.string(), usage: z.any() }),
   },
   async (input) => {
-    const { text } = await prompt(input);
-    return text;
+    const response = await prompt(input);
+    return { text: response.text, usage: response.usage };
   }
 );

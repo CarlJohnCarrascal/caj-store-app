@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload, FileCheck, Filter, FilterX } from 'lucide-react';
 import { extractCashioPdf, PdfTransaction } from '@/ai/flows/extract-cashio-pdf';
-import { getAccounts } from '@/lib/data';
+import { getAccounts, logAIUsage } from '@/lib/data';
 import { Account } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function ImportCashioPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -20,14 +21,16 @@ export default function ImportCashioPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [filterInternal, setFilterInternal] = useState(true);
   const { toast } = useToast();
+  const { user, appUser, activeStoreId } = useAuth();
 
   useEffect(() => {
     async function fetchAccounts() {
-      const fetchedAccounts = await getAccounts();
+      if (!activeStoreId) return;
+      const fetchedAccounts = await getAccounts(activeStoreId);
       setAccounts(fetchedAccounts);
     }
     fetchAccounts();
-  }, []);
+  }, [activeStoreId]);
 
   const ownAccountNumbers = useMemo(() => {
     return new Set(accounts.map(acc => acc.accountNumber.replace(/\D/g, '')));
@@ -92,6 +95,9 @@ export default function ImportCashioPage() {
               title: 'Processing Complete',
               description: `Successfully extracted ${result.transactions.length} transactions.`,
             });
+            if (user && appUser && result.usage) {
+              logAIUsage({ userId: user.uid, userName: appUser.name, flowName: 'extractCashioPdf', usage: result.usage });
+            }
           } else {
             throw new Error('AI did not return valid transaction data.');
           }

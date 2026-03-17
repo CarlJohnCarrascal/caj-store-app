@@ -27,7 +27,7 @@ const GenerateProductDescriptionOutputSchema = z.object({
 });
 export type GenerateProductDescriptionOutput = z.infer<
   typeof GenerateProductDescriptionOutputSchema
->;
+> & { usage?: any };
 
 export async function generateProductDescription(
   input: GenerateProductDescriptionInput
@@ -54,10 +54,10 @@ const generateProductDescriptionFlow = ai.defineFlow(
   {
     name: 'generateProductDescriptionFlow',
     inputSchema: GenerateProductDescriptionInputSchema,
-    outputSchema: GenerateProductDescriptionOutputSchema,
+    outputSchema: GenerateProductDescriptionOutputSchema.extend({ usage: z.any() }),
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const response = await prompt(input);
+    return { ...response.output!, usage: response.usage };
   }
 );

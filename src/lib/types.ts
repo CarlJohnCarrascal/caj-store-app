@@ -30,6 +30,16 @@ export interface AppUser {
   role: 'admin' | 'user'; // Global role
   activeStoreId?: string; // Newly active store
   updatedBy?: ChangeTracker;
+  subscriptionTier?: 'free' | 'pro';
+  subscriptionStatus?: 'active' | 'inactive' | 'trial' | 'cancelled';
+  subscriptionEndDate?: string; // ISO String
+  aiUsage?: {
+    totalTokens: number;
+    totalCost: number;
+    monthlyTokens: number;
+    monthlyCost: number;
+    lastReset: string; // ISO String
+  };
 }
 
 export interface StockHistoryEntry {
@@ -152,8 +162,8 @@ export interface Order {
 
 export interface ActivityLog {
   id: string;
-  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System' | 'PrintingPrice' | 'Store' | 'StoreMember';
-  action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange';
+  type: 'Product' | 'Customer' | 'Order' | 'CashIO' | 'Collection' | 'Account' | 'Expense' | 'User' | 'FeeThreshold' | 'System' | 'PrintingPrice' | 'Store' | 'StoreMember' | 'AI';
+  action: 'Created' | 'Updated' | 'Deleted' | 'Authorization' | 'RoleChange' | 'Used';
   timestamp: Date;
   details: string;
   targetId: string;

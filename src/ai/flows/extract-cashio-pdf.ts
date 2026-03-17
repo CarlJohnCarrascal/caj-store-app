@@ -30,7 +30,7 @@ export type ExtractCashioPdfInput = {
     pdfDataUri: string;
 };
 
-export type ExtractCashioPdfOutput = z.infer<typeof ExtractCashioPdfOutputSchema>;
+export type ExtractCashioPdfOutput = z.infer<typeof ExtractCashioPdfOutputSchema> & { usage?: any };
 
 
 export async function extractCashioPdf(
@@ -71,10 +71,10 @@ const extractCashioPdfFlow = ai.defineFlow(
     {
         name: 'extractCashioPdfFlow',
         inputSchema: z.object({ pdfDataUri: z.string() }),
-        outputSchema: ExtractCashioPdfOutputSchema,
+        outputSchema: ExtractCashioPdfOutputSchema.extend({ usage: z.any() }),
     },
     async (input) => {
-        const { output } = await prompt(input);
-        return output!;
+        const response = await prompt(input);
+        return { ...response.output!, usage: response.usage };
     }
 );

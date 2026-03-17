@@ -19,3 +19,4 @@ export * from './data/storage';
 export * from './data/stores';
 export * from './data/users';
 export * from './data/cash-transactions';
+export * from './data/ai-usage';

@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/hooks/use-auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import BarcodeScanner from '@/components/BarcodeScanner';
-import { addProduct, updateProduct, isBarcodeDuplicate, logActivity } from '@/lib/data';
+import { addProduct, updateProduct, isBarcodeDuplicate, logActivity, logAIUsage } from '@/lib/data';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -52,7 +52,7 @@ interface ProductFormProps {
 export default function ProductForm({ product, storeId }: ProductFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, appUser } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -164,6 +164,9 @@ export default function ProductForm({ product, storeId }: ProductFormProps) {
           if(result.description) {
             form.setValue('description', result.description, { shouldValidate: true });
             toast({ title: 'Description Generated!', description: 'The AI-powered description has been added.' });
+            if (user && appUser && result.usage) {
+                logAIUsage({ userId: user.uid, userName: appUser.name, flowName: 'generateProductDescription', usage: result.usage });
+            }
           } else {
             throw new Error("AI did not return a description.");
           }
@@ -194,6 +197,9 @@ export default function ProductForm({ product, storeId }: ProductFormProps) {
           if (result.imageUrl) {
               form.setValue('image', result.imageUrl, { shouldValidate: true });
               toast({ title: 'Image Generated!', description: 'The AI-powered image has been added.' });
+              if (user && appUser && result.usage) {
+                logAIUsage({ userId: user.uid, userName: appUser.name, flowName: 'generateProductImage', usage: result.usage, imageCount: 1 });
+            }
           } else {
               throw new Error("AI did not return an image URL.");
           }
