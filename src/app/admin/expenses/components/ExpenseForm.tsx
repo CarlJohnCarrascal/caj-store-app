@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Expense } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { addExpenseAction, updateExpenseAction } from '@/lib/actions';
 import { useTransition } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -40,6 +40,7 @@ interface ExpenseFormProps {
 export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const { user, activeStoreId } = useAuth();
 
@@ -67,6 +68,7 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
     startTransition(async () => {
       try {
         const userPayload = { userId: user.uid, userName: user.displayName || user.email! };
+        const redirectPath = pathname.startsWith('/pos') ? '/pos/expenses' : '/admin/expenses';
         
         if (expense) {
           await updateExpense(activeStoreId, expense.id, data, userPayload);
@@ -92,7 +94,7 @@ export default function ExpenseForm({ expense, categories }: ExpenseFormProps) {
           toast({ title: 'Success', description: 'Expense added successfully.' });
           form.reset();
         }
-        router.push('/admin/expenses');
+        router.push(redirectPath);
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
       }

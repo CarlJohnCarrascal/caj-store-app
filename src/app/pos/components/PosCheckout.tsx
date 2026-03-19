@@ -10,9 +10,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { Minus, Plus, Trash2, ArrowRight } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, PanelLeftOpen, PanelRightClose, ShoppingCart } from 'lucide-react';
 
-export function PosCheckout() {
+interface PosCheckoutProps {
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+export function PosCheckout({ isCollapsed, onToggleCollapse }: PosCheckoutProps) {
   const { cartItems, cartTotal, cartCount, removeFromCart, updateQuantity } = useCart();
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
@@ -20,13 +25,32 @@ export function PosCheckout() {
     setSelectedItemId(prevId => (prevId === itemId ? null : itemId));
   };
   
+  if (isCollapsed) {
+    return (
+      <aside className="bg-card rounded-lg flex flex-col p-4 items-center justify-start gap-4">
+        <Button onClick={onToggleCollapse} variant="ghost" size="icon">
+          <PanelLeftOpen className="h-6 w-6" />
+        </Button>
+        <div className="flex flex-col items-center gap-2 mt-4">
+            <span className="text-xl font-bold">{cartCount}</span>
+            <ShoppingCart className="h-6 w-6 text-muted-foreground" />
+        </div>
+      </aside>
+    );
+  }
+
   const discount = 0; // Placeholder
   const vat = 0; // Placeholder
   const total = cartTotal - discount + vat;
 
   return (
     <aside className="bg-card rounded-lg flex flex-col p-6">
-      <h2 className="text-2xl font-bold mb-6">Shopping Cart ({cartCount})</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Shopping Cart ({cartCount})</h2>
+         <Button onClick={onToggleCollapse} variant="ghost" size="icon">
+          <PanelRightClose className="h-6 w-6" />
+        </Button>
+      </div>
       <ScrollArea className="flex-grow pr-4 -mr-4 mb-6">
         <div className="divide-y divide-border -my-2">
           {cartItems.length > 0 ? (

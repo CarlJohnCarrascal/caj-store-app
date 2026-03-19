@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { getStoreData, setStoreData, deleteItem } from '@/lib/offline';
 import { deleteExpense, logActivity } from '@/lib/data';
+import { usePathname } from 'next/navigation';
 
 const ADMIN_EXPENSES_FILTERS_KEY = 'adminExpensesFilters';
 
@@ -61,6 +62,8 @@ export default function ExpenseList() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [date, setDate] = useState<DateRange | undefined>({ from: subDays(new Date(), 30), to: new Date() });
   const { user, activeStoreId } = useAuth();
+  const pathname = usePathname();
+  const basePath = pathname.startsWith('/pos') ? '/pos' : '/admin';
   
   useEffect(() => {
     const saved = localStorage.getItem(ADMIN_EXPENSES_FILTERS_KEY);
@@ -197,7 +200,7 @@ export default function ExpenseList() {
                                 <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                                 <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                                 <TableCell className="text-right"><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell className="text-right"><Skeleton className="h-9 w-24" /></TableCell>
+                                <TableCell className="text-right"><Skeleton className="h-9 w-24 ml-auto" /></TableCell>
                            </TableRow>
                         ))}
                     </TableBody>
@@ -327,7 +330,7 @@ export default function ExpenseList() {
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" asChild>
-                          <Link href={`/admin/expenses/edit/${expense.id}`}>
+                          <Link href={`${basePath}/expenses/edit/${expense.id}`}>
                             <Pencil className="h-4 w-4" />
                           </Link>
                         </Button>

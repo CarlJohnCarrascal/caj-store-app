@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -11,7 +12,7 @@ const navItems = [
   { name: 'Printing', href: '/pos/printing', icon: Printer },
   { name: 'E-loading', href: '/pos/e-loading', icon: Smartphone },
   { name: 'Other Services', href: '/pos/other-services', icon: Wrench },
-  { name: 'Expenses', href: '/admin/expenses', icon: Receipt },
+  { name: 'Expenses', href: '/pos/expenses', icon: Receipt },
   { name: 'History', href: '/pos/history', icon: History },
 ];
 
