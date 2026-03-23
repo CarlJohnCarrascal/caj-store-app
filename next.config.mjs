@@ -10,7 +10,7 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  swcMinify: false,
+  swcMinify: true,
   typescript: {
     ignoreBuildErrors: true,
   },
