@@ -4,34 +4,34 @@
 
 @layer base {
   :root {
-    --background: 220 14% 18%; /* Dark Slate Blue from image */
-    --foreground: 210 20% 85%;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 220 14% 22%;
-    --card-foreground: 210 20% 90%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 220 14% 15%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 210 90% 55%; /* Bright Blue for active buttons */
-    --primary-foreground: 210 20% 98%;
+    --primary: 210 90% 55%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 220 14% 30%;
-    --secondary-foreground: 210 20% 90%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 220 14% 30%;
-    --muted-foreground: 210 20% 65%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 220 14% 30%;
-    --accent-foreground: 210 20% 98%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 14% 30%;
-    --input: 220 14% 25%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
     --ring: 210 90% 60%;
-    
+
     --radius: 0.5rem;
 
     --chart-1: 12 76% 61%;
@@ -43,24 +43,40 @@
 
   .dark {
     --background: 220 14% 18%;
+    /* Dark Slate Blue from image */
     --foreground: 210 20% 85%;
+
     --card: 220 14% 22%;
     --card-foreground: 210 20% 90%;
+
     --popover: 220 14% 15%;
     --popover-foreground: 210 20% 90%;
+
     --primary: 210 90% 55%;
+    /* Bright Blue for active buttons */
     --primary-foreground: 210 20% 98%;
+
     --secondary: 220 14% 30%;
     --secondary-foreground: 210 20% 90%;
+
     --muted: 220 14% 30%;
     --muted-foreground: 210 20% 65%;
+
     --accent: 220 14% 30%;
     --accent-foreground: 210 20% 98%;
+
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
+
     --border: 220 14% 30%;
     --input: 220 14% 25%;
     --ring: 210 90% 60%;
+
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 }
 
@@ -68,6 +84,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground min-w-[450px];
   }

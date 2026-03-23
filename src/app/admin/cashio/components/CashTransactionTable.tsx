@@ -141,6 +141,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange,
   const [method, setMethod] = React.useState('all');
   const [accountUsed, setAccountUsed] = React.useState('all');
   const [status, setStatus] = React.useState('all');
+  const [isFiltersLoaded, setIsFiltersLoaded] = React.useState(false);
 
   React.useEffect(() => {
     const saved = localStorage.getItem(ADMIN_CASHIO_FILTERS_KEY);
@@ -165,9 +166,11 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange,
             console.error("Failed to parse cashio filters", e);
         }
     }
+    setIsFiltersLoaded(true);
   }, []);
 
   React.useEffect(() => {
+    if (!isFiltersLoaded) return;
     const toSave = {
         search,
         itemsPerPage,
@@ -180,7 +183,7 @@ export default function CashTransactionTable({ isSearchOpen, onSearchOpenChange,
         status,
     };
     localStorage.setItem(ADMIN_CASHIO_FILTERS_KEY, JSON.stringify(toSave));
-  }, [search, itemsPerPage, sort, viewMode, date, type, method, accountUsed, status]);
+  }, [search, itemsPerPage, sort, viewMode, date, type, method, accountUsed, status, isFiltersLoaded]);
 
 
   React.useEffect(() => {

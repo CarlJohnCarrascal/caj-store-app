@@ -52,6 +52,7 @@ export default function PosHistoryPage() {
     from: subDays(new Date(), 30),
     to: new Date(),
   });
+  const [isFiltersLoaded, setIsFiltersLoaded] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(POS_HISTORY_FILTERS_KEY);
@@ -72,9 +73,11 @@ export default function PosHistoryPage() {
         console.error('Failed to parse POS history filters', e);
       }
     }
+    setIsFiltersLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!isFiltersLoaded) return;
     const toSave = {
       itemsPerPage,
       searchTerm,
@@ -83,7 +86,7 @@ export default function PosHistoryPage() {
       date: date ? { from: date.from?.toISOString(), to: date.to?.toISOString() } : undefined,
     };
     localStorage.setItem(POS_HISTORY_FILTERS_KEY, JSON.stringify(toSave));
-  }, [itemsPerPage, searchTerm, settlementFilter, serviceFilter, date]);
+  }, [itemsPerPage, searchTerm, settlementFilter, serviceFilter, date, isFiltersLoaded]);
 
   useEffect(() => {
     if (!activeStoreId) {

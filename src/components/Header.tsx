@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes, Globe, CreditCard, Sparkles } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { ShoppingCart, Menu, Store, Printer, Package, LayoutDashboard, ChevronDown, Landmark, Users, ArrowRightLeft, Library, History, Smartphone, Wrench, ShoppingBag, Receipt, BarChart, LogOut, User as UserIcon, DollarSign, Settings, FileInput, Laptop, Boxes, Globe, CreditCard, Sparkles, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { CartSheet } from '@/components/CartSheet';
@@ -34,6 +36,9 @@ import { StoreSwitcher } from './StoreSwitcher';
 import { Separator } from './ui/separator';
 
 export default function Header() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const { cartCount, isCartOpen, setCartOpen } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -251,14 +256,14 @@ export default function Header() {
                         Point of Sale <ChevronDown className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem asChild><Link href="/pos" className="flex items-center gap-2 cursor-pointer"><Laptop className="h-4 w-4" /> POS Mode</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/pos")} className="flex items-center gap-2 cursor-pointer"><Laptop className="h-4 w-4" /> POS Mode</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild><Link href="/admin/store" className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Store</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/printing" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/e-loading" className="flex items-center gap-2 cursor-pointer"><Smartphone className="h-4 w-4" /> E-loading</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/other-services" className="flex items-center gap-2 cursor-pointer"><Wrench className="h-4 w-4" /> Other Services</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/expenses" className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Expenses</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/store")} className="flex items-center gap-2 cursor-pointer"><Store className="h-4 w-4" /> Store</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/cashio")} className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/printing")} className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/e-loading")} className="flex items-center gap-2 cursor-pointer"><Smartphone className="h-4 w-4" /> E-loading</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/other-services")} className="flex items-center gap-2 cursor-pointer"><Wrench className="h-4 w-4" /> Other Services</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/expenses")} className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Expenses</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -267,18 +272,18 @@ export default function Header() {
                         Management <ChevronDown className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem asChild><Link href="/admin/products" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/inventory" className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Inventory</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/orders" className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/products")} className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Products</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/inventory")} className="flex items-center gap-2 cursor-pointer"><Boxes className="h-4 w-4" /> Inventory</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/orders")} className="flex items-center gap-2 cursor-pointer"><ShoppingCart className="h-4 w-4" /> Orders</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild><Link href="/admin/printing/prices" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing Prices</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/cashio-fees" className="flex items-center gap-2 cursor-pointer"><DollarSign className="h-4 w-4" /> CashIO Fees</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/import-cashio" className="flex items-center gap-2 cursor-pointer"><FileInput className="h-4 w-4" /> Import CashIO</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/accounts" className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/customers" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/collections" className="flex items-center gap-2 cursor-pointer"><Library className="h-4 w-4" /> Collections</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/printing/prices")} className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing Prices</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/cashio-fees")} className="flex items-center gap-2 cursor-pointer"><DollarSign className="h-4 w-4" /> CashIO Fees</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/import-cashio")} className="flex items-center gap-2 cursor-pointer"><FileInput className="h-4 w-4" /> Import CashIO</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/accounts")} className="flex items-center gap-2 cursor-pointer"><Landmark className="h-4 w-4" /> Accounts</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/customers")} className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customers</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/collections")} className="flex items-center gap-2 cursor-pointer"><Library className="h-4 w-4" /> Collections</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild><Link href="/admin/activity-logs" className="flex items-center gap-2 cursor-pointer"><History className="h-4 w-4" /> Activity Logs</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/activity-logs")} className="flex items-center gap-2 cursor-pointer"><History className="h-4 w-4" /> Activity Logs</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -287,13 +292,13 @@ export default function Header() {
                         Reports <ChevronDown className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/sales" className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Sales</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/product" className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Product</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/customer" className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customer</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/cashio" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/e-loading" className="flex items-center gap-2 cursor-pointer"><Smartphone className="h-4 w-4" /> E-loading</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/printing" className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/admin/reports/other-service" className="flex items-center gap-2 cursor-pointer"><Wrench className="h-4 w-4" /> Other Service</Link></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/sales")} className="flex items-center gap-2 cursor-pointer"><Receipt className="h-4 w-4" /> Sales</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/product")} className="flex items-center gap-2 cursor-pointer"><Package className="h-4 w-4" /> Product</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/customer")} className="flex items-center gap-2 cursor-pointer"><Users className="h-4 w-4" /> Customer</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/cashio")} className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> Cash IO</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/e-loading")} className="flex items-center gap-2 cursor-pointer"><Smartphone className="h-4 w-4" /> E-loading</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/printing")} className="flex items-center gap-2 cursor-pointer"><Printer className="h-4 w-4" /> Printing</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push("/admin/reports/other-service")} className="flex items-center gap-2 cursor-pointer"><Wrench className="h-4 w-4" /> Other Service</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                     {isAdmin && (
@@ -302,7 +307,7 @@ export default function Header() {
                           System <ChevronDown className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem asChild><Link href="/admin/system/cashio-report-fix" className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> CashIO Report Fix</Link></DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => router.push("/admin/system/cashio-report-fix")} className="flex items-center gap-2 cursor-pointer"><ArrowRightLeft className="h-4 w-4" /> CashIO Report Fix</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
@@ -312,7 +317,7 @@ export default function Header() {
             </div>
             
             <div className="flex items-center gap-2">
-              {activeStoreId && (
+              {activeStoreId && !['/pos/checkout', '/pos/history', '/pos/expenses'].includes(pathname) && (
                 <Button variant="ghost" size="icon" onClick={() => setCartOpen(true)} className="relative">
                   <ShoppingBag className="h-7 w-7" />
                   {cartCount > 0 && (
@@ -342,11 +347,16 @@ export default function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                     <DropdownMenuItem asChild>
-                        <Link href="/admin/subscription" className="flex items-center gap-2 cursor-pointer">
-                            <CreditCard className="h-4 w-4" /> Subscription
-                        </Link>
+                     <DropdownMenuItem onClick={(e) => { e.preventDefault(); setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex items-center gap-2 cursor-pointer">
+                      <Moon className="h-4 w-4 hidden dark:block" />
+                      <Sun className="h-4 w-4 dark:hidden" />
+                      <span className="hidden dark:block">Light mode</span>
+                      <span className="dark:hidden">Dark mode</span>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => router.push("/admin/subscription")} className="flex items-center gap-2 cursor-pointer">
+<CreditCard className="h-4 w-4" /> Subscription
+</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => signOut()}>
                       <LogOut className="mr-2 h-4 w-4" />

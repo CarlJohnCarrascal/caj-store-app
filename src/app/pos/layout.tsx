@@ -7,6 +7,7 @@ import { PosHeader } from './components/PosHeader';
 import { Providers } from '@/components/Providers';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 export default function PosLayout({
   children,
@@ -15,10 +16,13 @@ export default function PosLayout({
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCheckoutCollapsed, setIsCheckoutCollapsed] = useState(false);
+  const pathname = usePathname();
+
+  const isCheckoutHidden = ['/pos/checkout', '/pos/history', '/pos/expenses', '/pos/orders'].some(route => pathname === route || pathname.startsWith(`${route}/`));
 
   const gridClasses = isSidebarCollapsed 
-  ? (isCheckoutCollapsed ? "grid-cols-[80px_1fr_80px]" : "grid-cols-[80px_1fr_380px]")
-  : (isCheckoutCollapsed ? "grid-cols-[280px_1fr_80px]" : "grid-cols-[280px_1fr_380px]");
+  ? (isCheckoutHidden ? "grid-cols-[80px_1fr]" : isCheckoutCollapsed ? "grid-cols-[80px_1fr_80px]" : "grid-cols-[80px_1fr_380px]")
+  : (isCheckoutHidden ? "grid-cols-[280px_1fr]" : isCheckoutCollapsed ? "grid-cols-[280px_1fr_80px]" : "grid-cols-[280px_1fr_380px]");
 
   return (
     <Providers>
@@ -32,7 +36,9 @@ export default function PosLayout({
             <main className="flex flex-col overflow-y-auto pr-4 -mr-4">
             {children}
             </main>
-            <PosCheckout isCollapsed={isCheckoutCollapsed} onToggleCollapse={() => setIsCheckoutCollapsed(p => !p)} />
+            {!isCheckoutHidden && (
+              <PosCheckout isCollapsed={isCheckoutCollapsed} onToggleCollapse={() => setIsCheckoutCollapsed(p => !p)} />
+            )}
         </div>
         </div>
     </Providers>

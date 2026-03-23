@@ -61,6 +61,7 @@ export default function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [date, setDate] = useState<DateRange | undefined>({ from: subDays(new Date(), 30), to: new Date() });
+  const [isFiltersLoaded, setIsFiltersLoaded] = useState(false);
   const { user, activeStoreId } = useAuth();
   const pathname = usePathname();
   const basePath = pathname.startsWith('/pos') ? '/pos' : '/admin';
@@ -82,16 +83,18 @@ export default function ExpenseList() {
         console.error('Failed to parse expense filters', e);
       }
     }
+    setIsFiltersLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!isFiltersLoaded) return;
     const toSave = {
       searchTerm,
       categoryFilter,
       date: date ? { from: date.from?.toISOString(), to: date.to?.toISOString() } : undefined,
     };
     localStorage.setItem(ADMIN_EXPENSES_FILTERS_KEY, JSON.stringify(toSave));
-  }, [searchTerm, categoryFilter, date]);
+  }, [searchTerm, categoryFilter, date, isFiltersLoaded]);
 
   useEffect(() => {
     if (!activeStoreId) {

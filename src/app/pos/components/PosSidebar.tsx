@@ -24,7 +24,7 @@ export function PosSidebar({ isCollapsed }: PosSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="bg-card rounded-lg p-4 flex flex-col gap-2">
+    <aside className="bg-card border shadow-sm rounded-lg p-4 flex flex-col gap-2">
       <div className="flex-grow space-y-2">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href) && (item.href !== '/pos' || pathname === '/pos');

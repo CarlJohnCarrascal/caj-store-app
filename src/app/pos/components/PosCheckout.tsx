@@ -27,7 +27,7 @@ export function PosCheckout({ isCollapsed, onToggleCollapse }: PosCheckoutProps)
   
   if (isCollapsed) {
     return (
-      <aside className="bg-card rounded-lg flex flex-col p-4 items-center justify-start gap-4">
+      <aside className="bg-card border shadow-sm rounded-lg flex flex-col p-4 items-center justify-start gap-4">
         <Button onClick={onToggleCollapse} variant="ghost" size="icon">
           <PanelLeftOpen className="h-6 w-6" />
         </Button>
@@ -44,7 +44,7 @@ export function PosCheckout({ isCollapsed, onToggleCollapse }: PosCheckoutProps)
   const total = cartTotal - discount + vat;
 
   return (
-    <aside className="bg-card rounded-lg flex flex-col p-6">
+    <aside className="bg-card border shadow-sm rounded-lg flex flex-col p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Shopping Cart ({cartCount})</h2>
          <Button onClick={onToggleCollapse} variant="ghost" size="icon">

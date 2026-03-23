@@ -25,31 +25,31 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import CustomerForm from '@/app/admin/customers/components/CustomerForm';
 import { Switch } from '@/components/ui/switch';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-  } from '@/components/ui/alert-dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { processOrder } from '@/lib/data';
 import { processOrderAction } from '@/lib/actions';
 
 function snapshotToArray<T>(snapshot: any): (T & { id: string })[] {
-    const items: (T & { id: string })[] = [];
-    if (snapshot.exists()) {
-        snapshot.forEach((childSnapshot: any) => {
-        items.push({
-            id: childSnapshot.key,
-            ...childSnapshot.val(),
-        });
-        });
-    }
-    return items;
+  const items: (T & { id: string })[] = [];
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot: any) => {
+      items.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+  }
+  return items;
 }
 
 export default function PosCheckoutPage() {
@@ -95,7 +95,7 @@ export default function PosCheckoutPage() {
   const customerOptions = useMemo(() => {
     return [{ value: 'unknown', label: 'Unknown Customer' }, ...customers.map(c => ({ value: c.id, label: c.name }))];
   }, [customers]);
-  
+
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId);
   }, [customers, selectedCustomerId]);
@@ -108,7 +108,7 @@ export default function PosCheckoutPage() {
       setCartCustomer({ name: selected.name });
     }
   };
-  
+
   const handleAddNewCustomerSuccess = (newCustomer: Customer) => {
     setIsCustomerDialogOpen(false);
     // The realtime listener will add the customer to the list.
@@ -120,7 +120,7 @@ export default function PosCheckoutPage() {
 
   const discountValue = parseFloat(discount) || 0;
   const customerBalanceToApply = applyBalance && selectedCustomer ? selectedCustomer.balance : 0;
-  
+
   const finalTotal = cartTotal - discountValue - customerBalanceToApply;
 
   const amountTenderedValue = parseFloat(amountTendered) || 0;
@@ -133,23 +133,23 @@ export default function PosCheckoutPage() {
     }
 
     if (!user || !activeStoreId) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
-        return;
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in and have a store selected.' });
+      return;
     }
 
     const isUnknownCustomer = selectedCustomerId === 'unknown';
     const customerForAction = isUnknownCustomer
       ? { id: 'unknown', name: 'Unknown Customer', balance: 0 }
       : selectedCustomer;
-    
+
     if (!customerForAction) {
-        toast({ variant: 'destructive', title: 'Customer Error', description: 'Selected customer could not be found.' });
-        return;
+      toast({ variant: 'destructive', title: 'Customer Error', description: 'Selected customer could not be found.' });
+      return;
     }
 
     startTransition(async () => {
       try {
-        
+
         const orderPayload = {
           customerId: customerForAction.id,
           customerName: customerForAction.name,
@@ -191,21 +191,21 @@ export default function PosCheckoutPage() {
       });
       return;
     }
-    
+
     if (finalTotal >= 0 && amountTenderedValue < finalTotal) {
-       toast({ variant: 'destructive', title: 'Insufficient Payment', description: 'Amount tendered must be greater than or equal to the total.' });
-       return;
+      toast({ variant: 'destructive', title: 'Insufficient Payment', description: 'Amount tendered must be greater than or equal to the total.' });
+      return;
     }
     handleProcessOrder('pay_order');
   };
 
   if (cartItems.length === 0 && !isSubmitting) {
     return (
-        <div className="text-center">
-            <h1 className="text-2xl font-semibold">Your order is empty</h1>
-            <p className="text-muted-foreground mt-2">Add some products to your order to proceed.</p>
-            <Button asChild className="mt-4"><Link href="/pos">Go to Store</Link></Button>
-        </div>
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold">Your order is empty</h1>
+        <p className="text-muted-foreground mt-2">Add some products to your order to proceed.</p>
+        <Button asChild className="mt-4"><Link href="/pos">Go to Store</Link></Button>
+      </div>
     )
   }
 
@@ -213,15 +213,15 @@ export default function PosCheckoutPage() {
     const setter = activeInput === 'tendered' ? setAmountTendered : setDiscount;
     setter(prev => prev + char);
   };
-  
+
   const handleKeypadAction = (action: 'exact' | 'clear' | 'del') => {
     const setter = activeInput === 'tendered' ? setAmountTendered : setDiscount;
     if (action === 'exact') {
-        setter(finalTotal.toFixed(2));
+      setter(finalTotal.toFixed(2));
     } else if (action === 'clear') {
-        setter('');
+      setter('');
     } else if (action === 'del') {
-        setter(prev => prev.slice(0, -1));
+      setter(prev => prev.slice(0, -1));
     }
   };
 
@@ -231,41 +231,42 @@ export default function PosCheckoutPage() {
 
   return (
     <div className="h-full overflow-y-auto pr-4 -mr-4">
-      <div className="space-y-8">
-        <Card>
+      <div className="grid lg:grid-cols-4 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <Card>
           <CardHeader>
             <CardTitle>Customer</CardTitle>
             <CardDescription>Select a customer for this order or add a new one.</CardDescription>
           </CardHeader>
           <CardContent>
-             <div className="flex gap-2 items-start">
-                <div className="flex-grow">
-                    <Combobox
-                      options={customerOptions}
-                      value={selectedCustomerId}
-                      onChange={handleCustomerSelect}
-                      placeholder="Select a customer"
-                      searchPlaceholder="Search customers..."
-                      emptyPlaceholder="No customer found."
-                    />
-                </div>
-                <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0" onClick={() => setIsCustomerDialogOpen(true)}>
-                    <UserPlus className="h-4 w-4" />
-                    <span className="sr-only">Add New Customer</span>
-                </Button>
+            <div className="flex gap-2 items-start">
+              <div className="flex-grow">
+                <Combobox
+                  options={customerOptions}
+                  value={selectedCustomerId}
+                  onChange={handleCustomerSelect}
+                  placeholder="Select a customer"
+                  searchPlaceholder="Search customers..."
+                  emptyPlaceholder="No customer found."
+                />
+              </div>
+              <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0" onClick={() => setIsCustomerDialogOpen(true)}>
+                <UserPlus className="h-4 w-4" />
+                <span className="sr-only">Add New Customer</span>
+              </Button>
             </div>
             {selectedCustomer && (
-                <div className="mt-4 flex items-center justify-between rounded-lg border bg-muted/50 p-3">
-                    <p className="text-sm text-muted-foreground">
-                        Selected customer: <span className="font-semibold text-foreground">{selectedCustomer.name}</span>
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        Current balance: 
-                        <span className={cn("font-medium ml-1", selectedCustomer.balance > 0 ? "text-green-600" : selectedCustomer.balance < 0 ? "text-destructive" : "text-foreground")}>
-                           ₱{selectedCustomer.balance.toFixed(2)}
-                        </span>
-                    </p>
-                </div>
+              <div className="mt-4 flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">
+                  Selected customer: <span className="font-semibold text-foreground">{selectedCustomer.name}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Current balance:
+                  <span className={cn("font-medium ml-1", selectedCustomer.balance > 0 ? "text-green-600" : selectedCustomer.balance < 0 ? "text-destructive" : "text-foreground")}>
+                    ₱{selectedCustomer.balance.toFixed(2)}
+                  </span>
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -275,74 +276,146 @@ export default function PosCheckoutPage() {
             <CardTitle>Payment Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-             <div className="grid sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="discount">Discount (₱)</Label>
-                  <Input
-                    id="discount"
-                    type="number"
-                    placeholder="0.00"
-                    value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
-                    onFocus={() => setActiveInput('discount')}
-                    className={cn(activeInput === 'discount' && 'ring-2 ring-primary')}
-                  />
-                </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="amountTendered">Amount Tendered (₱)</Label>
-                  <Input
-                    id="amountTendered"
-                    type="number"
-                    placeholder="0.00"
-                    value={amountTendered}
-                    onChange={(e) => setAmountTendered(e.target.value)}
-                    onFocus={() => setActiveInput('tendered')}
-                    className={cn(activeInput === 'tendered' && 'ring-2 ring-primary')}
-                  />
-                </div>
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="discount">Discount (₱)</Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  placeholder="0.00"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  onFocus={() => setActiveInput('discount')}
+                  className={cn(activeInput === 'discount' && 'ring-2 ring-primary')}
+                />
               </div>
-              {selectedCustomer && selectedCustomer.balance !== 0 && (
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                        <Label htmlFor='apply-balance'>Apply Customer Balance</Label>
-                        <p className="text-sm text-muted-foreground">
-                           Use their <span className={cn("font-medium", selectedCustomer.balance > 0 ? "text-green-600" : "text-destructive")}>₱{selectedCustomer.balance.toFixed(2)}</span> balance in this transaction.
-                        </p>
-                    </div>
-                    <Switch
-                        id='apply-balance'
-                        checked={applyBalance}
-                        onCheckedChange={setApplyBalance}
-                        disabled={!selectedCustomer}
-                    />
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-2 flex justify-between">
-                <div className='grid grid-cols-4 gap-2 mt-2'>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadAction('exact')}>Exact</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadAction('clear')}>Clear</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadAction('del')}>Del</Button>
-                  <Button variant="outline" size="sm" onClick={toggleActiveInput}>
-                    {activeInput === 'tendered' ? 'Tendered' : 'Discount'}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('7')}>7</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('8')}>8</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('9')}>9</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('4')}>4</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('5')}>5</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('6')}>6</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('1')}>1</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('2')}>2</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('3')}>3</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('-')}>-</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('0')}>0</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleKeypadInput('.')}>.</Button>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="amountTendered">Amount Tendered (₱)</Label>
+                <Input
+                  id="amountTendered"
+                  type="number"
+                  placeholder="0.00"
+                  value={amountTendered}
+                  onChange={(e) => setAmountTendered(e.target.value)}
+                  onFocus={() => setActiveInput('tendered')}
+                  className={cn(activeInput === 'tendered' && 'ring-2 ring-primary')}
+                />
               </div>
+            </div>
+            {selectedCustomer && selectedCustomer.balance !== 0 && (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label htmlFor='apply-balance'>Apply Customer Balance</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Use their <span className={cn("font-medium", selectedCustomer.balance > 0 ? "text-green-600" : "text-destructive")}>₱{selectedCustomer.balance.toFixed(2)}</span> balance in this transaction.
+                  </p>
+                </div>
+                <Switch
+                  id='apply-balance'
+                  checked={applyBalance}
+                  onCheckedChange={setApplyBalance}
+                  disabled={!selectedCustomer}
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-2 flex justify-between">
+              <div className='grid grid-cols-4 gap-2 mt-2'>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadAction('exact')}>Exact</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadAction('clear')}>Clear</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadAction('del')}>Del</Button>
+                <Button variant="outline" size="sm" onClick={toggleActiveInput}>
+                  {activeInput === 'tendered' ? 'Tendered' : 'Discount'}
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('7')}>7</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('8')}>8</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('9')}>9</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('4')}>4</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('5')}>5</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('6')}>6</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('1')}>1</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('2')}>2</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('3')}>3</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('-')}>-</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('0')}>0</Button>
+                <Button variant="outline" size="sm" onClick={() => handleKeypadInput('.')}>.</Button>
+              </div>
+            </div>
           </CardContent>
-           <CardFooter className="flex flex-col gap-2">
+        </Card>
+      </div>
+
+      <div className="lg:col-span-2">
+        <Card className="sticky top-20">
+          <CardHeader>
+            <CardTitle>Order Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <ScrollArea className="h-[300px] pr-4">
+                {cartItems.map(item => {
+                const isPrinting = item.category === 'Printing';
+                const isCashIO = item.category === 'CashIO';
+                const isEloading = item.category === 'E-loading';
+                const isOtherService = item.category === 'Other Service';
+                return (
+                <div key={item.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                    <div className="relative h-16 w-16 rounded-md overflow-hidden border">
+                        <Image src={item.image || 'https://placehold.co/64x64.png'} alt={item.name} fill sizes="64px" className="object-cover" data-ai-hint={isPrinting ? 'printing service' : isCashIO ? 'transaction' : isEloading ? 'loading service' : isOtherService ? 'service icon' : 'product photo'} />
+                    </div>
+                    <div>
+                        <p className="font-medium">{item.name}</p>
+                        {!isCashIO && <p className="text-sm text-muted-foreground">Qty: {item.quantity}{item.unit === 'kg' ? ' kg' : ''}</p>}
+                        {(isPrinting || isCashIO || isEloading || isOtherService) && item.description && (
+                        <p className="text-xs text-muted-foreground mt-1 max-w-[180px] break-words">{item.description}</p>
+                        )}
+                    </div>
+                    </div>
+                    <p className="font-medium">₱{(item.price * item.quantity).toFixed(2)}</p>
+                </div>
+                )})}
+            </ScrollArea>
+            <Separator />
+            <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>₱{cartTotal.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span className="text-muted-foreground">Discount</span>
+                    <span className={cn(discountValue > 0 && "text-green-600")}>- ₱{discountValue.toFixed(2)}</span>
+                </div>
+                {applyBalance && selectedCustomer && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Applied Balance</span>
+                        <span className={cn(customerBalanceToApply > 0 ? "text-green-600" : "text-destructive")}>
+                           - ₱{customerBalanceToApply.toFixed(2)}
+                        </span>
+                    </div>
+                )}
+                 <div className="flex justify-between font-semibold text-base">
+                    <span className="text-foreground">Total</span>
+                    <span>₱{finalTotal.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount Tendered</span>
+                    <span>₱{amountTenderedValue.toFixed(2)}</span>
+                </div>
+                 {balanceOrChange <= 0 ? (
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Change Due</span>
+                      <span>₱{(-balanceOrChange).toFixed(2)}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between font-semibold text-base text-destructive">
+                      <span>Balance Due</span>
+                      <span>₱{balanceOrChange.toFixed(2)}</span>
+                  </div>
+                )}
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button className="w-full" disabled={isSubmitting || !selectedCustomerId}>
@@ -395,19 +468,20 @@ export default function PosCheckoutPage() {
           </CardFooter>
         </Card>
       </div>
+      </div>
 
-       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
         <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Add New Customer</DialogTitle>
-                <DialogDescription>
-                    Add a new customer to your records. They will be available to select after creation.
-                </DialogDescription>
-            </DialogHeader>
-            <CustomerForm
-                onSuccess={handleAddNewCustomerSuccess}
-                onCancel={() => setIsCustomerDialogOpen(false)}
-            />
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogDescription>
+              Add a new customer to your records. They will be available to select after creation.
+            </DialogDescription>
+          </DialogHeader>
+          <CustomerForm
+            onSuccess={handleAddNewCustomerSuccess}
+            onCancel={() => setIsCustomerDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
