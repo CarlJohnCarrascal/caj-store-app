@@ -64,7 +64,7 @@
     "zod": "^3.24.2"
   },
   "overrides": {
-    "next": "14.2.35"
+    "next": "14.2.4"
   },
   "devDependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
