@@ -8,7 +8,6 @@ import { ArrowLeft, ArrowUp, ArrowDown, Camera, VideoOff, SwitchCamera, FileImag
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { FormItem, FormControl } from '@/components/ui/form';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -443,24 +442,20 @@ export default function ScanImagePage() {
             {/* --- RIGHT COLUMN --- */}
             <div className="space-y-6">
                 <RadioGroup value={transactionType} onValueChange={(v) => setTransactionType(v as TransactionType)} className="grid grid-cols-2 gap-4">
-                    <FormItem>
-                        <FormControl>
+                    <div>
                         <RadioGroupItem value="Cash In" id="cash-in" className="sr-only peer" />
-                        </FormControl>
                         <Label htmlFor="cash-in" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer">
                             <ArrowUp className="mb-3 h-6 w-6 text-green-500" />
                             Cash In
                         </Label>
-                    </FormItem>
-                    <FormItem>
-                        <FormControl>
+                    </div>
+                    <div>
                         <RadioGroupItem value="Cash Out" id="cash-out" className="sr-only peer" />
-                        </FormControl>
                         <Label htmlFor="cash-out" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer">
                             <ArrowDown className="mb-3 h-6 w-6 text-red-500" />
                             Cash Out
                         </Label>
-                    </FormItem>
+                    </div>
                 </RadioGroup>
 
                 <div className="grid grid-cols-2 gap-2">
